@@ -1,0 +1,143 @@
+{
+  "banques": [
+    {
+      "nom": "BoursoBank",
+      "separateur": ";",
+      "colonnes_requises": [
+        "Date Opération",
+        "Numéro Compte",
+        "Libellé Compte",
+        "Solde"
+      ],
+      "occurrences_requises": {
+        "Solde": 2
+      },
+      "format_date": "%Y-%m-%d",
+      "devise_fixe": "EUR",
+      "champs": {
+        "compte": [
+          "Numéro Compte",
+          "Libellé Compte"
+        ],
+        "date": "Date Opération",
+        "date_valeur": "Date Valeur",
+        "description": "Libellé",
+        "montant": {
+          "colonne": "Solde",
+          "occurrence": 1,
+          "decimal": ","
+        },
+        "solde": {
+          "colonne": "Solde",
+          "occurrence": 2,
+          "decimal": "."
+        },
+        "categorie": "Catégorie",
+        "sous_categorie": "Catégorie Parente"
+      }
+    },
+    {
+      "nom": "BPS",
+      "separateur": ";",
+      "colonnes_requises": [
+        "Date de comptabilisation",
+        "Debit",
+        "Credit"
+      ],
+      "format_date": "%d/%m/%Y",
+      "decimal": ",",
+      "devise_fixe": "EUR",
+      "champs": {
+        "date": "Date de comptabilisation",
+        "date_valeur": "Date de valeur",
+        "description": [
+          "Libelle operation",
+          "Libelle simplifie"
+        ],
+        "debit": "Debit",
+        "credit": "Credit",
+        "categorie": "Categorie",
+        "sous_categorie": "Sous categorie"
+      }
+    },
+    {
+      "nom": "Revolut",
+      "separateur": ",",
+      "colonnes_requises": [
+        "Type",
+        "Produit",
+        "Date de fin",
+        "Montant",
+        "Devise"
+      ],
+      "format_date": "%Y-%m-%d",
+      "decimal": ".",
+      "champs": {
+        "compte": "Produit",
+        "date": [
+          "Date de fin",
+          "Date de début"
+        ],
+        "description": "Description",
+        "montant": "Montant",
+        "solde": "Solde",
+        "devise": "Devise",
+        "statut": "État"
+      }
+    }
+  ],
+  "sortie": {
+    "separateur": ";",
+    "decimal": ",",
+    "colonnes": [
+      {
+        "champ": "date",
+        "nom": "Date"
+      },
+      {
+        "champ": "banque",
+        "nom": "Banque"
+      },
+      {
+        "champ": "compte",
+        "nom": "Compte"
+      },
+      {
+        "champ": "description",
+        "nom": "Libellé"
+      },
+      {
+        "champ": "montant",
+        "nom": "Montant"
+      },
+      {
+        "champ": "devise",
+        "nom": "Devise"
+      },
+      {
+        "champ": "solde",
+        "nom": "Solde"
+      },
+      {
+        "champ": "categorie",
+        "nom": "Catégorie"
+      },
+      {
+        "champ": "sous_categorie",
+        "nom": "Sous-catégorie"
+      },
+      {
+        "champ": "doublon_potentiel",
+        "nom": "Doublon potentiel"
+      },
+      {
+        "champ": "id",
+        "nom": "Identifiant"
+      },
+      {
+        "champ": "source",
+        "nom": "Fichier source"
+      }
+    ]
+  }
+}
