@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-25",
+  "until": "2027-12-31",
+  "opening": 4120,
+  "closing": 23868.08,
+  "minimum": 3200,
+  "eventCount": 137,
+  "counts": {
+    "Assurance habitation": 14,
+    "Charges copro trimestrielles": 5,
+    "Eau": 14,
+    "Internet fibre": 14,
+    "Loyer": 14,
+    "Netflix": 14,
+    "Prime assurance auto trimestrielle": 5,
+    "Salaire net": 14,
+    "Salle de sport": 14,
+    "Taxe foncière": 1,
+    "Téléphone mobile": 14,
+    "Électricité": 14
+  },
+  "annualTaxDates": [
+    "2027-10-15"
+  ],
+  "quarterlyDates": [
+    "2026-12-16",
+    "2027-03-16",
+    "2027-06-16",
+    "2027-09-16",
+    "2027-12-16"
+  ]
+}

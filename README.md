@@ -1,48 +1,31 @@
-# qbudget — V0.9 (socle local CLI + navigateur)
+# qbudget — jeu de tests de vie quotidienne
 
-Aucune BDD distante, aucun accès bancaire direct. L'importateur Python produit un **CSV normalisé**. L'interface conserve les opérations et annotations dans son stockage local et permet d'exporter uniquement les **annotations JSON** (bouton « Exporter mes annotations »). Le CLI reconstitue son modèle à partir des deux fichiers, sans aucune écriture.
+Données **100 % inventées** (graine aléatoire fixe), du **01/09/2026 au 25/10/2026** inclus.
 
-## Interface web
+- `tests/fixtures/life_2026_operations.csv` : 92 opérations normalisées au même format que l'importateur (`;`, dates ISO, montants signés), trois comptes fictifs : BoursoBank, BPS, Revolut.
+- `tests/fixtures/life_2026_annotations.json` : 12 récurrences avec liens vers 21 opérations historiques, tags, soldes de référence fictifs au 25/10/2026.
+- `tests/fixtures/life_2026_manifest.json` : effectifs, répartition et somme de contrôle (en centimes).
+- `tests/fixtures/life_2026_expected_forecast.json` : résultat de référence **du moteur V0.9.1**, du 25/10/2026 au 31/12/2027. C'est un *golden master*, pas une garantie de justesse métier.
+- `tests/life.test.js` : tests Node.js à exécuter avec `node --test tests/life.test.js`, ou automatiquement via `npm test` si les tests du projet sont détectés par Node.
 
-Ouvrir `index.html` avec `plotly.min.js` et `src/engine.js` dans leurs répertoires d'origine. En cas de restriction de navigateur sur `file://` :
+## Cas couverts
 
-```bash
-python3 -m http.server 8000
-# puis http://localhost:8000
-```
+- Recettes récurrentes : salaire mensuel (pour éviter une dérive mécanique du solde vers zéro).
+- Dépenses mensuelles : loyer, électricité, eau, fibre, téléphone, Netflix, assurance habitation, sport.
+- Dépenses trimestrielles : charges de copropriété et assurance automobile.
+- Dépense annuelle : taxe foncière.
+- Dépenses ponctuelles : alimentation, restaurant, carburant, cinéma, vêtements, vélo, cadeau, pharmacie, etc.
+- **Deux paiements de métro strictement identiques et légitimes**, qu'il ne faut pas dédupliquer.
 
-Dans qbudget : importer `operations.csv`, annoter, puis **Exporter mes annotations**. Conserver cet export dans un emplacement privé, par exemple `data/annotations.json`. Le bouton « Exporter les données CLI » est hérité de la V0.8 mais n'est plus nécessaire pour le CLI.
+**Important :** les dates futures sont générées à partir des règles d'annotations et non insérées dans le CSV historique. Les sorties `expected` reflètent actuellement le comportement de V0.9.1 : si le moteur a un défaut, il faudra corriger la règle métier et mettre à jour la référence après examen. Les données fictives ne doivent jamais être remplacées par des relevés personnels dans Git.
 
-## CLI (Node.js >=22)
+## Installation
 
-```bash
-cp .env.example .env
-# adapter les deux chemins dans .env
-npm link
-qbudget                              # forecast par défaut, 14 mois
-qbudget --months 24
-qbudget balance --account BoursoBank --at 2026-10-25
-qbudget check
-qbudget --format json
-qbudget forecast --set-rule netflix:amount=-25 --months 14
-```
-
-Sans `npm link` : `node src/cli.js` fonctionne aussi.
-
-Le `.env` est lu dans le **répertoire de travail courant** et ne doit pas être poussé dans Git. Priorité : argument CLI > `.env` > défaut intégré. `--csv` et `--annotations` peuvent remplacer temporairement chaque chemin. Un fichier d'annotations absent est traité comme un JSON vide (mais les soldes de référence peuvent alors manquer). Les commandes n'enregistrent jamais les scénarios.
-
-**Attention :** le CLI lit le CSV *déjà normalisé* produit par `import_releves.py`, pas les exports bruts des banques. Le format JSON attendu correspond au bouton « Exporter mes annotations » : `notes`, `references`, `rules`, `manualRows`.
-
-## Tests et CI
+À la racine du dépôt qbudget, extraire les fichiers avec conservation des chemins. Les vrais fichiers `src/engine.js`, `index.html` et `banques.json` ne sont pas remplacés.
 
 ```bash
-./run-tests.sh
+node --test tests/life.test.js
+qbudget forecast --csv tests/fixtures/life_2026_operations.csv --annotations tests/fixtures/life_2026_annotations.json --at 2026-10-25 --until 2027-12-31 --json
 ```
 
-GitHub Actions exécute les tests Node et l'import Python à chaque push / PR. Les nouveaux tests vérifient la concordance CSV entre moteur et CLI, la préservation des opérations identiques, la fusion des annotations et l'absence de modification des fichiers lors d'un scénario temporaire.
-
-**Limites actuelles :** pas encore de test automatisé des interactions du navigateur (Playwright prévu ultérieurement). L'interface conserve sa logique d'édition (tags, récurrences) dans le HTML ; l'extraction du parseur CSV et des calculs est une étape vers sa séparation complète. Le CSV de l'interface utilise encore certains identifiants dépendant de l'ordre des lignes : éviter de changer l'ordre des exports après annotation sans vérifier les correspondances.
-
-## Vie privée
-
-Tous les relevés et annotations réels doivent rester hors Git. Le répertoire `data/`, `.env`, `operations.csv` et les exports d'annotations sont ignorés. Vérifier systématiquement `git status` avant de pousser.
+Les annotations utilisent les identifiants d'opération du **parseur actuel** (`Identifiant|index`). Cette fragilité justifie un futur identifiant stable lors des réimports.

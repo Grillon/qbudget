@@ -1,0 +1,14 @@
+{
+  "start": "2026-09-01",
+  "end": "2026-10-25",
+  "count": 92,
+  "by_bank": {
+    "BoursoBank": 42,
+    "Revolut": 29,
+    "BPS": 21
+  },
+  "sum_cents": -72973,
+  "rules": 12,
+  "linked_operations": 21,
+  "duplicate_real_operations": 2
+}
