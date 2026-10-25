@@ -18,10 +18,10 @@ function execute(input,argv=args,cwd=root){
  return result.stdout;
 }
 
-test('REPL : mêmes 92 opérations et 12 règles, vérification de soldes',()=>{
+test('REPL : 92 bancaires + 7 manuelles et 12 règles, vérification de soldes',()=>{
  const out=execute('status\naccounts\nbalance 2026-10-25\nforecast\nquit\n');
- assert.match(out,/92 opérations \| 12 règles/);
- assert.match(out,/BPS, BoursoBank, Revolut/);
+ assert.match(out,/99 opérations \| 12 règles/);
+ assert.match(out,/BPS, BoursoBank, Qonto, Revolut/);
  assert.match(out,/all au 2026-10-25 : 4[^\n]*120,00/);
  assert.match(out,/Prévision all · 2026-10-25 → 2026-12-25/);
 });
@@ -43,11 +43,11 @@ test('REPL : export identique au CLI et aucune déduplication',()=>{
  try{
   const dest=path.join(d,'actual.csv');
   const out=execute(`export actual "${dest}" 2026-10-25\nquit\n`);
-  assert.match(out,/92 opérations exportées/);
+  assert.match(out,/95 opérations exportées/);
   const model=engine.mergeAnnotations(engine.readCsv(fs.readFileSync(csv,'utf8')),JSON.parse(fs.readFileSync(annotations,'utf8')));
   const expected=engine.auditCsv(engine.auditOperations(model,{scope:'actual',until:'2026-10-25'}));
   assert.equal(fs.readFileSync(dest,'utf8'),expected);
-  assert.equal(expected.trim().split('\n').length,93);
+  assert.equal(expected.trim().split('\n').length,96);
  }finally{fs.rmSync(d,{recursive:true,force:true})}
 });
 

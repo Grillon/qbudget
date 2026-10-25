@@ -21,14 +21,14 @@ test('version CLI, importateur, HTML et package identiques',()=>{
  assert.match(html,/id="appVersion"/);assert.match(html,/QBudgetVersion\.version/);
  assert.match(html,/src\/version\.js/);
 });
-test('démonstration HTML : exactement les 92 opérations et les 12 règles des fixtures',()=>{
+test('démonstration HTML : 92 transactions bancaires et 7 exemples manuels dont Qonto',()=>{
  const demo=demoSandbox.QBudgetDemo;
  assert.equal(demo.csv,fs.readFileSync(path.join(fixtures,'life_2026_operations.csv'),'utf8'));
  assert.deepEqual(JSON.parse(JSON.stringify(demo.annotations)),JSON.parse(fs.readFileSync(path.join(fixtures,'life_2026_annotations.json'),'utf8')));
  const rows=engine.readCsv(demo.csv);
  const model=engine.mergeAnnotations(rows,demo.annotations);
  assert.equal(rows.length,92);assert.equal(Object.keys(model.rules).length,12);
- assert.equal(Object.keys(model.references).length,3);
+ assert.equal(Object.keys(model.references).length,4);assert.equal(model.rows.length,99);assert.equal(model.rows.filter(x=>x.manual&&engine.isFloating(x)).length,4);
  assert.equal(rows.filter(r=>r.date==='2026-10-25').length,4);
  assert.equal(rows.filter(r=>r.desc==='Ticket métro'&&r.amount===-2.5&&r.date==='2026-10-01').length,2);
  assert.equal(demo.asof,'2026-10-25');assert.equal(demo.until,'2026-11-30');

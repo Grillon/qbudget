@@ -1,7 +1,41 @@
-# qbudget — V0.11.0
+# qbudget — V0.12.0
 
 Outil **local** de visualisation et simulation financière. Pas de compte bancaire connecté, pas de serveur de données, pas de base distante. Projet en développement : les projections sont des hypothèses, **pas** un outil comptable ou fiscal.
 
+
+## V0.12.0 — Démo Qonto, remboursements et prévisions dans le tableau
+
+La **démo fictive** dispose de quatre comptes (BoursoBank, BPS, Revolut, **Qonto**) et combine maintenant :
+
+| Opération fictive | Compte | Montant | Situation au 25/10/2026 |
+|---|---|---:|---|
+| Essence déplacement client | BPS personnel | −68,40 € | Payée, 21/10 |
+| Péage déplacement client | BPS personnel | −28,10 € | Payé, 21/10 |
+| Restaurant client | Revolut personnel | −42,50 € | Payé, 22/10 |
+| Indemnités kilométriques | Qonto SASU | −350,00 € | Flottante (sans date) |
+| Indemnités kilométriques | BoursoBank personnel | +350,00 € | Flottante (sans date) |
+| Note de frais restaurant | Qonto SASU | −42,50 € | Flottante (sans date) |
+| Note de frais restaurant | Revolut personnel | +42,50 € | Flottante (sans date) |
+
+Les **trois dépenses personnelles déjà payées sont incluses dans les soldes de référence fictifs du 25/10** ; elles ne sont donc pas déduites une seconde fois du solde à cette date. Les deux paires de remboursements restent hors soldes tant qu'elles sont sans date. Les tags `IK`, `noteDeFrais`, `SASU`, `personnel` et un identifiant de contexte permettent de les retrouver, sans automatisme métier.
+
+Dans **« 8 · Opérations datées et annotations »**, la case **« Afficher les récurrences futures »** ajoute au tableau les lignes calculées entre la date de consultation et la fin de prévision. Elles portent le statut **`FORECAST · calculé`**, ont un fond distinct et **aucun contrôle d'édition**. Les opérations réalisées et prévues manuellement ont leur propre statut ; les lignes de forecast ne sont jamais ajoutées aux transactions stockées. La case permet de masquer uniquement leur affichage. Les exports CSV d'audit « all » conservent les prévisions comme auparavant ; l'export « actual » ne les inclut pas.
+
+### Exemples à exécuter dans la console du navigateur (F12)
+
+Après avoir cliqué sur **Charger une démo fictive**, saisir :
+
+```javascript
+qbudget.help()                    // Liste des commandes disponibles
+qbudget.test()                    // Vérification des invariants sur les données affichées
+qbudget.demo()                    // Contrôle Qonto, dépenses payées et paires flottantes
+qbudget.pending(['SASU', 'IK'])   // Filtre ET sur les opérations en attente
+qbudget.forecast('Qonto')        // Prévision de trésorerie pro
+qbudget.recurrences()             // Prévisions récurrentes calculées pour la période
+const copie = qbudget.snapshot()  // Copie indépendante pour explorer sans toucher aux données
+```
+
+Ces méthodes n'enregistrent aucune modification ; les tests échouent explicitement en cas d'invariant violé. `qbudget.demo()` n'est pertinent que lorsque la **démo** est effectivement chargée. Elles ne remplacent pas les tests automatisés `./run-tests.sh`.
 
 ## V0.11.0 — Qonto et opérations flottantes
 
@@ -38,7 +72,7 @@ python3 -m http.server 8000
 # http://localhost:8000
 ```
 
-**Charger une démo fictive** charge les **92 opérations du 01/09 au 25/10/2026**, trois comptes, **12 récurrences** mensuelles, trimestrielles ou annuelles, et des soldes de référence datés du 25/10. Ces données proviennent exactement des fixtures des tests. Le chargement de la démo demande confirmation si des opérations sont déjà présentes : exporter préalablement les annotations JSON si nécessaire.
+**Charger une démo fictive** charge les **92 opérations bancaires du 01/09 au 25/10/2026**, **7 opérations manuelles supplémentaires (dont 4 flottantes), quatre comptes, 12 récurrences** mensuelles, trimestrielles ou annuelles, et des soldes de référence datés du 25/10. Ces données proviennent exactement des fixtures des tests. Le chargement de la démo demande confirmation si des opérations sont déjà présentes : exporter préalablement les annotations JSON si nécessaire.
 
 L'interface garde les opérations et annotations dans le **stockage local du navigateur**, et permet de télécharger les annotations avec **Exporter mes annotations**. Une origine `file://` et une origine GitHub Pages ne partagent pas leur stockage. **Sauvegarder régulièrement les annotations**, surtout avant réimport.
 
@@ -111,7 +145,7 @@ Le navigateur dispose des mêmes sélecteurs et du bouton **Exporter CSV d'audit
 ./run-tests.sh
 ```
 
-Le script exécute les tests Node, dont les tests REPL, contrôle l'importateur Python, vérifie l'intégrité des assets et les **versions synchronisées**. Les tests de scénario utilisent `tests/fixtures/life_2026_operations.csv` et `tests/fixtures/life_2026_annotations.json` : 92 opérations fictives (dont deux montants identiques distincts), 12 récurrences, soldes au 25/10/2026. La démo est générée automatiquement avec `python3 scripts/build-demo.py` ; le test `--check` empêche toute divergence. GitHub Actions exécute `run-tests.sh` à chaque push et PR. **Le workflow Pages le relance avant toute publication**, pour éviter de publier une interface incohérente.
+Le script exécute les tests Node, dont les tests REPL, contrôle l'importateur Python, vérifie l'intégrité des assets et les **versions synchronisées**. Les tests de scénario utilisent `tests/fixtures/life_2026_operations.csv` et `tests/fixtures/life_2026_annotations.json` : 92 opérations bancaires fictives (dont deux montants identiques distincts), 7 opérations manuelles supplémentaires, 12 récurrences, soldes au 25/10/2026. La démo est générée automatiquement avec `python3 scripts/build-demo.py` ; le test `--check` empêche toute divergence. GitHub Actions exécute `run-tests.sh` à chaque push et PR. **Le workflow Pages le relance avant toute publication**, pour éviter de publier une interface incohérente.
 
 Les snapshots servent à détecter les changements, pas à prouver la vérité comptable. L'interface n'est pas encore couverte par une batterie E2E navigateur dans la CI ; les tests valident sa structure et le moteur commun.
 

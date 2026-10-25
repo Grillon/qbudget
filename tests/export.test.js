@@ -7,13 +7,13 @@ const eng=require('../src/engine.js');
 const d=path.join(__dirname,'fixtures');
 const model=eng.mergeAnnotations(eng.readCsv(fs.readFileSync(path.join(d,'life_2026_operations.csv'),'utf8')),JSON.parse(fs.readFileSync(path.join(d,'life_2026_annotations.json'),'utf8')));
 const params={at:'2026-10-25',until:'2027-12-31'};
-test('scope actual conserve les 92 opérations et les deux tickets identiques',()=>{
+test('scope actual conserve les 92 opérations importées, 3 payées en perso et les deux tickets identiques',()=>{
  const r=eng.auditOperations(model,{...params,scope:'actual'});
- assert.equal(r.length,92);assert.equal(r.filter(x=>x.date==='2026-10-01'&&x.libelle==='Ticket métro'&&x.montant===-2.5).length,2);
+ assert.equal(r.length,95);assert.equal(r.filter(x=>x.identifiant.startsWith('DEMO-PERSO-')).length,3);assert.equal(r.filter(x=>x.date==='2026-10-01'&&x.libelle==='Ticket métro'&&x.montant===-2.5).length,2);
 });
 test('all prolonge les récurrences trimestrielles et annuelles sans multiplier historique',()=>{
  const r=eng.auditOperations(model,{...params,scope:'all'});
- assert.equal(r.filter(x=>x.origine==='reel').length,92);
+ assert.equal(r.filter(x=>x.origine==='reel').length,95);assert.equal(r.filter(x=>x.identifiant.startsWith('DEMO-IK-')||x.identifiant.startsWith('DEMO-NDF-')).length,0);
  assert.ok(r.some(x=>x.origine==='recurrence'&&x.libelle==='Taxe foncière'));
  assert.ok(r.some(x=>x.origine==='recurrence'&&x.libelle==='Charges copro trimestrielles'));
  assert.equal(eng.auditCsv(r),eng.auditCsv(eng.auditOperations(model,{...params,scope:'all'})));

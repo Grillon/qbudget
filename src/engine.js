@@ -109,6 +109,23 @@ function auditOperations(model,{scope='all',at,until,account='',overrides={}}={}
  records.sort((a,b)=>a.date.localeCompare(b.date)||a.compte.localeCompare(b.compte)||a.identifiant.localeCompare(b.identifiant)||a.origine.localeCompare(b.origine));
  return records;
 }
+// Vue en lecture seule, construite depuis le même audit déterministe que le CLI.
+// Une échéance récurrente est calculée à la volée, jamais ajoutée au modèle.
+function recurrencePreview(model,at,until,account=''){
+ if(!validDate(at)||!validDate(until)||until<at)return [];
+ const tagsByRule=new Map();
+ for(const row of model.rows||[]){
+  const id=model.notes?.[row.id]?.ruleId;
+  if(!id)continue;
+  const tags=tagsFor(model,row);
+  if(!tagsByRule.has(id)||row.date>(tagsByRule.get(id).date||''))tagsByRule.set(id,{date:row.date,tags});
+ }
+ return auditOperations(model,{scope:'all',at,until,account})
+  .filter(row=>row.origine==='recurrence')
+  .map(row=>({id:row.identifiant,bank:row.compte,account:row.compte,
+   date:row.date,amount:row.montant,desc:row.libelle,ruleId:row.recurrence_id,
+   tags:tagsByRule.get(row.recurrence_id)?.tags||[],forecast:true}));
+}
 function auditCsv(records){
  const quote=v=>{const text=String(v??'');return /[;"\r\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text};
  const amount=n=>{if(!Number.isFinite(n))throw Error('Montant invalide dans export');return n.toFixed(2).replace('.',',')};
@@ -127,5 +144,5 @@ function check(model){const errors=[],warnings=[];
  for(const bank of cashAccountNames(model))if(!model.references?.[bank])warnings.push('Missing reference: '+bank);
  return {ok:errors.length===0,errors,warnings};
 }
-return {readCsv,mergeAnnotations,isFloating,accountNames,cashAccountNames,tagsFor,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv};
+return {readCsv,mergeAnnotations,isFloating,accountNames,cashAccountNames,tagsFor,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });

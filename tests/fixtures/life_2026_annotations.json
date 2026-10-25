@@ -564,6 +564,69 @@
         "repas",
         "quotidien"
       ]
+    },
+    "DEMO-PERSO-ESSENCE": {
+      "tags": [
+        "personnel",
+        "essence",
+        "deplacement",
+        "mission",
+        "payéPerso"
+      ]
+    },
+    "DEMO-PERSO-PEAGE": {
+      "tags": [
+        "personnel",
+        "peage",
+        "deplacement",
+        "mission",
+        "payéPerso"
+      ]
+    },
+    "DEMO-PERSO-RESTO": {
+      "tags": [
+        "personnel",
+        "restaurant",
+        "noteDeFrais",
+        "payéPerso",
+        "ndf-oct26"
+      ]
+    },
+    "DEMO-IK-PRO": {
+      "tags": [
+        "SASU",
+        "IK",
+        "remboursement",
+        "enCoursDeCreation",
+        "ik-oct26"
+      ]
+    },
+    "DEMO-IK-PERSO": {
+      "tags": [
+        "personnel",
+        "IK",
+        "remboursement",
+        "enCoursDeCreation",
+        "ik-oct26"
+      ]
+    },
+    "DEMO-NDF-PRO": {
+      "tags": [
+        "SASU",
+        "noteDeFrais",
+        "restaurant",
+        "enCoursDeCreation",
+        "ndf-oct26"
+      ]
+    },
+    "DEMO-NDF-PERSO": {
+      "tags": [
+        "personnel",
+        "noteDeFrais",
+        "restaurant",
+        "enCoursDeCreation",
+        "ndf-oct26"
+      ]
     }
   },
   "references": {
@@ -578,6 +641,10 @@
     "Revolut": {
       "date": "2026-10-25",
       "balance": 320
+    },
+    "Qonto": {
+      "date": "2026-10-25",
+      "balance": 0
     }
   },
   "rules": {
@@ -690,5 +757,107 @@
       "end": ""
     }
   },
-  "manualRows": []
+  "manualRows": [
+    {
+      "id": "DEMO-PERSO-ESSENCE",
+      "bank": "BPS",
+      "account": "BPS",
+      "date": "2026-10-21",
+      "desc": "Essence déplacement client",
+      "amount": -68.4,
+      "balance": null,
+      "currency": "EUR",
+      "category": "",
+      "duplicate": "",
+      "nature": "actual",
+      "manual": true
+    },
+    {
+      "id": "DEMO-PERSO-PEAGE",
+      "bank": "BPS",
+      "account": "BPS",
+      "date": "2026-10-21",
+      "desc": "Péage déplacement client",
+      "amount": -28.1,
+      "balance": null,
+      "currency": "EUR",
+      "category": "",
+      "duplicate": "",
+      "nature": "actual",
+      "manual": true
+    },
+    {
+      "id": "DEMO-PERSO-RESTO",
+      "bank": "Revolut",
+      "account": "Revolut",
+      "date": "2026-10-22",
+      "desc": "Restaurant client (déjà payé)",
+      "amount": -42.5,
+      "balance": null,
+      "currency": "EUR",
+      "category": "",
+      "duplicate": "",
+      "nature": "actual",
+      "manual": true
+    },
+    {
+      "id": "DEMO-IK-PRO",
+      "bank": "Qonto",
+      "account": "Qonto",
+      "date": null,
+      "desc": "IK déplacement client (à rembourser)",
+      "amount": -350,
+      "balance": null,
+      "currency": "EUR",
+      "category": "",
+      "duplicate": "",
+      "nature": "planned",
+      "manual": true
+    },
+    {
+      "id": "DEMO-IK-PERSO",
+      "bank": "BoursoBank",
+      "account": "BoursoBank",
+      "date": null,
+      "desc": "IK déplacement client (à recevoir)",
+      "amount": 350,
+      "balance": null,
+      "currency": "EUR",
+      "category": "",
+      "duplicate": "",
+      "nature": "planned",
+      "manual": true
+    },
+    {
+      "id": "DEMO-NDF-PRO",
+      "bank": "Qonto",
+      "account": "Qonto",
+      "date": null,
+      "desc": "Note de frais restaurant (à rembourser)",
+      "amount": -42.5,
+      "balance": null,
+      "currency": "EUR",
+      "category": "",
+      "duplicate": "",
+      "nature": "planned",
+      "manual": true
+    },
+    {
+      "id": "DEMO-NDF-PERSO",
+      "bank": "Revolut",
+      "account": "Revolut",
+      "date": null,
+      "desc": "Note de frais restaurant (à recevoir)",
+      "amount": 42.5,
+      "balance": null,
+      "currency": "EUR",
+      "category": "",
+      "duplicate": "",
+      "nature": "planned",
+      "manual": true
+    }
+  ],
+  "accounts": [
+    "Qonto"
+  ]
 }

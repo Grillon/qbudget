@@ -1,3 +1,12 @@
+# V0.12.0 — Démo pro/perso et affichage des échéances calculées
+
+- Démo fictive enrichie : compte Qonto SASU avec solde 0 €, essence/péage/restaurant datés et payés côté personnel, remboursements IK et note de frais en paires pro (−) / perso (+), flottantes.
+- Les tags expriment le contexte et la relation entre contreparties ; aucune génération automatique de remboursement.
+- Le tableau des opérations peut afficher ou masquer les occurrences récurrentes futures, calculées depuis l’audit commun. Elles ont un indicateur « FORECAST · calculé », un style distinct, aucune commande d’édition et ne sont jamais écrites dans les données.
+- Affichage explicite du statut des autres opérations (réelles importées, réalisées manuellement, prévues saisies).
+- API de consultation/test en lecture seule depuis la console navigateur : `qbudget.help()`, `qbudget.test()`, `qbudget.demo()`, `qbudget.pending()`, `qbudget.forecast()`, `qbudget.recurrences()`, `qbudget.snapshot()`.
+- 49 tests automatisés réussis incluant des invariants de parité de l’audit, d’exclusion des flottantes et d’import/export.
+
 # V0.11.0 — Opérations flottantes et compte Qonto
 
 - Compte créé explicitement sans transaction, solde de référence initial.
