@@ -1,0 +1,4 @@
+{
+  "rows":[{"id":"a","bank":"BoursoBank","account":"BoursoBank","date":"2026-10-24","desc":"Courses","amount":-100,"currency":"EUR"}],
+  "notes":{},"references":{"BoursoBank":{"date":"2026-10-25","balance":2000}},"rules":{}
+}

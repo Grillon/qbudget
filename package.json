@@ -1,0 +1,8 @@
+{
+  "name":"qbudget",
+  "private":true,
+  "version":"0.8.0",
+  "description":"qbudget local : UI, moteur partagé, CLI, tests",
+  "scripts":{"test":"node --test tests/*.test.js","check":"node --check src/engine.js && node --check src/cli.js","cli":"node src/cli.js"},
+  "engines":{"node":">=20"}
+}
