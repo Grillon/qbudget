@@ -1,4 +1,21 @@
+# V0.11.0 — Opérations flottantes et compte Qonto
+
+- Compte créé explicitement sans transaction, solde de référence initial.
+- Opérations manuelles sans date, visibles dans une file filtrable (tags ET/OU), planifiables avec le calendrier.
+- Exclusion explicite des opérations flottantes de tous les calculs et de l'audit CSV.
+- Import CSV actualisable sans effacer opérations manuelles, comptes, règles ni annotations.
+- Export/import d'annotations préservant les comptes et opérations en attente.
+- Tests supplémentaires de non-régression, sérialisation et CLI.
+
 # Historique des versions de qbudget
+
+## 0.10.0 — CLI et REPL interactif
+- `qbudget` ouvre un REPL dans un terminal interactif, `qbudget repl` le lance explicitement ; les commandes CLI existantes restent disponibles.
+- CSV normalisé et annotations chargés une seule fois pendant la session ; consultation des soldes, des récurrences et des prévisions.
+- Simulations **non sauvegardées** : ajuster une récurrence avec `set-rule`, comparer plusieurs valeurs avec `compare`, rétablir avec `reset`.
+- `export` dans le REPL produit le même CSV d'audit déterministe (virgule décimale) que le CLI, uniquement sur demande explicite.
+- Tests automatisés de parité du REPL, d'absence de modification des fichiers et de compatibilité du CLI non interactif.
+
 
 ## 0.9.8 — Cohérence et démonstration unifiée
 

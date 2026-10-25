@@ -4,8 +4,11 @@ const fs=require('node:fs');
 const path=require('node:path');
 const engine=require('./engine.js');
 const VERSION=require('../package.json').version;
-function usage(){console.log(`qbudget v${VERSION} — CLI local (CSV normalisé + annotations JSON)
+const REPL=require('./repl.js');
+function usage(){console.log(`qbudget v${VERSION} — CLI et REPL local (CSV normalisé + annotations JSON)
 Usage:
+  qbudget                         Mode interactif si terminal, forecast si script
+  qbudget repl [--csv PATH] [--annotations PATH]
   qbudget [forecast] [--csv PATH] [--annotations PATH] [--months N] [--at YYYY-MM-DD] [--account NAME] [--json]
   qbudget balance --at YYYY-MM-DD [--account NAME] [--json]
   qbudget check [--json]\n  qbudget export --scope actual|all --at YYYY-MM-DD --until YYYY-MM-DD -o resultat.csv
@@ -26,6 +29,9 @@ function main(argv=process.argv.slice(2)){const {command,opts}=parseArgs([...arg
  const model=engine.mergeAnnotations(rows,ann);
  const at=setting('at',new Date().toISOString().slice(0,10));if(!/^\d{4}-\d{2}-\d{2}$/.test(at))throw Error('Date --at invalide');
  const end=new Date(at+'T12:00:00');end.setMonth(end.getMonth()+months);const until=opts.until||end.getFullYear()+'-'+String(end.getMonth()+1).padStart(2,'0')+'-'+String(end.getDate()).padStart(2,'0');
+ if(command==='repl'||(argv.length===0&&process.stdin.isTTY)){
+  return REPL.start({csv,annotations,at,months,until:opts.until,account,format:fmt});
+ }
  const overrides={rules:{}};for(const change of opts['set-rule']||[]){const match=change.match(/^([^:]+):amount=(-?\d+(?:\.\d+)?)$/);if(!match)throw Error('Syntaxe : --set-rule RULE_ID:amount=-35');overrides.rules[match[1]]={amount:Number(match[2])}}
  if(command==='export'){const scope=opts.scope||'all';const records=engine.auditOperations(model,{scope,at,until,account:account==='all'?'':account,overrides});const csvText=engine.auditCsv(records);const target=opts.output;if(target){fs.writeFileSync(target,csvText,'utf8');console.log(`Export : ${records.length} opérations → ${target}`)}else process.stdout.write(csvText);return}
  let result;switch(command){case 'check':result=engine.check(model);break;case 'balance':result={account,at,balance:engine.totalBalance(model,at,account==='all'?'':account)};break;case 'forecast':result=engine.forecast(model,at,until,account==='all'?'':account,overrides);break;default:throw Error('Commande inconnue: '+command)}
