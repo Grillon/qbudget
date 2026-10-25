@@ -17,7 +17,7 @@ jobs:
       - name: Test Python importateur
         run: |
           python3 import_releves.py tests/fixtures/bourso_exemple.csv tests/fixtures/bps_exemple.csv tests/fixtures/revolut_exemple.csv -o /tmp/qbudget-test.csv
-          python3 -c "import csv; p=list(csv.DictReader(open("/tmp/qbudget-test.csv"), delimiter=";")); assert len(p)>=3"
+          python3 -c 'import csv; p=list(csv.DictReader(open("/tmp/qbudget-test.csv"), delimiter=";")); assert len(p)>=3'
       - name: Tests unitaires
         run: npm test
       - name: Test de l'interface et de Plotly
