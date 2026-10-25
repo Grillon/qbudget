@@ -1,0 +1,1 @@
+{"version":2,"notes":{},"references":{"BoursoBank":{"date":"2026-10-25","balance":2000}},"rules":{"netflix":{"id":"netflix","account":"BoursoBank","desc":"Netflix","amount":-16,"frequency":"mensuel","anchor":"2026-10-10","end":""}},"manualRows":[]}

@@ -28,5 +28,5 @@ jobs:
           grep -q 'plotly.min.js' index.html
       - name: Test du CLI
         run: |
-          node src/cli.js check --data tests/fixtures/sample.json --json
-          node src/cli.js balance --data tests/fixtures/sample.json --account BoursoBank --at 2026-10-25 --json
+          node src/cli.js check --csv tests/fixtures/operations.csv --annotations tests/fixtures/annotations.json --json
+          node src/cli.js balance --csv tests/fixtures/operations.csv --annotations tests/fixtures/annotations.json --account BoursoBank --at 2026-10-25 --json

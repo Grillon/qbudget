@@ -1,46 +1,48 @@
-# qbudget — premier dépôt Git (socle V0.8-dev)
+# qbudget — V0.9 (socle local CLI + navigateur)
 
-Application locale de suivi et prévision de trésorerie. Aucun service bancaire ou cloud n'est sollicité. Les données restent dans le navigateur ou les fichiers locaux.
+Aucune BDD distante, aucun accès bancaire direct. L'importateur Python produit un **CSV normalisé**. L'interface conserve les opérations et annotations dans son stockage local et permet d'exporter uniquement les **annotations JSON** (bouton « Exporter mes annotations »). Le CLI reconstitue son modèle à partir des deux fichiers, sans aucune écriture.
 
-## Démarrage
+## Interface web
 
-Ouvrir `index.html` directement dans le navigateur (avec `plotly.min.js` et `src/engine.js` aux chemins prévus). En cas de restriction de sécurité `file://`, lancer `python3 -m http.server 8000` puis visiter http://localhost:8000.
-
-L'interface reprend qbudget V0.7.1, avec la logique de soldes et de récurrences appelée depuis `src/engine.js`. Les opérations, tags et références continuent d'être stockés localement dans le navigateur. La nouvelle action **Exporter les données CLI** crée un JSON complet incluant les opérations bancaires : fichier **confidentiel à ne pas committer**.
-
-## CLI (Node.js >=20)
+Ouvrir `index.html` avec `plotly.min.js` et `src/engine.js` dans leurs répertoires d'origine. En cas de restriction de navigateur sur `file://` :
 
 ```bash
-node src/cli.js check --data tests/fixtures/sample.json
-node src/cli.js balance --data tests/fixtures/sample.json --account BoursoBank --at 2026-10-25
-node src/cli.js forecast --data tests/fixtures/sample.json --account BoursoBank --at 2026-10-25 --until 2027-12-25 --json
-node src/cli.js forecast --data qbudget-data.json --account BoursoBank --at 2026-10-25 --until 2027-12-25 --set-rule ID_REGLE:amount=-20
+python3 -m http.server 8000
+# puis http://localhost:8000
 ```
 
-`--set-rule` teste une modification temporaire de montant, sans écrire les données sur disque. `--json` rend la sortie exploitable par scripts. Les commandes utilisent les mêmes calculs que l'interface.
+Dans qbudget : importer `operations.csv`, annoter, puis **Exporter mes annotations**. Conserver cet export dans un emplacement privé, par exemple `data/annotations.json`. Le bouton « Exporter les données CLI » est hérité de la V0.8 mais n'est plus nécessaire pour le CLI.
 
-## Tests
+## CLI (Node.js >=22)
 
 ```bash
-npm test
-npm run check
-python3 import_releves.py tests/fixtures/bourso_exemple.csv tests/fixtures/bps_exemple.csv tests/fixtures/revolut_exemple.csv -o /tmp/operations-test.csv
+cp .env.example .env
+# adapter les deux chemins dans .env
+npm link
+qbudget                              # forecast par défaut, 14 mois
+qbudget --months 24
+qbudget balance --account BoursoBank --at 2026-10-25
+qbudget check
+qbudget --format json
+qbudget forecast --set-rule netflix:amount=-25 --months 14
 ```
 
-Le workflow `.github/workflows/tests.yml` lance ces contrôles à chaque push et pull request. Il n'y a **pas encore de tests fonctionnels de navigateur** : leur ajout avec Playwright constitue l'étape suivante. La syntaxe JS de l'interface a été contrôlée, mais l'intégration navigateur n'a pas été totalement validée ici.
+Sans `npm link` : `node src/cli.js` fonctionne aussi.
 
-## Structure
+Le `.env` est lu dans le **répertoire de travail courant** et ne doit pas être poussé dans Git. Priorité : argument CLI > `.env` > défaut intégré. `--csv` et `--annotations` peuvent remplacer temporairement chaque chemin. Un fichier d'annotations absent est traité comme un JSON vide (mais les soldes de référence peuvent alors manquer). Les commandes n'enregistrent jamais les scénarios.
 
-- `index.html` : interface historique, maintenant branchée sur le moteur partagé pour le calcul des soldes et récurrences.
-- `plotly.min.js` : Plotly local.
-- `src/engine.js` : fonctions pures partagées (solde, prévisions, dates, récurrences, contrôles).
-- `src/cli.js` : terminal `balance`, `forecast`, `check`.
-- `import_releves.py` et `banques.json` : importateur bancaire V1.4.2 avec configuration de sortie et correction BPS.
-- `tests/` : tests Node et exemples totalement fictifs.
+**Attention :** le CLI lit le CSV *déjà normalisé* produit par `import_releves.py`, pas les exports bruts des banques. Le format JSON attendu correspond au bouton « Exporter mes annotations » : `notes`, `references`, `rules`, `manualRows`.
 
-## Points de vigilance
+## Tests et CI
 
-- Cette première extraction ne constitue pas encore une séparation complète de l'interface. L'import CSV, la gestion des annotations et des règles restent dans `index.html`. Ils seront progressivement isolés et testés.
-- La prévision actuelle suit le comportement de la V0.7.1 : même règle par abonnement ; opérations planifiées prioritaires à la même date. Vérifier les cas particuliers avant toute décision financière.
-- Aucun CSV bancaire personnel ni export JSON réel ne doit être poussé sur GitHub. Le `.gitignore` masque les exports courants ; examiner `git status` avant chaque commit.
-- Les opérations calculées SASU, les multi-tags et les scénarios fiscaux complexes ne sont **pas encore implémentés**.
+```bash
+./run-tests.sh
+```
+
+GitHub Actions exécute les tests Node et l'import Python à chaque push / PR. Les nouveaux tests vérifient la concordance CSV entre moteur et CLI, la préservation des opérations identiques, la fusion des annotations et l'absence de modification des fichiers lors d'un scénario temporaire.
+
+**Limites actuelles :** pas encore de test automatisé des interactions du navigateur (Playwright prévu ultérieurement). L'interface conserve sa logique d'édition (tags, récurrences) dans le HTML ; l'extraction du parseur CSV et des calculs est une étape vers sa séparation complète. Le CSV de l'interface utilise encore certains identifiants dépendant de l'ordre des lignes : éviter de changer l'ordre des exports après annotation sans vérifier les correspondances.
+
+## Vie privée
+
+Tous les relevés et annotations réels doivent rester hors Git. Le répertoire `data/`, `.env`, `operations.csv` et les exports d'annotations sont ignorés. Vérifier systématiquement `git status` avant de pousser.

@@ -7,3 +7,7 @@ qbudget-data.json
 operations.csv
 *-annotations.json
 personal-data/
+
+# Relevés et annotations réels
+data/*
+!data/.gitkeep
