@@ -1,15 +1,15 @@
 {
   "name": "qbudget",
   "private": true,
-  "version": "0.9.0",
-  "description": "qbudget local : UI, moteur partagé, CLI, tests",
+  "version": "0.9.8",
+  "description": "qbudget : navigateur local, CLI, export déterministe et tests de régression",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/engine.js && node --check src/cli.js",
+    "check": "node --check src/engine.js && node --check src/cli.js && node --check src/version.js && node --check src/demo.js",
     "cli": "node src/cli.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "bin": {
     "qbudget": "./src/cli.js"

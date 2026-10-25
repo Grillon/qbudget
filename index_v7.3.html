@@ -1,0 +1,176 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>qbudget — navigation & prévisions</title><style>
+:root{font-family:system-ui,-apple-system,sans-serif;color-scheme:light;--bg:#f5f7fa;--card:#fff;--text:#152238;--muted:#627083;--border:#dce3ed;--main:#2563eb}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}header{background:#162641;color:#fff;padding:18px clamp(16px,3vw,42px);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}h1{font-size:21px;margin:0}h2{font-size:16px;margin:0 0 14px}small,.muted{color:var(--muted)}header small{color:#b9c9de}main{max-width:1440px;margin:auto;padding:22px clamp(12px,3vw,34px)}.toolbar,.filters{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.toolbar{margin-bottom:18px}.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px #15223808}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.stat{font-size:24px;font-weight:750;margin:8px 0}.field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted)}input,select,button{font:inherit}input,select{background:#fff;color:var(--text);border:1px solid #c6d1df;border-radius:7px;padding:9px;min-width:0}button{border:0;border-radius:7px;background:var(--main);color:#fff;padding:10px 13px;cursor:pointer}button.secondary{background:#edf2f9;color:#243a5a}button.warn{background:#fbe5e5;color:#a12626}button:disabled{opacity:.5;cursor:default}.mutednote{margin-top:8px;font-size:12px;color:var(--muted)}.tablewrap{overflow:auto;max-height:520px}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}th,td{padding:10px 9px;border-bottom:1px solid #e9edf3;text-align:left}th{position:sticky;top:0;background:#f9fbfe;z-index:1;cursor:pointer}td input,td select{max-width:160px;padding:6px;font-size:12px}td .tag{min-width:130px}.right{text-align:right;font-variant-numeric:tabular-nums}.minus{color:#b42335}.plus{color:#087448}.pill{display:inline-block;background:#ffedd5;color:#92400e;border-radius:100px;padding:2px 7px;font-size:11px}.section{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.plot{width:100%;min-height:320px}.vizgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.vizgrid .card{margin:0}@media(max-width:950px){.vizgrid{grid-template-columns:1fr}}#warning{background:#fff4d7;border:1px solid #f7cf75;border-radius:8px;padding:10px;margin-bottom:14px;display:none}#empty{padding:32px;text-align:center;color:var(--muted)}.hidden{display:none}@media(max-width:820px){.grid{grid-template-columns:1fr}main{padding:12px}.card{padding:12px}.stat{font-size:20px}}
+</style></head><body><header><div><h1>qbudget <small>· navigation & prévisions · V0.7</small></h1><small>100 % local dans ce navigateur — aucune donnée envoyée</small></div><div class="toolbar" style="margin:0"><button class="secondary" id="exportSettings">Exporter mes annotations</button><button class="secondary" id="exportAudit">Exporter CSV d’audit</button><button class="secondary" id="importSettings">Importer mes annotations</button><button class="warn" id="clearData">Effacer les données locales</button></div></header><main>
+<div class="card"><div class="section"><h2>1 · Données</h2><div class="toolbar"><label class="field">Importer le CSV normalisé V1.4<input type="file" id="csv" accept=".csv,text/csv"></label><button id="sample" class="secondary">Charger une démo fictive</button></div></div><div class="mutednote" id="importStatus">Aucune donnée chargée. Le CSV reste sur ton ordinateur. Les modifications sont enregistrées localement dans ce navigateur.</div></div>
+<div id="warning"></div><div class="card"><div class="section"><h2>Export CSV d’audit — moteur V0.7</h2><div class="filters"><label class="field">Périmètre<select id="auditScope"><option value="all">Réelles et prévisions</option><option value="actual">Réelles uniquement</option></select></label><label class="field">Date de départ des prévisions<input id="auditAt" type="date"></label><label class="field">Date de fin<input id="auditUntil" type="date"></label><button class="secondary" id="downloadAudit">Télécharger CSV</button></div></div><div class="mutednote">Export indépendant des filtres visuels ; toutes les banques ; séparateur « ; », décimales « , ». Les prévisions sont produites par le moteur historique V0.7.</div></div><div class="card"><div class="section"><h2>2 · Compte et période</h2><div class="filters"><label class="field">Compte<select id="account"><option value="">Tous les comptes</option></select></label><label class="field">Date de consultation<input id="asof" type="date"></label><label class="field">Fin de prévision<input id="horizon" type="date"></label></div></div></div>
+<div class="grid"><div class="card"><small>Solde calculé à la date sélectionnée</small><div class="stat" id="balance">—</div><small id="balanceInfo">Donnée indisponible</small></div><div class="card"><small>Projection en fin d'horizon</small><div class="stat" id="projection">—</div><small id="forecastInfo">Sur la base des récurrences déclarées</small></div><div class="card"><small>Opérations visibles</small><div class="stat" id="count">0</div><small id="countInfo">Aucune opération</small></div></div>
+<div class="card"><div class="section"><h2>3 · Évolution et forecast</h2><small>Bleu = historique rétro-calculé · orange = prévision</small></div><div id="chart" class="plot" style="min-height:390px"></div><div class="mutednote">Prévision basée sur une seule règle par récurrence, avec dates de fin facultatives et montants futurs ponctuels. Un transfert entre deux comptes ne doit pas être compté deux fois dans une vue globale.</div></div>
+<div class="vizgrid"><div class="card"><h2>Flux mensuels · dépenses et recettes</h2><div id="flowsChart" class="plot"></div></div><div class="card"><h2>Répartition des dépenses · tags</h2><div id="donutChart" class="plot"></div></div><div class="card" style="grid-column:1/-1"><div class="section"><h2>Sunburst · tag / libellé</h2><small>Clique sur un secteur pour explorer</small></div><div id="sunburstChart" class="plot" style="min-height:470px"></div></div></div>
+<div class="card"><div class="section"><h2>4 · Solde de référence (saisi manuellement)</h2><div class="filters"><label class="field">Montant (EUR)<input id="refBalance" type="number" step="0.01" placeholder="Ex. 1250.50"></label><label class="field">Date (fin de journée)<input id="refDate" type="date"></label><button id="saveRef">Enregistrer pour ce compte</button></div></div><div class="mutednote" id="refInfo">Les soldes CSV sont ignorés. Le solde et sa date servent à reconstruire le passé et à projeter le futur.</div></div>
+<div class="card"><h2>5 · Ajouter un montant</h2><div class="filters"><label class="field">Compte<select id="manualAccount"></select></label><label class="field">Date<input type="date" id="manualDate"></label><label class="field">Libellé<input id="manualDesc" placeholder="Netflix, facture, revenu..."></label><label class="field">Montant signé (€)<input type="number" step="0.01" id="manualAmount" placeholder="-15.99"></label><label class="field">Nature<select id="manualNature"><option value="planned">Prévu (non comptabilisé)</option><option value="actual">Réalisé (comptabilisé)</option></select></label><button id="addManual">Ajouter</button></div><div class="mutednote">Les montants prévus sont intégrés au forecast à leur date, sans modifier les soldes historiques. Les montants réalisés sont intégrés à l'historique. Tu peux ensuite relier l'opération à une récurrence.</div></div>
+<div class="card"><div class="section"><h2>6 · Récurrences</h2></div><div class="tablewrap"><table><thead><tr><th>Compte</th><th>Libellé</th><th>Montant</th><th>Fréquence</th><th>Prochaine base</th><th>Fin facultative</th><th>Actions</th></tr></thead><tbody id="rules"></tbody></table></div><div class="mutednote">Le libellé identifie une récurrence sur un compte (majuscules et espaces ignorés). Une règle interne unique regroupe ses opérations ; une autre règle peut être créée même avec le même libellé. Date de fin facultative.</div></div>
+<div class="card"><div class="section"><h2>7 · Opérations et annotations</h2><div class="filters"><label class="field">Rechercher<input id="search" placeholder="Libellé, tag..."></label><label class="field">Type<select id="typeFilter"><option value="">Tous</option><option value="ponctuel">Ponctuel</option><option value="recurrent">Récurrent</option><option value="">Non défini ou tous</option></select></label><label class="field">Trier<select id="sort"><option value="desc">Plus récentes</option><option value="asc">Plus anciennes</option><option value="amount">Montant croissant</option></select></label></div></div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Banque / compte</th><th>Libellé</th><th>Montant</th><th>Tag</th><th>Type</th><th>Récurrence liée</th><th>Doublon ?</th></tr></thead><tbody id="rows"></tbody></table><div id="empty">Importe un CSV ou charge la démo fictive.</div></div></div>
+</main><dialog id="ruleDialog" style="border:1px solid #dce3ed;border-radius:12px;padding:22px;max-width:min(420px,92vw);box-shadow:0 15px 45px #0003"><form method="dialog"><h2>Nouvelle récurrence</h2><p id="ruleDialogDescription"></p><label class="field">Fréquence<select id="newRuleFrequency"><option value="mensuel" selected>Mensuel</option><option value="hebdomadaire">Hebdomadaire</option><option value="trimestriel">Trimestriel</option><option value="annuel">Annuel</option><option value="quotidien">Quotidien</option></select></label><div class="toolbar" style="justify-content:flex-end;margin-top:20px"><button class="secondary" value="cancel">Annuler</button><button value="confirm">Créer la récurrence</button></div></form></dialog><input type="file" id="annotationsFile" accept=".json,application/json" hidden><script src="./plotly.min.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),KEY='qbudget-mvp-1';let model={rows:[],notes:{},references:{},rules:{}};let selected='';const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
+function csvParse(src,sep){let result=[],row=[],field='',quoted=false;for(let i=0;i<src.length;i++){const c=src[i];if(quoted){if(c==='"'&&src[i+1]==='"'){field+='"';i++}else if(c==='"')quoted=false;else field+=c}else if(c==='"')quoted=true;else if(c===sep){row.push(field);field=''}else if(c==='\n'){row.push(field.replace(/\r$/,''));result.push(row);row=[];field=''}else field+=c}if(field||row.length){row.push(field.replace(/\r$/,''));result.push(row)}return result}
+function readCsv(raw){raw=raw.replace(/^\ufeff/,'');const first=raw.split(/\r?\n/,1)[0],sep=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';const cells=csvParse(raw,sep);if(cells.length<2)throw Error('Fichier vide');const heads=cells.shift().map(x=>x.trim().toLowerCase());const get=(r,n)=>r[heads.indexOf(n)]||'';for(const col of ['date','banque','libellé','montant'])if(!heads.includes(col))throw Error('Colonne absente : '+col+' (attendu : sortie V1.4)');return cells.filter(r=>r.some(x=>x.trim())).map((r,i)=>{let date=get(r,'date'),montant=numeric(get(r,'montant'));if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||montant===null)throw Error('Date ou montant invalide, ligne '+(i+2));const bank=get(r,'banque').trim(),account=bank,desc=get(r,'libellé');const signature=get(r,'identifiant')||`${bank}|${account}|${date}|${desc}|${montant}|${i}`;return {id:`${signature}|${i}`,bank,account,date,desc,currency:get(r,'devise')||'EUR',amount:montant,balance:null,category:get(r,'catégorie'),duplicate:get(r,'doublon potentiel')}})}
+function initModel(){model.rules??={};model.notes??={};model.references??={};model.rows??=[]}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
+function load(){try{const s=localStorage.getItem(KEY);if(s)model=JSON.parse(s);initModel();for(const r of model.rows){r.account=r.bank;r.balance=null}const refs={};for(const [k,v] of Object.entries(model.references)){const bank=k.split(' · ')[0];if(!(bank in refs))refs[bank]=v}model.references=refs;for(const rule of Object.values(model.rules))rule.account=(rule.account||'').split(' · ')[0]}catch{}}function accounts(){return [...new Set(model.rows.map(r=>r.bank))].sort()};function key(r){return r.bank}function inAccount(){return model.rows.filter(r=>!selected||key(r)===selected)}function notes(r){return model.notes[r.id]||{}}
+function renderAccounts(){const list=accounts();$('account').replaceChildren(new Option('Tous les comptes',''),...list.map(a=>new Option(a,a)));if(selected&&!list.includes(selected))selected='';$('account').value=selected;const ref=model.references[selected];$('refBalance').value=ref?.balance??'';$('refDate').value=ref?.date??'';$('saveRef').disabled=!selected;const ma=$('manualAccount'),previous=ma.value;ma.replaceChildren(...list.map(a=>new Option(a,a)));ma.value=list.includes(previous)?previous:(selected||list[0]||'')}
+function historicBalance(rows,on){
+  if(selected){
+    const ref=model.references[selected];
+    if(!ref||!Number.isFinite(Number(ref.balance))||!ref.date)return null;
+    let b=Number(ref.balance);
+    for(const r of rows){
+      if(r.nature==='planned')continue;
+      if(r.date>ref.date&&r.date<=on)b+=r.amount;
+      if(r.date<=ref.date&&r.date>on)b-=r.amount;
+    }
+    return b;
+  }
+  const all=accounts();if(!all.length)return null;
+  let total=0;
+  for(const name of all){
+    const rs=model.rows.filter(r=>key(r)===name);
+    const ref=model.references[name];if(!ref||!ref.date||!Number.isFinite(Number(ref.balance)))return null;
+    let b=Number(ref.balance);
+    for(const r of rs){if(r.nature==='planned')continue;if(r.date>ref.date&&r.date<=on)b+=r.amount;if(r.date<=ref.date&&r.date>on)b-=r.amount}
+    total+=b;
+  }
+  return total;
+}
+function shiftDate(iso,frequency,k){const d=asDate(iso);if(frequency==='quotidien'||frequency==='hebdomadaire'){d.setDate(d.getDate()+(frequency==='quotidien'?1:7)*k);return dateStr(d)}let m=d.getMonth()+(frequency==='annuel'?12:frequency==='trimestriel'?3:1)*k;let y=d.getFullYear()+Math.floor(m/12);m=((m%12)+12)%12;return dateStr(new Date(y,m,Math.min(d.getDate(),new Date(y,m+1,0).getDate()),12))}
+function recurrenceEvents(rows,start,end){const events=[];const scope=new Set(rows.map(key));for(const rule of Object.values(model.rules)){if(!scope.has(rule.account))continue;let anchor=rule.anchor||rule.start;if(!anchor)continue;for(let k=1;k<=600;k++){const d=shiftDate(anchor,rule.frequency||'mensuel',k);if(d>end)break;if(rule.end&&d>rule.end)break;if(d>start)events.push({date:d,amount:rule.amount,desc:rule.desc,ruleId:rule.id})}}
+// Les écritures futures renseignées explicitement priment sur les échéances calculées.
+const planned=rows.filter(r=>r.date>start&&r.date<=end&&(r.nature==='planned'||r.nature==='actual'));for(const r of planned){const link=notes(r).ruleId;if(link){const i=events.findIndex(e=>e.ruleId===link&&e.date===r.date);if(i>=0)events.splice(i,1)}events.push({date:r.date,amount:r.amount,desc:r.desc})}return events.sort((a,b)=>a.date.localeCompare(b.date))}
+function uid(){return crypto.randomUUID?crypto.randomUUID():'id-'+Date.now()+'-'+Math.random().toString(36).slice(2)}
+function normalizedLabel(label){return String(label||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('fr')}
+function connectRule(r){
+  const n=notes(r),current=model.rules[n.ruleId];
+  if(current){alert('Cette opération est déjà liée à la récurrence « '+current.desc+' ».');return}
+  const matches=Object.values(model.rules).filter(q=>q.account===key(r)&&normalizedLabel(q.desc)===normalizedLabel(r.desc));
+  if(matches.length){
+    // Le libellé est la clé fonctionnelle; on ne propose jamais une autre récurrence au libellé différent.
+    const choice=matches.length===1?matches[0]:matches.reduce((a,b)=>(a.anchor||a.start)>=(b.anchor||b.start)?a:b);
+    if(confirm('La récurrence « '+choice.desc+' » existe déjà sur '+key(r)+'.\nRattacher cette opération à la même récurrence ?\n\nAnnuler = créer une nouvelle récurrence avec le même libellé.')){
+      if(r.date>=(choice.anchor||choice.start)){choice.anchor=r.date;choice.amount=r.amount}
+      model.notes[r.id]={...n,type:'recurrent',ruleId:choice.id};save();render();return;
+    }
+  }
+  const dialog=$('ruleDialog');
+  $('ruleDialogDescription').textContent='« '+r.desc+' » · '+key(r);
+  $('newRuleFrequency').value='mensuel';
+  dialog.onclose=()=>{
+    if(dialog.returnValue!=='confirm')return;
+    const f=$('newRuleFrequency').value;
+    if(!['quotidien','hebdomadaire','mensuel','trimestriel','annuel'].includes(f))return;
+    const id=uid();model.rules[id]={id,account:key(r),desc:r.desc,amount:r.amount,frequency:f,start:r.date,anchor:r.date,end:''};
+    model.notes[r.id]={...notes(r),type:'recurrent',ruleId:id};save();render();
+  };
+  dialog.showModal();
+}
+function renderRules(){const tbody=$('rules');tbody.replaceChildren();for(const r of Object.values(model.rules).filter(r=>!selected||r.account===selected)){const tr=document.createElement('tr');const cell=t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);return td};cell(r.account);cell(r.desc);cell(amount(r.amount));const f=document.createElement('select');for(const name of ['quotidien','hebdomadaire','mensuel','trimestriel','annuel'])f.add(new Option(name,name));f.value=r.frequency;f.onchange=()=>{r.frequency=f.value;save();renderSummary()};let td=cell('');td.append(f);const anchor=document.createElement('input');anchor.type='date';anchor.value=r.anchor;anchor.onchange=()=>{if(anchor.value){r.anchor=anchor.value;save();renderSummary()}};td=cell('');td.append(anchor);const fin=document.createElement('input');fin.type='date';fin.value=r.end||'';fin.onchange=()=>{r.end=fin.value;save();renderSummary()};td=cell('');td.append(fin);const del=document.createElement('button');del.className='warn';del.textContent='Supprimer';del.onclick=()=>{if(!confirm('Supprimer cette récurrence (les opérations restent conservées) ?'))return;delete model.rules[r.id];for(const n of Object.values(model.notes))if(n.ruleId===r.id){delete n.ruleId;n.type='ponctuel'}save();render()};td=cell('');td.append(del);tbody.append(tr)}}
+function addMonths(iso,n){const d=asDate(iso),target=new Date(d.getFullYear(),d.getMonth()+Number(n)+1,0,12);return dateStr(target)}
+function plotLayout(extra={}){return {paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'system-ui, sans-serif',color:'#334155',size:12},margin:{l:65,r:20,t:24,b:46},...extra}}
+function drawChart(actual,forecast,limit){
+ const traces=[{x:actual.map(q=>q.date),y:actual.map(q=>q.v),name:'Historique',type:'scatter',mode:'lines+markers',line:{color:'#2563eb',width:2.5},marker:{size:5},hovertemplate:'%{x}<br>%{y:,.2f} €<extra>Historique</extra>'},{x:forecast.map(q=>q.date),y:forecast.map(q=>q.v),name:'Prévision',type:'scatter',mode:'lines+markers',line:{color:'#ea8b23',dash:'dash',width:2.5},marker:{size:5},hovertemplate:'%{x}<br>%{y:,.2f} €<extra>Prévision</extra>'}];
+ Plotly.react('chart',traces,plotLayout({height:390,hovermode:'x unified',xaxis:{type:'date',rangeslider:{visible:true}},yaxis:{title:'Solde (€)',tickformat:',.0f'},legend:{orientation:'h',y:1.12}}),{responsive:true,displaylogo:false,locale:'fr'});
+}
+function renderVisuals(){
+ const until=$('asof').value||today, rows=inAccount().filter(r=>r.date<=until&&r.nature!=='planned'&&r.currency==='EUR');
+ const monthly=new Map(), categories=new Map(), children=new Map();
+ for(const r of rows){const m=r.date.slice(0,7);let v=monthly.get(m)||{income:0,expense:0};if(r.amount>=0)v.income+=r.amount;else v.expense+=-r.amount;monthly.set(m,v);
+ if(r.amount>=0)continue;
+ const tag=(notes(r).tag||r.category||'Sans tag').trim()||'Sans tag';categories.set(tag,(categories.get(tag)||0)-r.amount);
+ const label=(r.desc||'Sans libellé').trim();const ck=JSON.stringify([tag,label]);children.set(ck,(children.get(ck)||0)-r.amount);
+ }
+ const months=[...monthly.keys()].sort();
+ Plotly.react('flowsChart',[{x:months,y:months.map(m=>monthly.get(m).income),name:'Recettes',type:'bar',marker:{color:'#12805c'}},{x:months,y:months.map(m=>-monthly.get(m).expense),name:'Dépenses',type:'bar',marker:{color:'#dc5e69'}}],plotLayout({height:340,barmode:'relative',xaxis:{title:'Mois'},yaxis:{title:'Flux (€)'},legend:{orientation:'h',y:1.17}}),{responsive:true,displaylogo:false,locale:'fr'});
+ const entries=[...categories.entries()].sort((a,b)=>b[1]-a[1]);
+ const noData={annotations:[{text:'Aucune dépense pour la période',showarrow:false,x:.5,y:.5,xref:'paper',yref:'paper'}]};
+ Plotly.react('donutChart',entries.length?[{type:'pie',hole:.57,labels:entries.map(x=>x[0]),values:entries.map(x=>x[1]),textinfo:'percent',hovertemplate:'%{label}<br>%{value:,.2f} €<extra></extra>'}]:[],plotLayout({height:340,margin:{l:12,r:12,t:12,b:12},showlegend:true,legend:{orientation:'h',y:-.1},...(entries.length?{}:noData)}),{responsive:true,displaylogo:false,locale:'fr'});
+ const ids=['total'],labels=['Dépenses'],parents=[''],values=[entries.reduce((n,x)=>n+x[1],0)];
+ entries.forEach(([tag,value],i)=>{const id='tag:'+i;ids.push(id);labels.push(tag);parents.push('total');values.push(value);
+ let j=0;for(const [k,v] of children){const [t,l]=JSON.parse(k);if(t!==tag)continue;ids.push(id+':'+j++);labels.push(l);parents.push(id);values.push(v)}});
+ Plotly.react('sunburstChart',entries.length?[{type:'sunburst',ids,labels,parents,values,branchvalues:'total',maxdepth:3,hovertemplate:'%{label}<br>%{value:,.2f} €<extra></extra>'}]:[],plotLayout({height:470,margin:{l:12,r:12,t:15,b:12},...(entries.length?{}:noData)}),{responsive:true,displaylogo:false,locale:'fr'});
+}
+function renderSummary(){const date=$('asof').value||today,rows=inAccount(),balance=historicBalance(rows,date),end=$('horizon').value||addMonths(date,1);const events=end>=date?recurrenceEvents(rows,date,end):[];const prediction=balance===null?null:balance+events.reduce((s,e)=>s+e.amount,0);$('balance').textContent=balance===null?'Indisponible':amount(balance);$('balanceInfo').textContent=selected?selected:'Toutes les banques · EUR uniquement';$('projection').textContent=prediction===null?'Indisponible':amount(prediction);$('forecastInfo').textContent=end<date?'Date de fin antérieure à la consultation':`${events.length} échéance(s) estimée(s) jusqu'au ${end}`;$('count').textContent=rows.length;$('countInfo').textContent=`${Object.values(model.rules).filter(q=>!selected||q.account===selected).length} règle(s) de récurrence`;
+// Courbe historique : calcul dans les deux sens autour du solde daté.
+// Chaque point représente un solde de FIN de journée (toutes les opérations du jour incluses).
+// On inclut un point juste avant la première opération pour voir son impact.
+const history=rows.filter(r=>r.nature!=='planned'&&r.date<=date).sort((a,b)=>a.date.localeCompare(b.date));
+const pointDates=new Set(history.map(r=>r.date));
+const refDates=selected?[model.references[selected]?.date]:accounts().map(a=>model.references[a]?.date);
+for(const d of refDates)if(d&&d<=date)pointDates.add(d);
+if(history.length){const previous=asDate(history[0].date);previous.setDate(previous.getDate()-1);pointDates.add(dateStr(previous))}
+pointDates.add(date);
+const points=[];
+for(const d of [...pointDates].filter(d=>d<=date).sort()){
+  const b=historicBalance(rows,d);if(b!==null)points.push({date:d,v:b});
+}
+let next=balance;const projected=balance===null?[]:[{date,v:balance}];for(const e of events){next+=e.amount;projected.push({date:e.date,v:next})}if(prediction!==null)projected.push({date:end,v:prediction});drawChart(points,projected,end);renderVisuals();
+const warning=$('warning');if(!selected&&accounts().some(a=>!model.references[a])){$('refInfo').textContent='Sélectionne un compte pour enregistrer un solde de référence. Le total global requiert un solde connu pour chaque compte.'}else $('refInfo').textContent='Le solde saisi est un solde de fin de journée : qbudget soustrait les opérations pour reconstituer le passé et les ajoute pour calculer la suite.';const currencies=new Set(rows.map(r=>r.currency).filter(Boolean));warning.style.display=currencies.size>1?'block':'none';if(currencies.size>1)warning.textContent='Plusieurs devises : le cumul sans conversion n’est pas fiable. Filtre par compte.'}
+function renderRows(){let rows=inAccount(),term=$('search').value.toLocaleLowerCase('fr').trim(),type=$('typeFilter').value;rows=rows.filter(r=>(!term||[r.desc,r.bank,r.account,notes(r).tag||''].some(v=>v.toLocaleLowerCase('fr').includes(term)))&&(!type||notes(r).type===type));const mode=$('sort').value;rows.sort((a,b)=>mode==='amount'?a.amount-b.amount:mode==='asc'?a.date.localeCompare(b.date):b.date.localeCompare(a.date));const body=$('rows');body.replaceChildren();for(const r of rows.slice(0,1000)){const n=notes(r),tr=document.createElement('tr');function cell(v,cls=''){const td=document.createElement('td');td.textContent=v;td.className=cls;tr.append(td);return td}cell(r.date);cell(key(r));cell(r.desc);cell(amount(r.amount),'right '+(r.amount<0?'minus':'plus'));let td=document.createElement('td'),tag=document.createElement('input');tag.className='tag';tag.value=n.tag||'';tag.placeholder=r.category||'Ajouter un tag';tag.addEventListener('change',()=>update(r,{tag:tag.value}));td.append(tag);tr.append(td);td=document.createElement('td');const typ=document.createElement('select');for(const [value,label] of [['','Non défini'],['ponctuel','Ponctuel'],['recurrent','Récurrent']])typ.add(new Option(label,value));typ.value=n.type||'';typ.addEventListener('change',()=>{if(typ.value==='recurrent'){connectRule(r)}else{update(r,{type:typ.value,ruleId:null});render()}});td.append(typ);tr.append(td);td=document.createElement('td');const rule=document.createElement('button');rule.className='secondary';const linked=model.rules[n.ruleId];rule.textContent=linked?linked.desc:'Lier / créer';rule.onclick=()=>connectRule(r);td.append(rule);tr.append(td);cell(r.duplicate?.toLowerCase()==='oui'?'Potentiel':'');body.append(tr)}$('empty').style.display=rows.length?'none':'block';$('empty').textContent=rows.length>0?'':'Aucune opération à afficher.'}
+function update(r,patch){model.notes[r.id]={...notes(r),...patch};save();renderSummary()};function render(){renderAccounts();renderSummary();renderRows();renderRules();$('importStatus').textContent=`${model.rows.length} opérations chargées · ${accounts().length} compte(s) · stockage local au navigateur`}
+$('csv').addEventListener('change',async ev=>{const f=ev.target.files[0];if(!f)return;try{const items=readCsv(await f.text());model.rows=items;model.notes={};model.references={};model.rules={};selected='';save();render()}catch(e){alert('Import interrompu : '+e.message)}});
+$('sample').onclick=()=>{const dat=['Date;Banque;Compte;Libellé;Montant;Devise;Solde;Catégorie;Sous-catégorie;Doublon potentiel;Identifiant;Fichier source'];let b=1600;for(let m=1;m<=10;m++){let dt=`2026-${String(m).padStart(2,'0')}-05`;b+=2200;dat.push(`${dt};BoursoBank;Courant;Salaire;2200.00;EUR;${b.toFixed(2)};Revenus;;;s${m};demo.csv`);dt=`2026-${String(m).padStart(2,'0')}-07`;b-=760;dat.push(`${dt};BoursoBank;Courant;Loyer;-760.00;EUR;${b.toFixed(2)};Logement;;;l${m};demo.csv`);dt=`2026-${String(m).padStart(2,'0')}-12`;b-=85;dat.push(`${dt};BoursoBank;Courant;Téléphone et internet;-85.00;EUR;${b.toFixed(2)};Abonnements;;;i${m};demo.csv`)}model={rows:readCsv(dat.join('\n')),notes:{},references:{},rules:{}};for(const desc of ['Loyer','Téléphone et internet','Salaire']){const matching=model.rows.filter(r=>r.desc===desc);const last=matching.at(-1);const id=uid();model.rules[id]={id,account:key(last),desc,amount:last.amount,frequency:'mensuel',start:matching[0].date,anchor:last.date,end:''};for(const r of matching)model.notes[r.id]={type:'recurrent',ruleId:id,tag:desc==='Loyer'?'Logement':desc==='Salaire'?'Revenus':'Abonnements'}};selected='BoursoBank';$('asof').value='2026-10-24';save();render()};
+$('account').onchange=()=>{selected=$('account').value;render()};$('asof').onchange=renderSummary;$('horizon').onchange=renderSummary;for(const id of ['search','typeFilter','sort'])$(id).addEventListener('input',renderRows);$('saveRef').onclick=()=>{if(!selected)return;const b=numeric($('refBalance').value),date=$('refDate').value;if(b===null||!date){alert('Renseigne une date et un solde valides.');return}model.references[selected]={date,balance:b};save();renderSummary()};$('clearData').onclick=()=>{if(!confirm('Effacer opérations, tags et références stockés dans ce navigateur ?'))return;model={rows:[],notes:{},references:{},rules:{}};selected='';localStorage.removeItem(KEY);render()};
+
+// Export d'audit V0.7 : conserver le moteur de calcul historique.
+// Colonnes identiques au CLI moderne, sans utiliser le nouveau moteur.
+function auditRowsLegacy(scope,at,until){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(until))throw Error('Date de fin invalide');
+  if(scope==='all'&&!/^\d{4}-\d{2}-\d{2}$/.test(at))throw Error('Date de départ invalide');
+  const out=[];
+  for(const r of model.rows){
+    if(r.date>until || (scope==='actual' && r.nature==='planned'))continue;
+    const n=notes(r);
+    out.push({date:r.date,compte:key(r),libelle:r.desc,montant:Number(r.amount),devise:r.currency||'EUR',origine:r.nature==='planned'?'manuel_prevu':r.manual?'manuel':'reel',identifiant:String(r.id||''),recurrence_id:n.ruleId||''});
+  }
+  if(scope==='all'){
+    const ruleRows=model.rows;
+    const scopeBanks=new Set(ruleRows.map(key));
+    const linked=new Set(ruleRows.filter(r=>notes(r).ruleId).map(r=>`${notes(r).ruleId}|${r.date}|${key(r)}`));
+    for(const [ruleId,rule] of Object.entries(model.rules)){
+      if(!scopeBanks.has(rule.account))continue;
+      const anchor=rule.anchor||rule.start;
+      if(!anchor)continue;
+      for(let k=1;k<=600;k++){
+        const date=shiftDate(anchor,rule.frequency||'mensuel',k);
+        if(date>until)break;
+        if(rule.end && date>rule.end)break;
+        if(date<=at || linked.has(`${ruleId}|${date}|${rule.account}`))continue;
+        out.push({date,compte:rule.account,libelle:rule.desc||'',montant:Number(rule.amount),devise:'EUR',origine:'recurrence',identifiant:`rec:${ruleId}:${date}`,recurrence_id:ruleId});
+      }
+    }
+  }
+  out.sort((a,b)=>a.date.localeCompare(b.date)||a.compte.localeCompare(b.compte)||a.identifiant.localeCompare(b.identifiant)||a.origine.localeCompare(b.origine));
+  return out;
+}
+function auditCsvLegacy(rows){
+  const headers=['date','compte','libelle','montant','devise','origine','identifiant','recurrence_id'];
+  const quote=v=>{const s=String(v??'');return /[;"\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  const lines=[headers.join(';')];
+  for(const r of rows){
+    lines.push(headers.map(h=>quote(h==='montant'?Number(r[h]).toFixed(2).replace('.',','):r[h])).join(';'));
+  }
+  return lines.join('\n')+'\n';
+}
+function downloadLegacyAudit(){
+  try{
+    const scope=$('auditScope').value,at=$('auditAt').value,until=$('auditUntil').value;
+    const csv=auditCsvLegacy(auditRowsLegacy(scope,at,until));
+    download(csv,`qbudget-v0_7-audit-${scope}-${until}.csv`,'text/csv;charset=utf-8');
+  }catch(err){alert('Export impossible : '+err.message)}
+}
+$('horizon').value=addMonths($('asof').value,1);$('auditAt').value=$('asof').value;
+$('auditUntil').value=$('horizon').value;
+$('asof').addEventListener('change',()=>{$('auditAt').value=$('asof').value});
+$('horizon').addEventListener('change',()=>{$('auditUntil').value=$('horizon').value});
+$('exportAudit').onclick=downloadLegacyAudit;
+$('downloadAudit').onclick=downloadLegacyAudit;
+$('exportSettings').onclick=()=>{const obj={version:2,notes:model.notes,references:model.references,rules:model.rules,manualRows:model.rows.filter(r=>r.manual)};download(JSON.stringify(obj,null,2),'qbudget-annotations.json','application/json')};function download(data,name,type){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}$('importSettings').onclick=()=>$('annotationsFile').click();$('annotationsFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(!o.notes||!o.references)throw Error('Format incompatible');model.notes=o.notes;model.references=o.references;model.rules=o.rules||{};for(const r of o.manualRows||[])if(!model.rows.some(x=>x.id===r.id))model.rows.push(r);save();render()}catch(err){alert(err.message)}};$('manualDate').value=today;$('addManual').onclick=()=>{const account=$('manualAccount').value,dt=$('manualDate').value,desc=$('manualDesc').value.trim(),n=numeric($('manualAmount').value);if(!account||!dt||!desc||n===null){alert('Indique un compte, une date, un libellé et un montant.');return}const r={id:uid(),bank:account,account:account,date:dt,desc,amount:n,balance:null,currency:'EUR',category:'',duplicate:'',nature:$('manualNature').value,manual:true};model.rows.push(r);save();render();$('manualDesc').value='';$('manualAmount').value='';if(Object.values(model.rules).some(q=>q.account===key(r)&&normalizedLabel(q.desc)===normalizedLabel(r.desc)))connectRule(r)};load();render();window.addEventListener('resize',renderSummary);
+</script></body></html>

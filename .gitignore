@@ -11,3 +11,6 @@ personal-data/
 # Relevés et annotations réels
 data/*
 !data/.gitkeep
+
+# Exports ou relevés CSV à la racine : jamais de données bancaires dans Git
+/*.csv

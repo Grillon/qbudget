@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Importer des relevés CSV bancaires avec banques.json (Python standard uniquement).
 
-Usage : python3 import_releves_v1_4.py bourso.csv bps.csv revolut.csv -o operations.csv
+Usage : python3 import_releves.py bourso.csv bps.csv revolut.csv -o operations.csv
 """
 import argparse
 import copy
@@ -187,8 +187,17 @@ def render_output(row, fields, decimal):
     return result
 
 
+def importer_version():
+    """Version de la distribution qbudget qui embarque cet importateur."""
+    try:
+        return json.loads(Path(__file__).with_name('package.json').read_text(encoding='utf-8'))['version']
+    except (OSError, KeyError, ValueError):
+        return 'inconnue (script indépendant)'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--version', action='version', version=f'%(prog)s {importer_version()}')
     parser.add_argument('fichiers', nargs='+', type=Path)
     parser.add_argument('-o', '--output', type=Path, default=Path('operations_normalisees.csv'))
     parser.add_argument('-c', '--config', type=Path, default=Path(__file__).with_name('banques.json'))

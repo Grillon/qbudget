@@ -43,8 +43,8 @@ function recurrenceEvents(model,start,end,account=''){
   for(let k=1;k<=600;k++){const d=shiftDate(anchor,rule.frequency||'mensuel',k);if(d>end)break;if(rule.end&&d>rule.end)break;if(d>start)events.push({date:d,amount:Number(rule.amount),desc:rule.desc,ruleId:rule.id,account:rule.account})}
  }
  for(const row of rows.filter(r=>r.date>start&&r.date<=end)){
-  const linked=(model.notes?.[row.id]||{}).ruleId;
-  if(linked){const i=events.findIndex(e=>e.ruleId===linked&&e.date===row.date);if(i>=0)events.splice(i,1)}
+  // Une opération datée et l’échéance calculée restent visibles toutes les deux.
+  // Aucun rapprochement automatique : l’utilisateur décide.
   events.push({date:row.date,amount:Number(row.amount),desc:row.desc,account:row.bank});
  }
  return events.sort((a,b)=>a.date.localeCompare(b.date));
@@ -57,6 +57,50 @@ function forecast(model,at,until,account='',overrides={}){
  let running=balance;const timeline=events.map(e=>({...e,balance:running===null?null:(running=Math.round((running+e.amount)*100)/100)}));
  return {account:account||'all',at,until,opening:balance,closing:running,minimum:running===null?null:Math.min(balance,...timeline.map(e=>e.balance)),events:timeline};
 }
+// CSV d'audit deterministe : les ecritures bancaires sont conservees, jamais dedupliquees.
+const AUDIT_HEADERS=['date','compte','libelle','montant','devise','origine','identifiant','recurrence_id'];
+function auditOperations(model,{scope='all',at,until,account='',overrides={}}={}){
+ if(!['actual','all'].includes(scope))throw Error('Scope attendu : actual ou all');
+ if(!validDate(until))throw Error('Date --until invalide');
+ if(scope==='all'&&!validDate(at))throw Error('Date --at invalide');
+ const saved=(model.rows||[]).filter(r=>(!account||r.bank===account)&&r.date<=until);
+ const records=[];
+ for(const row of saved){
+  if(scope==='actual'&&row.nature==='planned')continue;
+  const note=model.notes?.[row.id]||{};
+  records.push({date:row.date,compte:row.bank||row.account||'',libelle:row.desc||'',montant:Number(row.amount),devise:row.currency||'EUR',origine:row.nature==='planned'?'manuel_prevu':row.nature==='manual'?'manuel':'reel',identifiant:String(row.id||''),recurrence_id:note.ruleId||''});
+ }
+ if(scope==='all'){
+  const rules=Object.fromEntries(Object.entries(model.rules||{}).map(([id,r])=>[id,{...r}]));
+  for(const [id,fields] of Object.entries(overrides.rules||{})){
+   if(!rules[id])throw Error('Unknown rule '+id);
+   Object.assign(rules[id],fields);
+  }
+  const banks=new Set((model.rows||[]).map(r=>r.bank));
+  for(const [id,rule] of Object.entries(rules)){
+   if(account&&rule.account!==account)continue;
+   if(!banks.has(rule.account))continue;
+   const anchor=rule.anchor||rule.start;
+   if(!anchor||!validDate(anchor))continue;
+   for(let k=1;k<=600;k++){
+    const date=shiftDate(anchor,rule.frequency||'mensuel',k);
+    if(date>until)break;
+    if(rule.end&&date>rule.end)break;
+    if(date<=at)continue;
+    records.push({date,compte:rule.account,libelle:rule.desc||'',montant:Number(rule.amount),devise:'EUR',origine:'recurrence',identifiant:`rec:${id}:${date}`,recurrence_id:id});
+   }
+  }
+ }
+ records.sort((a,b)=>a.date.localeCompare(b.date)||a.compte.localeCompare(b.compte)||a.identifiant.localeCompare(b.identifiant)||a.origine.localeCompare(b.origine));
+ return records;
+}
+function auditCsv(records){
+ const quote=v=>{const text=String(v??'');return /[;"\r\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text};
+ const amount=n=>{if(!Number.isFinite(n))throw Error('Montant invalide dans export');return n.toFixed(2).replace('.',',')};
+ const lines=[AUDIT_HEADERS.join(';')];
+ for(const r of records)lines.push(AUDIT_HEADERS.map(h=>quote(h==='montant'?amount(r.montant):r[h])).join(';'));
+ return lines.join('\n')+'\n';
+}
 function check(model){const errors=[],warnings=[];
  for(const [bank,ref] of Object.entries(model.references||{}))if(!validDate(ref.date)||!Number.isFinite(Number(ref.balance)))errors.push('Invalid reference for '+bank);
  for(const r of model.rows||[]){if(!validDate(r.date)||!Number.isFinite(Number(r.amount)))errors.push('Invalid transaction '+(r.id||r.desc));}
@@ -64,5 +108,5 @@ function check(model){const errors=[],warnings=[];
  for(const bank of new Set((model.rows||[]).map(r=>r.bank)))if(!model.references?.[bank])warnings.push('Missing reference: '+bank);
  return {ok:errors.length===0,errors,warnings};
 }
-return {readCsv,mergeAnnotations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check};
+return {readCsv,mergeAnnotations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv};
 });

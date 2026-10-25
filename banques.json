@@ -88,7 +88,7 @@
   ],
   "sortie": {
     "separateur": ";",
-    "decimal": ".",
+    "decimal": ",",
     "colonnes": [
       {
         "champ": "date",

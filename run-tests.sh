@@ -2,7 +2,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-echo '== Vérification du code =='
+echo '== Cohérence version, démo, documentation =='
+python3 scripts/sync-version.py --check
+python3 scripts/build-demo.py --check
 npm run check
 
 echo '== Tests du moteur, du CLI et des 55 jours fictifs =='
@@ -21,7 +23,10 @@ import csv, sys
 with open(sys.argv[1], encoding='utf-8-sig', newline='') as f:
     rows = list(csv.DictReader(f, delimiter=';'))
 assert len(rows) == 3, f'3 opérations attendues, obtenu {len(rows)}'
-print('OK: 3 opérations importées')
+assert rows[0]['Montant'].count('.') == 0, 'Export qbudget devrait utiliser la virgule décimale'
+assert all('.' not in row['Montant'] for row in rows), 'Montants décimaux non normalisés'
+assert any(',' in row['Montant'] for row in rows), 'Aucune virgule décimale trouvée'
+print('OK: 3 opérations importées, décimales à la virgule')
 PY
 
 echo '== Contrôle du CLI sur données fictives =='
@@ -35,5 +40,9 @@ test -s index.html
 test -s plotly.min.js
 grep -q 'src/engine.js' index.html
 grep -q 'plotly.min.js' index.html
+grep -q 'src/version.js' index.html
+grep -q 'src/demo.js' index.html
+node src/cli.js --version
+python3 import_releves.py --version
 
 echo 'Tous les contrôles ont réussi.'
