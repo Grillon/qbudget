@@ -5,28 +5,12 @@ on:
 permissions:
   contents: read
 jobs:
-  javascript:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Syntaxe du moteur et du CLI
-        run: npm run check
-      - name: Test Python importateur
-        run: |
-          python3 import_releves.py tests/fixtures/bourso_exemple.csv tests/fixtures/bps_exemple.csv tests/fixtures/revolut_exemple.csv -o /tmp/qbudget-test.csv
-          python3 -c 'import csv; p=list(csv.DictReader(open("/tmp/qbudget-test.csv"), delimiter=";")); assert len(p)>=3'
-      - name: Tests unitaires
-        run: npm test
-      - name: Test de l'interface et de Plotly
-        run: |
-          test -s index.html
-          test -s plotly.min.js
-          grep -q 'src/engine.js' index.html
-          grep -q 'plotly.min.js' index.html
-      - name: Test du CLI
-        run: |
-          node src/cli.js check --csv tests/fixtures/operations.csv --annotations tests/fixtures/annotations.json --json
-          node src/cli.js balance --csv tests/fixtures/operations.csv --annotations tests/fixtures/annotations.json --account BoursoBank --at 2026-10-25 --json
+      - name: Tests complets (moteur, scénarios, import, CLI, assets)
+        run: ./run-tests.sh

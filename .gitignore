@@ -5,7 +5,7 @@ __pycache__/
 .env
 qbudget-data.json
 /operations.csv
-*-annotations.json
+/*-annotations.json
 personal-data/
 
 # Relevés et annotations réels
