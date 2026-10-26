@@ -1,3 +1,12 @@
+# V0.13.0 — Comptes exclus du cumul et sections réorganisables
+
+- Inclusion/exclusion explicite de chaque compte dans les calculs globaux ; consultation indépendante toujours possible, données et audit complet inchangés.
+- Vue « Tous les comptes » : cumul des comptes inclus + courbe distincte par compte exclu (légende « hors cumul »), sans double comptage. Flux, catégories et indicateurs agrégés respectent l'inclusion.
+- Sauvegarde `excludedAccounts` dans le modèle et l'export/import JSON d'annotations, rétrocompatibilité avec les anciens exports ; le moteur et le CLI partagent les mêmes règles.
+- Déplacement de l'ensemble des cartes (y compris les graphiques et indicateurs) via poignée HTML5 Drag & Drop, boutons ↑/↓, remise en ordre d'origine ; ordre sauvegardé séparément dans localStorage, aucun effet sur les calculs.
+- `qbudget.comptes()` dans la console ; invariant ajouté à `qbudget.test()`.
+- 55 tests automatisés réussis. Vérification complémentaire Chromium avec Plotly réel : Qonto et BPS exclus, consultation individuelle, courbes, glisser-déposer et reset.
+
 # V0.12.0 — Démo pro/perso et affichage des échéances calculées
 
 - Démo fictive enrichie : compte Qonto SASU avec solde 0 €, essence/péage/restaurant datés et payés côté personnel, remboursements IK et note de frais en paires pro (−) / perso (+), flottantes.

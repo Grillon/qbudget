@@ -1,7 +1,27 @@
-# qbudget — V0.12.0
+# qbudget — V0.13.0
 
 Outil **local** de visualisation et simulation financière. Pas de compte bancaire connecté, pas de serveur de données, pas de base distante. Projet en développement : les projections sont des hypothèses, **pas** un outil comptable ou fiscal.
 
+
+
+## V0.13.0 — Comptes hors cumul et disposition libre du tableau de bord
+
+**1. Inclure ou exclure un compte du cumul global.** Dans **« Compte et période »**, chaque compte a une case cochée par défaut. Décocher, par exemple, **BPS** ou **Qonto** :
+
+- Le solde et la projection de **« Tous les comptes »** n'additionnent plus ce compte. Les graphiques de flux et de dépenses agrégées portent également sur les comptes inclus seulement.
+- Le graphique de trésorerie montre le **cumul actif** (historique bleu et forecast orange) et **une courbe supplémentaire par compte exclu**, avec une légende « hors cumul ». Les courbes séparées ne sont pas réintroduites dans le total.
+- Le compte exclu reste **entièrement consultable** via la liste « Compte », y compris son solde, ses opérations, ses prévisions et ses règles. En vue « Tous les comptes », ses opérations restent visibles dans le tableau et portent le statut « HORS CUMUL ».
+- **Toutes les opérations restent présentes dans l'export d'audit**, indépendamment des cases. Cette sélection ne supprime rien, ne désactive aucune règle et ne modifie aucun mouvement bancaire.
+
+L'option `excludedAccounts` est conservée dans la sauvegarde locale et dans l'**export/import des annotations JSON**. Les anciens fichiers restent compatibles : si ce champ manque, tous les comptes sont inclus, comme précédemment. Le moteur CLI et le navigateur partagent la même règle pour les calculs globaux, mais un audit CSV complet ne dépend pas de cette sélection.
+
+**2. Réorganiser les sections.** Toutes les cartes du tableau de bord, y compris les trois indicateurs et les graphiques secondaires, possèdent une poignée **« ⠿ Déplacer »**. Glisser la poignée sur une autre section pour changer l'ordre ; les boutons **↑ / ↓** offrent une alternative. La disposition est mémorisée localement dans **ce navigateur et à cette URL** (clé dédiée `qbudget-layout-v1`) et restaurée à la prochaine visite. **« Disposition d'origine »** rétablit l'ordre initial. Les largeurs restent adaptées aux écrans (cartes principales pleine largeur, deux graphiques côte à côte sur grand écran, indicateurs sur trois colonnes).
+
+La disposition est purement visuelle et n'est pas incluse dans l'export d'annotations ; elle ne touche pas aux comptes ni aux transactions. L'import de données ou le changement de scénario ne modifie pas l'ordre des cartes.
+
+**Tests :** 55 tests automatisés, dont 6 nouveaux sur les exclusions et leur sérialisation, plus un parcours Chromium avec Plotly réel pour le changement de compte, les courbes « hors cumul », le glisser-déposer, les flèches, la réinitialisation de l'ordre et `qbudget.test()`.
+
+Dans la console : `qbudget.comptes()` donne l'état d'inclusion de chaque compte. `qbudget.test()` vérifie aussi que le cumul correspond à la somme des comptes actifs.
 
 ## V0.12.0 — Démo Qonto, remboursements et prévisions dans le tableau
 

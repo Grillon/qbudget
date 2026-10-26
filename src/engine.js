@@ -10,12 +10,16 @@ function asDate(s){return new Date(s+'T12:00:00')}
 
 function parseCsv(src,sep){let rows=[],row=[],field='',quoted=false;for(let i=0;i<src.length;i++){const c=src[i];if(quoted){if(c==='"'&&src[i+1]==='"'){field+='"';i++}else if(c==='"')quoted=false;else field+=c}else if(c==='"')quoted=true;else if(c===sep){row.push(field);field=''}else if(c==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field=''}else field+=c}if(field||row.length){row.push(field.replace(/\r$/,''));rows.push(row)}return rows}
 function readCsv(raw){raw=raw.replace(/^\ufeff/,'');const first=raw.split(/\r?\n/,1)[0],sep=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';const cells=parseCsv(raw,sep);if(cells.length<2)throw Error('Fichier vide');const heads=cells.shift().map(x=>x.trim().toLowerCase());const get=(r,n)=>r[heads.indexOf(n)]||'';for(const col of ['date','banque','libellé','montant'])if(!heads.includes(col))throw Error('Colonne absente : '+col);return cells.filter(r=>r.some(x=>x.trim())).map((r,i)=>{const date=get(r,'date'),rawAmount=get(r,'montant').replace(/\s/g,'').replace(',','.'),montant=Number(rawAmount);if(!validDate(date)||rawAmount===''||!Number.isFinite(montant))throw Error('Date ou montant invalide, ligne '+(i+2));const bank=get(r,'banque').trim(),account=bank,desc=get(r,'libellé');const signature=get(r,'identifiant')||`${bank}|${account}|${date}|${desc}|${montant}|${i}`;return {id:`${signature}|${i}`,bank,account,date,desc,currency:get(r,'devise')||'EUR',amount:montant,balance:null,category:get(r,'catégorie'),duplicate:get(r,'doublon potentiel')}})}
-function mergeAnnotations(rows,annotations={}){if(!annotations||typeof annotations!=='object'||Array.isArray(annotations))throw Error('Annotations JSON invalides');const result={rows:[...rows],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[]};for(const row of annotations.manualRows||[]){if(!result.rows.some(r=>r.id===row.id))result.rows.push({...row})}return result}
+function mergeAnnotations(rows,annotations={}){if(!annotations||typeof annotations!=='object'||Array.isArray(annotations))throw Error('Annotations JSON invalides');const result={rows:[...rows],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[],excludedAccounts:annotations.excludedAccounts||[]};for(const row of annotations.manualRows||[]){if(!result.rows.some(r=>r.id===row.id))result.rows.push({...row})}return result}
 
 // A pending operation is intentionally without date; it is never a cash movement.
 function isFloating(row){return row.date===null||row.date===undefined||row.date===''}
 function accountNames(model){return [...new Set([...(model.accounts||[]),...Object.keys(model.references||{}),...(model.rows||[]).map(r=>r.bank).filter(Boolean)])].sort()}
 function cashAccountNames(model){return [...new Set([...(model.accounts||[]),...Object.keys(model.references||{}),...(model.rows||[]).filter(r=>!isFloating(r)).map(r=>r.bank).filter(Boolean)])].sort()}
+// An excluded account is still a real account, searchable and independently forecast.
+// Only implicit global calculations omit it. Audit exports remain exhaustive.
+function includedAccountNames(model){const excluded=new Set(model.excludedAccounts||[]);return cashAccountNames(model).filter(name=>!excluded.has(name))}
+function excludedAccountNames(model){const excluded=new Set(model.excludedAccounts||[]);return cashAccountNames(model).filter(name=>excluded.has(name))}
 function tagsFor(model,row){const note=model.notes?.[row.id]||{};return [...new Set([...(Array.isArray(note.tags)?note.tags:[]),...(typeof note.tag==='string'?note.tag.split(','):[])].map(t=>String(t).trim()).filter(Boolean))]}
 function pendingOperations(model,{account='',tags=[],mode='all',search=''}={}){
  if(!['all','any'].includes(mode))throw Error('Mode de filtrage attendu : all ou any');
@@ -37,8 +41,8 @@ function balanceAt(rows, reference, date){
  return Math.round(result*100)/100;
 }
 function totalBalance(model,date,account=''){
- const accounts=account?[account]:cashAccountNames(model);
- if(!accounts.length)return null;
+ const accounts=account?[account]:includedAccountNames(model);
+ if(!accounts.length)return account||!cashAccountNames(model).length?null:0;
  let total=0;
  for(const bank of accounts){const value=balanceAt(model.rows.filter(r=>r.bank===bank),model.references[bank],date);if(value===null)return null;total+=value;}
  return Math.round(total*100)/100;
@@ -50,8 +54,8 @@ function shiftDate(iso,frequency,k){const d=asDate(iso);if(!validDate(iso))throw
  return dateStr(new Date(y,m,Math.min(d.getDate(),new Date(y,m+1,0).getDate()),12));
 }
 function recurrenceEvents(model,start,end,account=''){
- const rows=model.rows.filter(r=>!account||r.bank===account),events=[];
- const scope=new Set(account?[account]:cashAccountNames(model));
+ const scope=new Set(account?[account]:includedAccountNames(model));
+ const rows=model.rows.filter(r=>scope.has(r.bank)),events=[];
  for(const rule of Object.values(model.rules||{})){
   if(!scope.has(rule.account))continue;
   const anchor=rule.anchor||rule.start;if(!anchor)continue;
@@ -144,5 +148,5 @@ function check(model){const errors=[],warnings=[];
  for(const bank of cashAccountNames(model))if(!model.references?.[bank])warnings.push('Missing reference: '+bank);
  return {ok:errors.length===0,errors,warnings};
 }
-return {readCsv,mergeAnnotations,isFloating,accountNames,cashAccountNames,tagsFor,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {readCsv,mergeAnnotations,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });

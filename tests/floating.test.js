@@ -69,9 +69,9 @@ test('tags exacts : filtres ET/OU, recherche, comptes et insensibilité à la ca
  assert.deepEqual(e.tagsFor(m,m.rows.find(r=>r.id==='dev')),['SASU','Logiciel']);
 });
 test('sauvegarde annotations JSON puis rechargement CSV : flottantes intactes et aucun doublon',()=>{
- const source=fixture();source.accounts=['Qonto'];source.references.Qonto={date:'2026-10-25',balance:0};
+ const source=fixture();source.accounts=['Qonto'];source.excludedAccounts=[];source.references.Qonto={date:'2026-10-25',balance:0};
  source.rows.push(floating('f1','Qonto',-170));source.notes.f1={tags:['SASU','IK','enCoursDeCreation'],tag:'SASU'};
- const annotations={version:3,accounts:source.accounts,notes:source.notes,references:source.references,rules:source.rules,manualRows:source.rows.filter(r=>r.manual)};
+ const annotations={version:3,accounts:source.accounts,excludedAccounts:source.excludedAccounts,notes:source.notes,references:source.references,rules:source.rules,manualRows:source.rows.filter(r=>r.manual)};
  const json=JSON.stringify(annotations);const copies=JSON.parse(json);
  const loaded=e.mergeAnnotations(source.rows.filter(r=>!r.manual),copies);
  assert.deepEqual(loaded,source);
