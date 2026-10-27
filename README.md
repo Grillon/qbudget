@@ -1,8 +1,22 @@
-# qbudget — V0.13.0
+# qbudget — V0.14.0
 
 Outil **local** de visualisation et simulation financière. Pas de compte bancaire connecté, pas de serveur de données, pas de base distante. Projet en développement : les projections sont des hypothèses, **pas** un outil comptable ou fiscal.
 
 
+
+## V0.14.0 — Filtres partagés et courbe d’impact, sans altérer les soldes
+
+Dans **« 8 · Opérations datées et annotations »**, les filtres **Recherche**, **Type** et **Tags multiples (ET/OU)** pilotent ensemble le tableau ainsi que les graphiques **Flux mensuels**, **Donut** et **Sunburst**. Les répartitions présentent toujours les opérations **réalisées en EUR jusqu’à la date de consultation** ; elles n’incluent ni les opérations flottantes ni les échéances futures. Un montant portant plusieurs tags n’est compté **qu’une seule fois** ; le donut et le sunburst répartissent les dépenses suivant le premier tag, les autres servant au filtrage.
+
+Le graphique **« Évolution et forecast »** reste le **solde bancaire intégral**, totalement indépendant des filtres de recherche/type/tags. Dès qu’au moins un de ces filtres est actif, une **courbe turquoise supplémentaire** représente le **cumul signé des opérations sélectionnées, partant de 0 €**, sur **un axe vertical droit distinct**. Elle n’est **ni un solde bancaire ni un solde hypothétique** : elle mesure l’impact des mouvements correspondant aux filtres. La partie réalisée est en trait plein et les mouvements futurs en tirets. Le solde historique reste bleu, sa prévision orange et chaque compte exclu garde sa courbe spécifique.
+
+- La courbe turquoise inclut les opérations réalisées correspondant aux filtres dans l’historique visible et les opérations datées futures jusqu’à l’horizon. Si **« Afficher les récurrences futures »** est coché, elle inclut aussi leurs échéances calculées, sans jamais les enregistrer comme écritures.
+- Les opérations flottantes restent **hors de tous les calculs**, même si elles correspondent aux tags recherchés.
+- En vue **Tous les comptes**, l'impact filtré concerne les comptes **inclus dans le cumul** ; les autres courbes hors cumul sont inchangées. En sélectionnant un compte individuel, son impact filtré fonctionne même si ce compte est exclu du global.
+- Lorsque les filtres sont effacés, la courbe d'impact disparaît. Le choix de tri des lignes ne modifie jamais les graphiques.
+- Pour examiner les chiffres sans altérer les données : **`qbudget.impact()`** dans la console navigateur. Cette méthode reprend la période de la courbe affichée et renvoie les points réalisés et projetés.
+
+**Tests :** 61 tests Node (dont 6 nouveaux sur filtres ET/OU, projeté/réalisé, conservation des soldes, comptes exclus et non-multiplication par les tags), ainsi qu'un parcours Chromium/Plotly réel par chargement de la démo et filtrage d'une dépense « Essence » de −68,40 € : aucune modification des soldes constatée.
 
 ## V0.13.0 — Comptes hors cumul et disposition libre du tableau de bord
 

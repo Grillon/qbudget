@@ -21,6 +21,44 @@ function cashAccountNames(model){return [...new Set([...(model.accounts||[]),...
 function includedAccountNames(model){const excluded=new Set(model.excludedAccounts||[]);return cashAccountNames(model).filter(name=>!excluded.has(name))}
 function excludedAccountNames(model){const excluded=new Set(model.excludedAccounts||[]);return cashAccountNames(model).filter(name=>excluded.has(name))}
 function tagsFor(model,row){const note=model.notes?.[row.id]||{};return [...new Set([...(Array.isArray(note.tags)?note.tags:[]),...(typeof note.tag==='string'?note.tag.split(','):[])].map(t=>String(t).trim()).filter(Boolean))]}
+// Filtre unique pour le tableau, les analyses et l'impact sur le graphique.
+// Les tags ne créent aucune logique métier ni multiplication des montants.
+function operationMatchesFilter(model,row,{search='',type='',tags=[],tagMode='all'}={}){
+ const rowTags=(row.forecast?(row.tags||[]):tagsFor(model,row)).map(t=>String(t).toLocaleLowerCase('fr'));
+ const wanted=tags.map(t=>String(t).trim().toLocaleLowerCase('fr')).filter(Boolean);
+ if(wanted.length&&!(tagMode==='any'?wanted.some(t=>rowTags.includes(t)):wanted.every(t=>rowTags.includes(t))))return false;
+ const kind=row.forecast?'recurrent':(model.notes?.[row.id]?.type||'');
+ if(type&&kind!==type)return false;
+ const term=String(search).trim().toLocaleLowerCase('fr');
+ return !term||[row.desc,row.bank,row.account,row.currency,...rowTags,...(row.forecast?['prévision récurrente','forecast']:[])].some(x=>String(x||'').toLocaleLowerCase('fr').includes(term));
+}
+function hasOperationFilter({search='',type='',tags=[]}={}){
+ return !!(String(search).trim()||String(type).trim()||tags.some(t=>String(t).trim()));
+}
+// Série analytique : cumul SIGNÉ des opérations sélectionnées, partant de 0.
+// Elle ne constitue JAMAIS un solde bancaire et n'altère ni comptes ni écritures.
+function filteredImpact(model,{at,until,account='',startDate=at,filter={},includeRecurrences=true}={}){
+ if(!validDate(at)||!validDate(until)||!validDate(startDate))throw Error('Dates de l’impact filtré invalides');
+ const scope=new Set(account?[account]:includedAccountNames(model));
+ const selected=(model.rows||[]).filter(r=>scope.has(r.bank)&&!isFloating(r)&&(!r.currency||r.currency==='EUR')&&operationMatchesFilter(model,r,filter));
+ const past=selected.filter(r=>r.date>startDate&&r.date<=at&&r.nature!=='planned');
+ const future=selected.filter(r=>r.date>at&&r.date<=until);
+ if(includeRecurrences&&until>=at){
+  for(const r of recurrencePreview(model,at,until,account))if(scope.has(r.bank)&&operationMatchesFilter(model,r,filter))future.push(r);
+ }
+ const byDate=rows=>{
+  const result=new Map();for(const r of rows)result.set(r.date,(result.get(r.date)||0)+Number(r.amount));
+  return [...result].sort(([a],[b])=>a.localeCompare(b));
+ };
+ let sum=0;
+ const history=[{date:startDate,value:0}];
+ for(const [date,value] of byDate(past)){sum=Math.round((sum+value)*100)/100;history.push({date,value:sum})}
+ if(startDate<at&&history[history.length-1].date!==at)history.push({date:at,value:sum});
+ const opening=sum,projection=[{date:at,value:sum}];
+ for(const [date,value] of byDate(future)){sum=Math.round((sum+value)*100)/100;projection.push({date,value:sum})}
+ if(until>at&&projection[projection.length-1].date!==until)projection.push({date:until,value:sum});
+ return {history,projection,opening,closing:sum,actualCount:past.length,futureCount:future.length};
+}
 function pendingOperations(model,{account='',tags=[],mode='all',search=''}={}){
  if(!['all','any'].includes(mode))throw Error('Mode de filtrage attendu : all ou any');
  const wanted=tags.map(t=>String(t).trim().toLocaleLowerCase('fr')).filter(Boolean);
@@ -148,5 +186,5 @@ function check(model){const errors=[],warnings=[];
  for(const bank of cashAccountNames(model))if(!model.references?.[bank])warnings.push('Missing reference: '+bank);
  return {ok:errors.length===0,errors,warnings};
 }
-return {readCsv,mergeAnnotations,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {readCsv,mergeAnnotations,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });

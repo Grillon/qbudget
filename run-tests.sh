@@ -7,7 +7,7 @@ python3 scripts/sync-version.py --check
 python3 scripts/build-demo.py --check
 npm run check
 
-echo '== Tests du moteur, du CLI et des 55 jours fictifs =='
+echo '== Tests du moteur, du CLI, filtres et des 55 jours fictifs =='
 npm test
 
 echo '== Import bancaire fictif (3 banques) =='

@@ -1,3 +1,11 @@
+# V0.14.0 — Filtrage partagé et impact cumulé indépendant des soldes
+
+- Recherche, type et tags ET/OU partagés entre tableau des opérations et graphiques de flux / répartition / sunburst.
+- Superposition conditionnelle sur le graphique de trésorerie d'une courbe d'impact financier filtré (cumul signé partant de zéro, axe droit séparé, réalisé plein / futur tirets). Soldes bancaires et audit inchangés.
+- Respect des comptes exclus du cumul ; les opérations flottantes restent hors calcul ; les récurrences futures sont projetées seulement si leur affichage est activé.
+- Fonction pure `operationMatchesFilter` et `filteredImpact` dans le moteur, réutilisables pour les tests et la console `qbudget.impact()`.
+- 61 tests automatisés réussis, parcours Chromium/Plotly de la démo et filtrage « Essence » sans altération du solde.
+
 # V0.13.0 — Comptes exclus du cumul et sections réorganisables
 
 - Inclusion/exclusion explicite de chaque compte dans les calculs globaux ; consultation indépendante toujours possible, données et audit complet inchangés.
