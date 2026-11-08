@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.18.1';
+const UI_VERSION='0.18.2';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — navigation & prévisions';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
@@ -192,16 +192,9 @@ function renderTagCategories(){
   button('×','Retirer la catégorie (tags conservés)',()=>{model.tagCategories=categories.filter((_,index)=>index!==i);save();renderTagCategories();renderRows();renderSummary()});
   host.append(row);
  }
- $('tagCategoryStatus').textContent=categories.length+' catégorie(s) · ordre modifiable par glisser-déposer des onglets · tags non classés toujours visibles dans la colonne libre.';
- renderTagColumnHeaders();
+ $('tagCategoryStatus').textContent=categories.length+' catégorie(s) · ordre modifiable par glisser-déposer des onglets · tags non classés toujours visibles dans la ligne de détail.';
 }
-function renderTagColumnHeaders(){
- const anchor=$('tagsColumnHeader'),tr=anchor.parentElement;
- for(const th of tr.querySelectorAll('.dimension-header'))th.remove();
- for(const c of QBudgetEngine.tagCategories(model)){
-  const th=document.createElement('th');th.className='dimension-header';th.textContent=c.name;th.title='Catégorie définie dans le dictionnaire des tags';tr.insertBefore(th,anchor);
- }
-}
+
 $('addTagCategory').onclick=()=>{
  const used=new Set(QBudgetEngine.tagCategories(model).map(c=>c.name.toLocaleLowerCase('fr')));let name='Nouvelle catégorie',i=2;while(used.has(name.toLocaleLowerCase('fr')))name='Nouvelle catégorie '+i++;
  model.tagCategories.push({name,tags:[],source:'tags'});save();renderTagCategories();renderRows();renderSummary();
@@ -257,24 +250,59 @@ function renderRows(){
  displayedEditableIds=rows.slice(0,1000).filter(r=>!r.forecast).map(r=>r.id);
  for(const id of [...selectedRowIds])if(!displayedEditableIds.includes(id))selectedRowIds.delete(id);
  updateBulkStatus();
- $('tableInfo').textContent=`${saved.length} écriture(s) datée(s) enregistrée(s) (comptes exclus toujours consultables) · ${forecastRows.length} échéance(s) récurrente(s) affichée(s), CALCULÉES et non enregistrées · période prévisionnelle : ${at} → ${until}`;
+ $('tableInfo').textContent=`${saved.length} écriture(s) datée(s) enregistrée(s) · ${forecastRows.length} échéance(s) FORECAST non enregistrée(s) · ${at} → ${until} · tags et contrôles sous chaque opération`;
  for(const r of rows.slice(0,1000)){
   const n=r.forecast?{}:notes(r),tr=document.createElement('tr');
-  if(r.forecast)tr.className='forecast-row';else if(!selected&&(model.excludedAccounts||[]).includes(r.bank))tr.className='excluded-row';
+  tr.className='operation-main'+(r.forecast?' forecast-row':!selected&&(model.excludedAccounts||[]).includes(r.bank)?' excluded-row':'');
   function cell(v,cls=''){const td=document.createElement('td');td.textContent=v;td.className=cls;tr.append(td);return td}
-  if(r.forecast)cell('—');else{const check=document.createElement('input');check.type='checkbox';check.className='bulk-checkbox';check.checked=selectedRowIds.has(r.id);check.title='Sélectionner pour ajouter un tag';check.setAttribute('aria-label','Sélectionner '+r.desc);check.onchange=()=>{if(check.checked)selectedRowIds.add(r.id);else selectedRowIds.delete(r.id);updateBulkStatus()};cell('').append(check)}
-  if(r.manual){const dt=document.createElement('input');dt.type='date';dt.value=r.date;dt.title='Effacer la date pour remettre en attente';dt.addEventListener('change',()=>{r.date=dt.value||null;if(!dt.value)r.nature='planned';save();render()});cell('').append(dt)}
-  else cell(r.date);
-  cell(key(r));cell(r.desc);cell(amount(r.amount),'right '+(r.amount<0?'minus':'plus'));
-  const origin=cell('');const badge=document.createElement('span');badge.className='status'+(r.forecast?' forecast-status':r.nature==='planned'?' planned-status':'');badge.textContent=(r.forecast?'FORECAST · calculé':r.nature==='planned'?'PRÉVU · saisi':r.manual?'RÉALISÉ · manuel':'RÉEL · importé')+(!selected&&model.excludedAccounts.includes(r.bank)?' · HORS CUMUL':'');origin.append(badge);
-  if(r.forecast){
-   for(const c of QBudgetEngine.tagCategories(model))cell(QBudgetEngine.tagsByCategory(model,r,c).join(', ')||'—','tag-dimension-value');cell((r.tags||[]).join(', '));cell('Récurrent');cell(model.rules[r.ruleId]?.desc||r.ruleId||'');cell('—');
-  }else{
-   for(const c of QBudgetEngine.tagCategories(model))cell(QBudgetEngine.tagsByCategory(model,r,c).join(', ')||'—','tag-dimension-value');let td=document.createElement('td'),tag=document.createElement('input');tag.className='tag';tag.value=QBudgetEngine.tagsFor(model,r).join(', ');tag.placeholder=r.category||'Ajouter un tag';tag.addEventListener('change',()=>{setTags(r,tag.value);render()});td.append(tag);tr.append(td);
-   td=document.createElement('td');const typ=document.createElement('select');for(const [value,label] of [['','Non défini'],['ponctuel','Ponctuel'],['recurrent','Récurrent']])typ.add(new Option(label,value));typ.value=n.type||'';typ.addEventListener('change',()=>{if(typ.value==='recurrent'){connectRule(r)}else{update(r,{type:typ.value,ruleId:null});render()}});td.append(typ);tr.append(td);
-   td=document.createElement('td');const rule=document.createElement('button');rule.className='secondary';const linked=model.rules[n.ruleId];rule.textContent=linked?linked.desc:'Lier / créer';rule.onclick=()=>connectRule(r);td.append(rule);tr.append(td);cell(r.duplicate?.toLowerCase()==='oui'?'Potentiel':'');
+  if(r.forecast)cell('—');else{
+   const check=document.createElement('input');check.type='checkbox';check.className='bulk-checkbox';check.checked=selectedRowIds.has(r.id);
+   check.title='Sélectionner pour ajouter un tag';check.setAttribute('aria-label','Sélectionner '+r.desc);
+   check.onchange=()=>{if(check.checked)selectedRowIds.add(r.id);else selectedRowIds.delete(r.id);updateBulkStatus()};cell('').append(check);
   }
-  body.append(tr);
+  if(r.manual){
+   const dt=document.createElement('input');dt.type='date';dt.value=r.date;dt.title='Effacer la date pour remettre en attente';
+   dt.addEventListener('change',()=>{r.date=dt.value||null;if(!dt.value)r.nature='planned';save();render()});cell('').append(dt);
+  }else cell(r.date);
+  cell(key(r));cell(r.desc);cell(amount(r.amount),'right '+(r.amount<0?'minus':'plus'));
+  const origin=cell('');const badge=document.createElement('span');
+  badge.className='status'+(r.forecast?' forecast-status':r.nature==='planned'?' planned-status':'');
+  badge.textContent=(r.forecast?'FORECAST · calculé':r.nature==='planned'?'PRÉVU · saisi':r.manual?'RÉALISÉ · manuel':'RÉEL · importé')+(!selected&&(model.excludedAccounts||[]).includes(r.bank)?' · HORS CUMUL':'');origin.append(badge);
+
+  // Une opération = deux lignes visuelles, mais une seule écriture dans le moteur.
+  const detail=document.createElement('tr');detail.className='operation-detail'+(r.forecast?' forecast-row':!selected&&(model.excludedAccounts||[]).includes(r.bank)?' excluded-row':'');
+  const detailCell=document.createElement('td');detailCell.colSpan=6;detail.append(detailCell);
+  const content=document.createElement('div');content.className='operation-detail-content';detailCell.append(content);
+  const labels=document.createElement('div');labels.className='operation-tag-groups';content.append(labels);
+  const organized=QBudgetEngine.organizedTags(model,r);
+  let visible=0;
+  function group(name,values,extraClass=''){
+   if(!values.length)return;
+   visible++;
+   const el=document.createElement('span');el.className='operation-tag-group '+extraClass;
+   const label=document.createElement('strong');label.textContent=name+' :';
+   const value=document.createElement('span');value.textContent=values.join(' · ');
+   el.append(label,value);labels.append(el);
+  }
+  for(const dimension of organized.values)group(dimension.name,dimension.values);
+  group('Libres',organized.other,'operation-tag-other');
+  if(!visible){const none=document.createElement('span');none.className='operation-no-tags';none.textContent='Aucun tag';labels.append(none)}
+
+  const controls=document.createElement('div');controls.className='operation-detail-controls';content.append(controls);
+  if(r.forecast){
+   const rule=document.createElement('span');rule.className='operation-detail-note';rule.textContent='Récurrence : '+(model.rules[r.ruleId]?.desc||r.ruleId||'règle calculée');controls.append(rule);
+  }else{
+   function field(labelText,control){const label=document.createElement('label');label.className='operation-detail-field';const name=document.createElement('span');name.textContent=labelText;label.append(name,control);controls.append(label);return control}
+   const tag=document.createElement('input');tag.className='tag';tag.value=QBudgetEngine.tagsFor(model,r).join(', ');tag.placeholder=r.category||'Ajouter un tag';
+   tag.addEventListener('change',()=>{setTags(r,tag.value);render()});field('Modifier les tags',tag);
+   const typ=document.createElement('select');for(const [value,label] of [['','Non défini'],['ponctuel','Ponctuel'],['recurrent','Récurrent']])typ.add(new Option(label,value));
+   typ.value=n.type||'';typ.addEventListener('change',()=>{if(typ.value==='recurrent')connectRule(r);else{update(r,{type:typ.value,ruleId:null});render()}});field('Type',typ);
+   const rule=document.createElement('button');rule.className='secondary';rule.type='button';const linked=model.rules[n.ruleId];rule.textContent=linked?linked.desc:'Lier / créer';rule.onclick=()=>connectRule(r);controls.append(rule);
+   if(r.duplicate?.toLowerCase()==='oui'){
+    const duplicate=document.createElement('span');duplicate.className='operation-duplicate';duplicate.textContent='Doublon potentiel';controls.append(duplicate);
+   }
+  }
+  body.append(tr,detail);
  }
  $('empty').style.display=rows.length?'none':'block';$('empty').textContent=rows.length>0?'':'Aucune opération à afficher.';
 }

@@ -81,7 +81,7 @@ test('interface : bascule forecast + différenciation visuelle + API DevTools',(
  assert.match(h,/id="showForecastRows" checked/);
  assert.match(h,/QBudgetEngine\.recurrencePreview\(model,at,until,selected\)/);
  assert.match(h,/FORECAST · calculé/);
- assert.match(h,/className='forecast-row'/);
+ assert.match(h,/operation-main/);assert.match(h,/operation-detail/);assert.match(h,/forecast-row/);
  assert.match(h,/globalThis\.qbudget=qbudget/);
  for(const cmd of ['help','test','demo','pending','forecast','recurrences','snapshot'])assert.match(h,new RegExp(cmd+'\\('));
 });

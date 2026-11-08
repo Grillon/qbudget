@@ -17,7 +17,7 @@ function make(){return {
   {name:'Nature',tags:['Carburant','Transport','Restaurant','IK'],source:'tags'},
   {name:'Périodicité',tags:['Récurrent','Ponctuel'],source:'type'}
  ]};}
-test('catégories de tags : saisie libre réorganisée dans les colonnes',()=>{
+test('catégories de tags : saisie libre organisée par dimensions',()=>{
  const m=make(),r=m.rows[0];
  const organized=e.organizedTags(m,r);
  assert.deepEqual(organized.values.map(v=>[v.name,v.values]),[
@@ -85,11 +85,11 @@ test('sauvegarde / rechargement : dictionnaire persistant sans perte des tags',(
  assert.deepEqual(e.organizedTags(fresh,fresh.rows[0]),e.organizedTags(m,m.rows[0]));
  assert.equal(fresh.rows.length,m.rows.length);
 });
-test('l’interface expose le slider, les radios camembert et les colonnes du tableau distinctement',()=>{
+test('l’interface expose le slider, les radios camembert et le tableau en deux lignes distinctement',()=>{
  const ui=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
- for(const id of ['sunburstDepth','sunburstDepthText','donutRadios','tagCategoryList','addTagCategory','typeColumnHeader'])assert.match(ui,new RegExp(`id="${id}"`));
+ for(const id of ['sunburstDepth','sunburstDepthText','donutRadios','tagCategoryList','addTagCategory','rows'])assert.match(ui,new RegExp(`id="${id}"`));
  assert.match(ui,/max="8"/);assert.match(ui,/min="2"/);
- assert.match(ui,/renderTagColumnHeaders/);assert.match(ui,/renderDonutRadios/);
+ assert.match(ui,/organizedTags\(model,r\)/);assert.match(ui,/renderDonutRadios/);
 });
 
 test('onglets glissables : changer leur ordre ne modifie que les dimensions, jamais les soldes',()=>{
@@ -137,4 +137,20 @@ test('V0.18.1 : les onglets sont dans le panneau Sunburst, sans saut vers l’é
  assert.match(html,/class="sunburst-tab-controls"/);
  assert.doesNotMatch(js,/scrollIntoView\(\{behavior:'smooth'/);
  assert.match(js,/reorderTagCategories\(source,target\)/);
+});
+
+// La séparation des lignes est une présentation seulement : les filtres, tags et actions
+// doivent rester attachés à une unique écriture, et les prévisions restent intouchables.
+test('V0.18.2 : deux lignes visuelles par opération, sans duplication de données',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+ const js=fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
+ assert.match(html,/class="tablewrap"/);
+ assert.match(html,/<th title="Sélection individuelle">✓<\/th><th>Date<\/th>/);
+ assert.doesNotMatch(html,/id="tagsColumnHeader"|id="typeColumnHeader"/);
+ assert.match(js,/const organized=QBudgetEngine\.organizedTags\(model,r\)/);
+ assert.match(js,/detailCell\.colSpan=6/);
+ assert.match(js,/body\.append\(tr,detail\)/);
+ assert.match(js,/if\(r\.forecast\)\{/);
+ assert.match(js,/setTags\(r,tag\.value\)/);
+ assert.match(js,/check\.checked=selectedRowIds\.has\(r\.id\)/);
 });

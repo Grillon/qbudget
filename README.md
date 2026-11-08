@@ -1,8 +1,12 @@
-# qbudget — V0.18.0
+# qbudget — V0.18.2
 
 Outil **local** de visualisation et simulation financière. Pas de compte bancaire connecté, pas de serveur de données, pas de base distante. Projet en développement : les projections sont des hypothèses, **pas** un outil comptable ou fiscal.
 
 
+
+## V0.18.2 — Tableau sur deux lignes
+
+Dans le tableau des opérations datées, la première ligne montre la sélection, la date, le compte, le libellé, le montant et l'origine. Une seconde ligne regroupe les tags par catégorie, suivant l’ordre choisi sur les onglets du Sunburst, puis les tags libres. Pour les écritures enregistrées, elle conserve les contrôles d'édition des tags, de périodicité et de récurrence, ainsi que le signalement des doublons. Les occurrences FORECAST restent en lecture seule. Cette présentation ne change ni les exports, ni la sélection par lot, ni les calculs.
 
 ## V0.18.0 — Onglets glissables et Sunburst stabilisé
 

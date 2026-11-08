@@ -1,3 +1,9 @@
+# V0.18.2 — Tableau compact : données puis tags par catégorie
+
+- Chaque opération enregistrée ou prévisionnelle est affichée sur deux lignes visuelles : informations financières en haut, tags regroupés par catégorie et contrôles en dessous. Le modèle et les calculs restent inchangés.
+- La liste de tags, le type, le lien aux récurrences et les alertes de doublon restent accessibles sous chaque écriture. Les prévisions calculées restent en lecture seule ; sélection et ajout groupé de tags inchangés.
+- Aucune dépendance ajoutée ; seul le module UI est passé en version 0.18.2.
+
 # V0.18.1 — Onglets de dimensions à côté de leur graphique
 
 - Les onglets de catégories sont déplacés depuis la rubrique d’édition des tags vers le **haut du panneau Sunburst**, directement au-dessus du graphique ; le réordonnancement agit immédiatement sur le Sunburst et les colonnes du tableau.
