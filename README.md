@@ -1,8 +1,27 @@
-# qbudget — V0.14.0
+# qbudget — V0.16.0
 
 Outil **local** de visualisation et simulation financière. Pas de compte bancaire connecté, pas de serveur de données, pas de base distante. Projet en développement : les projections sont des hypothèses, **pas** un outil comptable ou fiscal.
 
 
+
+## V0.16.0 — Dictionnaire de tags, tableau et Sunburst (2 à 8 niveaux)
+
+**L’idée de Wallex : un tag saisi librement devient une dimension, sans compréhension métier codée en dur.**
+
+1. Dans **« Tags · catégories et dimensions du tableau »**, cliquer sur **+ Catégorie**, donner un nom (ex. `Nature`) et saisir ses tags séparés par des virgules (`transport, repas, logement`). Les boutons **↑ ↓** déterminent l’ordre des colonnes de dimensions et de la hiérarchie du Sunburst. Supprimer une catégorie ne supprime aucun tag des opérations.
+2. Dans **« 8 · Opérations datées et annotations »**, renseigner les tags librement, comme précédemment. Une colonne est automatiquement créée pour chaque catégorie ; **« Tags (saisie libre) »** conserve la liste complète, y compris les tags non classés. Un tag est affecté à une seule catégorie pour éviter les ambiguïtés. Si plusieurs tags appartiennent à une même catégorie, la colonne affiche tous les tags ; le graphique choisit le premier **uniquement pour éviter de compter deux fois le montant**. La règle est explicite et ne modifie ni la dépense ni sa liste de tags.
+3. Déplacer le curseur **Sunburst · profondeur** de **2 à 8**. Les niveaux suivent l’ordre des catégories configurées. Si tu n’as que 3 catégories, monter à 8 conserve 3 niveaux : il ne crée pas de dimension fictive. Sans catégories, le Sunburst historique *premier tag → libellé* fonctionne toujours.
+4. Les **boutons radio du camembert** choisissent une dimension pour le camembert **seulement**. Ils n’ont aucun effet sur les colonnes du tableau, le Sunburst ou les soldes. Recherche et filtres ET/OU restent communs au tableau et aux graphiques d’analyse.
+
+**Périodicité :** créer une catégorie `Périodicité` avec les tags `Récurrent, Ponctuel`. La source « Tags libres » n’utilise que la classification explicite. La source facultative « Type existant » utilise le tag explicite s’il existe, puis, faute de tag, le champ `type` historique (dont les prévisions récurrentes). Cela **ne crée aucune règle de récurrence**. L’état d’une écriture (`RÉEL`, `PRÉVU`, `FORECAST`, `flottant`) reste entièrement distinct. Une écriture importée n’est pas déclarée ponctuelle par défaut.
+
+**Exemple :** la démo fictive initialise six catégories (Nature, Périodicité, Contexte, Entité, Traitement, Variabilité), basées sur les tags des fixtures ; tu peux en ajouter deux de plus pour explorer huit niveaux. Les choix sont conservés dans le stockage local et dans l'export/import d'annotations JSON. **Sauvegarder les annotations avant une mise à jour** ; les anciens exports restent acceptés et démarrent avec un dictionnaire vide.
+
+**Validations :** tests Node (`npm test`, dont `tests/tag_categories.test.js`) et vérification manuelle Chromium avec le vrai Plotly, sans erreurs JavaScript. Le moteur des soldes, l'audit complet et les règles de projection sont inchangés.
+
+## V0.15.0 — Normalisation locale des relevés dans l’interface
+
+Importer directement les CSV bruts BoursoBank, BPS ou Revolut depuis le navigateur, vérifier l'aperçu, puis confirmer l'import. La normalisation est locale ; le téléchargement du CSV normalisé et l'import historique sont conservés. Le script Python est facultatif pour l'utilisateur et reste utile pour tests/CLI. Aucun doublon n'est supprimé automatiquement.
 
 ## V0.14.0 — Filtres partagés et courbe d’impact, sans altérer les soldes
 

@@ -1,3 +1,14 @@
+# V0.16.0 — Tags organisés et exploration multidimensionnelle façon Wallex
+
+- Dictionnaire éditable de catégories et tags : les tags restent saisis librement, et le tableau les redistribue automatiquement dans une colonne par dimension, dans l’ordre choisi avec ↑/↓. Aucun changement des opérations bancaires ni des formules de solde.
+- Nouvelle rubrique de gestion des catégories ; ajout, renommage, édition des valeurs, suppression, réordonnancement. Les tags non classés restent consultables et éditables ; un tag appartient à une catégorie au maximum pour rendre le regroupement déterministe.
+- **Sunburst Plotly** : reprend l’ordre des dimensions du tableau et propose un curseur de profondeur de 2 à 8 ; si le dictionnaire possède moins de catégories, il affiche seulement les catégories disponibles. Un même montant apparaît une seule fois par niveau, y compris en présence de plusieurs tags de la même catégorie. Sans dictionnaire, le mode historique tag/libellé reste disponible.
+- **Camembert Plotly** : boutons radio indépendants pour choisir la catégorie de répartition, sans modifier le tableau ni le Sunburst.
+- La dimension Périodicité peut afficher un tag explicite (`Récurrent`/`Ponctuel`) ou reprendre à défaut la classification historique du tableau, sans créer de récurrence. Ce n’est ni l’état d’une opération (réalisé, prévu, flottant) ni une règle financière.
+- Démo avec six dimensions configurées à partir des tags existants ; jusqu’à huit dimensions sont possibles en ajoutant des catégories. Filtres existants, comptes exclus du cumul, opérations flottantes, import bancaire local et exports inchangés.
+- Export/import des annotations JSON inclut le dictionnaire, le choix du camembert et la profondeur. Anciens exports sans catégories acceptés. Les fonctions du moteur demeurent accessibles en Node.js pour tester et expérimenter.
+- Tests ciblés de taxonomie, niveaux 2 à 8, non-duplication des montants, indépendance des soldes et navigation ; parcours Chromium avec Plotly réel (démo, slider, camembert, réorganisation) sans erreur JavaScript.
+
 # V0.15.0 — Normalisation des relevés dans le navigateur
 
 - Import direct de plusieurs CSV bancaires bruts (BoursoBank, BPS, Revolut), sans dépendance ni serveur : sélection → prévisualisation → import explicite.

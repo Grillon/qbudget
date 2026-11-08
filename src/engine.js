@@ -10,7 +10,7 @@ function asDate(s){return new Date(s+'T12:00:00')}
 
 function parseCsv(src,sep){let rows=[],row=[],field='',quoted=false;for(let i=0;i<src.length;i++){const c=src[i];if(quoted){if(c==='"'&&src[i+1]==='"'){field+='"';i++}else if(c==='"')quoted=false;else field+=c}else if(c==='"')quoted=true;else if(c===sep){row.push(field);field=''}else if(c==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field=''}else field+=c}if(field||row.length){row.push(field.replace(/\r$/,''));rows.push(row)}return rows}
 function readCsv(raw){raw=raw.replace(/^\ufeff/,'');const first=raw.split(/\r?\n/,1)[0],sep=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';const cells=parseCsv(raw,sep);if(cells.length<2)throw Error('Fichier vide');const heads=cells.shift().map(x=>x.trim().toLowerCase());const get=(r,n)=>r[heads.indexOf(n)]||'';for(const col of ['date','banque','libellé','montant'])if(!heads.includes(col))throw Error('Colonne absente : '+col);return cells.filter(r=>r.some(x=>x.trim())).map((r,i)=>{const date=get(r,'date'),rawAmount=get(r,'montant').replace(/\s/g,'').replace(',','.'),montant=Number(rawAmount);if(!validDate(date)||rawAmount===''||!Number.isFinite(montant))throw Error('Date ou montant invalide, ligne '+(i+2));const bank=get(r,'banque').trim(),account=bank,desc=get(r,'libellé');const signature=get(r,'identifiant')||`${bank}|${account}|${date}|${desc}|${montant}|${i}`;return {id:`${signature}|${i}`,bank,account,date,desc,currency:get(r,'devise')||'EUR',amount:montant,balance:null,category:get(r,'catégorie'),duplicate:get(r,'doublon potentiel')}})}
-function mergeAnnotations(rows,annotations={}){if(!annotations||typeof annotations!=='object'||Array.isArray(annotations))throw Error('Annotations JSON invalides');const result={rows:[...rows],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[],excludedAccounts:annotations.excludedAccounts||[]};for(const row of annotations.manualRows||[]){if(!result.rows.some(r=>r.id===row.id))result.rows.push({...row})}return result}
+function mergeAnnotations(rows,annotations={}){if(!annotations||typeof annotations!=='object'||Array.isArray(annotations))throw Error('Annotations JSON invalides');const result={rows:[...rows],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[],excludedAccounts:annotations.excludedAccounts||[],tagCategories:Array.isArray(annotations.tagCategories)?annotations.tagCategories:[]};for(const row of annotations.manualRows||[]){if(!result.rows.some(r=>r.id===row.id))result.rows.push({...row})}return result}
 
 // A pending operation is intentionally without date; it is never a cash movement.
 function isFloating(row){return row.date===null||row.date===undefined||row.date===''}
@@ -21,6 +21,76 @@ function cashAccountNames(model){return [...new Set([...(model.accounts||[]),...
 function includedAccountNames(model){const excluded=new Set(model.excludedAccounts||[]);return cashAccountNames(model).filter(name=>!excluded.has(name))}
 function excludedAccountNames(model){const excluded=new Set(model.excludedAccounts||[]);return cashAccountNames(model).filter(name=>excluded.has(name))}
 function tagsFor(model,row){const note=model.notes?.[row.id]||{};return [...new Set([...(Array.isArray(note.tags)?note.tags:[]),...(typeof note.tag==='string'?note.tag.split(','):[])].map(t=>String(t).trim()).filter(Boolean))]}
+// Le dictionnaire de tags est une lecture sémantique : il ne modifie jamais les écritures.
+// Une catégorie peut afficher le champ de périodicité déjà existant (source='type').
+const fold = x => String(x||'').trim().toLocaleLowerCase('fr');
+function tagCategories(model){return Array.isArray(model.tagCategories)?model.tagCategories:[]}
+function rowTags(model,row){return row.forecast?(row.tags||[]):tagsFor(model,row)}
+function operationType(model,row){return row.forecast?'recurrent':(model.notes?.[row.id]?.type||'')}
+function tagsByCategory(model,row,category){
+ const raw=rowTags(model,row),allowed=new Set((category.tags||[]).map(fold));
+ const tagged=raw.filter(t=>allowed.has(fold(t)));
+ if(category.source==='type'&&tagged.length===0){
+  const type=operationType(model,row);
+  if(type==='recurrent')return ['Récurrent'];
+  if(type==='ponctuel')return ['Ponctuel'];
+ }
+ return tagged;
+}
+function organizedTags(model,row){
+ const categories=tagCategories(model),raw=rowTags(model,row);
+ const assigned=new Set(categories.flatMap(c=>(c.tags||[]).map(fold)));
+ const values=categories.map(c=>({name:c.name,values:tagsByCategory(model,row,c)}));
+ return {values,other:raw.filter(t=>!assigned.has(fold(t)))};
+}
+// La visualisation donne UNE destination à chaque montant dans chaque dimension.
+// Si plusieurs tags coexistent dans une même catégorie, le tableau les montre tous,
+// et le graphique retient le premier tag de cette catégorie (ordre des tags saisis).
+function expenseBreakdown(model,rows,dimensions=[]){
+ const chosen=dimensions.map(name=>tagCategories(model).find(c=>c.name===name)).filter(Boolean);
+ const nodes=new Map();
+ const root={id:'total',label:'Dépenses',parent:'',value:0};nodes.set(root.id,root);
+ for(const row of rows){
+  const value=-Number(row.amount);
+  if(!(value>0))continue;
+  root.value+=value;
+  let path=[],parent='total';
+  const labels=chosen.length?chosen.map(c=>tagsByCategory(model,row,c)[0]||'Non renseigné'):[rowTags(model,row)[0]||row.category||'Sans tag',(row.desc||'Sans libellé').trim()||'Sans libellé'];
+  for(const label of labels){
+   path.push(label);
+   const id=JSON.stringify(path);
+   let node=nodes.get(id);
+   if(!node){node={id,label,parent,value:0};nodes.set(id,node)}
+   node.value+=value;parent=id;
+  }
+ }
+ const data=[...nodes.values()];
+ return {ids:data.map(n=>n.id),labels:data.map(n=>n.label),parents:data.map(n=>n.parent),values:data.map(n=>Math.round(n.value*100)/100)};
+}
+function expenseCategoryTotals(model,rows,categoryName=''){
+ const category=tagCategories(model).find(c=>c.name===categoryName);
+ const totals=new Map();
+ for(const row of rows){
+  if(!(Number(row.amount)<0))continue;
+  const label=category?(tagsByCategory(model,row,category)[0]||'Non renseigné'):(rowTags(model,row)[0]||row.category||'Sans tag');
+  totals.set(label,Math.round(((totals.get(label)||0)-Number(row.amount))*100)/100);
+ }
+ return [...totals.entries()].sort((a,b)=>b[1]-a[1]);
+}
+function validateTagCategories(input){
+ if(!Array.isArray(input))throw Error('Liste de catégories invalide');
+ const categoryNames=new Set(),tagsSeen=new Map();
+ return input.map(item=>{
+  const name=String(item?.name||'').trim(),source=item?.source==='type'?'type':'tags';
+  if(!name)throw Error('Nom de catégorie requis');
+  if(categoryNames.has(fold(name)))throw Error('Catégorie en double : '+name);
+  categoryNames.add(fold(name));
+  if(!Array.isArray(item?.tags))throw Error('Liste de tags invalide : '+name);
+  const tags=[...new Map(item.tags.map(t=>String(t).trim()).filter(Boolean).map(t=>[fold(t),t])).values()];
+  for(const tag of tags){if(tagsSeen.has(fold(tag)))throw Error('Le tag « '+tag+' » appartient déjà à « '+tagsSeen.get(fold(tag))+' »');tagsSeen.set(fold(tag),name)}
+  return {name,tags,source};
+ });
+}
 // Filtre unique pour le tableau, les analyses et l'impact sur le graphique.
 // Les tags ne créent aucune logique métier ni multiplication des montants.
 function operationMatchesFilter(model,row,{search='',type='',tags=[],tagMode='all'}={}){
@@ -186,5 +256,5 @@ function check(model){const errors=[],warnings=[];
  for(const bank of cashAccountNames(model))if(!model.references?.[bank])warnings.push('Missing reference: '+bank);
  return {ok:errors.length===0,errors,warnings};
 }
-return {readCsv,mergeAnnotations,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {readCsv,mergeAnnotations,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });
