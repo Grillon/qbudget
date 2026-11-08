@@ -63,7 +63,7 @@ test('import/export conserve les comptes désactivés sans changer les écriture
  assert.deepEqual(e.excludedAccountNames(old),[]);
 });
 test('interface : cases comptes, chart x+1, édition indépendante, réorganisation persistante',()=>{
- const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+ const html=fs.readFileSync(path.join(root,'index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  for(const id of ['accountToggles','dashboard','resetLayout'])assert.match(html,new RegExp(`id="${id}"`));
  assert.match(html,/QBudgetEngine\.excludedAccountNames\(model\)\.forEach/);
  assert.match(html,/QBudgetEngine\.includedAccountNames\(model\)/);

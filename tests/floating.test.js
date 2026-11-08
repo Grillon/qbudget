@@ -100,7 +100,7 @@ test('CLI check et forecast utilisent les mêmes données de Qonto/flottantes ap
  }finally{fs.rmSync(directory,{recursive:true,force:true})}
 });
 test('l’interface propose le compte Qonto, la file filtrable et la datation',()=>{
- const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+ const html=fs.readFileSync(path.join(root,'index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  for(const id of ['newAccountName','addAccount','manualTags','manualDate','pendingRows','pendingCount','pendingSearch','pendingTags','pendingTagMode'])assert.match(html,new RegExp(`id="${id}"`));
  assert.match(html,/QBudgetEngine\.pendingOperations/);
  assert.match(html,/manualRows:model\.rows\.filter\(r=>r\.manual\)/);

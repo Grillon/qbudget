@@ -77,7 +77,7 @@ test('import/export annotations avec la démo pro/perso (aucune duplication, dat
  assert.deepEqual(e.mergeAnnotations(restored.rows,saved),restored);
 });
 test('interface : bascule forecast + différenciation visuelle + API DevTools',()=>{
- const h=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+ const h=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  assert.match(h,/id="showForecastRows" checked/);
  assert.match(h,/QBudgetEngine\.recurrencePreview\(model,at,until,selected\)/);
  assert.match(h,/FORECAST · calculé/);

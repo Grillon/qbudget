@@ -1,14 +1,33 @@
-# qbudget — V0.16.0
+# qbudget — V0.18.0
 
 Outil **local** de visualisation et simulation financière. Pas de compte bancaire connecté, pas de serveur de données, pas de base distante. Projet en développement : les projections sont des hypothèses, **pas** un outil comptable ou fiscal.
 
 
 
+## V0.18.0 — Onglets glissables et Sunburst stabilisé
+
+- **Réorganiser les dimensions :** dans « Tags · catégories et dimensions du tableau », fais glisser les onglets `⠿ Nature`, `⠿ Périodicité`, etc., vers leur nouvelle place. Les lignes d'édition, les colonnes du tableau et la hiérarchie du Sunburst se réorganisent ensemble. Pour une alternative clavier, focalise un onglet et utilise **Alt + ←/→**.
+- **Profondeur :** le curseur Sunburst de 2 à 8 reste à la même place, même quand la liste descriptive des catégories à sa droite s'allonge. Sur petit écran, les contrôles passent à la ligne sans pousser le curseur.
+- **Persistance :** le nouvel ordre reste une simple propriété du dictionnaire de catégories, conservée dans le stockage local et dans les exports JSON. Pas de migration à effectuer. Les opérations et soldes restent inchangés.
+- **Modules :** Interface et Tags passent à 0.18.0 ; Moteur et Normalisation gardent leurs versions précédentes. 86 tests automatisés, parcours Chromium/Plotly du drag & drop, de l'alternative clavier et du curseur stable.
+
+## V0.17.0 — Catégories prêtes à l’emploi, JSON indépendant, tags par lots, modules versionnés
+
+**Catégories prêtes à l’emploi.** Un nouveau profil de qbudget démarre avec six dimensions éditables (Nature, Périodicité, Contexte, Entité, Traitement, Variabilité) et leurs tags usuels. Ces catégories n'imposent aucune règle aux opérations, et un tag inconnu reste utilisable. Un profil existant qui possédait déjà sa propre taxonomie est **conservé tel quel**, y compris un dictionnaire volontairement vide : utilise **« Catégories par défaut »** pour remplacer le dictionnaire manuellement.
+
+**Exporter/importer uniquement les catégories.** Dans « Tags · catégories et dimensions du tableau » : **Exporter catégories JSON** télécharge `qbudget-categories.json` ; **Importer catégories JSON** remplace uniquement le dictionnaire après validation stricte (format `qbudget-tag-categories`, `schemaVersion: 1`, noms uniques et tags non ambigus). Les opérations, comptes, annotations, tags existants, soldes et règles ne changent pas. Les fichiers incomplets ou invalides sont refusés sans import partiel. **Catégories par défaut** restaure le dictionnaire de départ après confirmation. Un exemple prêt à importer est fourni dans `examples/categories-par-defaut.json`. L'export/import JSON général des annotations reste disponible et distinct.
+
+**Ajouter un tag à un ensemble de lignes.** Dans « 8 · Opérations datées », commence par filtrer (mot-clé, compte, type, tags ET/OU). Coche individuellement des lignes ou clique **Sélectionner les résultats affichés** (au maximum les 1 000 lignes effectivement affichées), saisis **un tag**, puis **Ajouter le tag aux lignes sélectionnées**. Les tags existants sont conservés ; une seconde application n’ajoute pas de doublon. Le compteur indique combien de lignes ont réellement changé. La sélection est vidée quand les filtres changent, pour éviter de modifier par erreur des lignes masquées. Les occurrences `FORECAST · calculé` sont exclues, non sélectionnables. Les opérations flottantes restent modifiables individuellement dans leur file d’attente ; le bouton de lot concerne **le tableau des opérations datées** uniquement. Les montants, dates et prévisions ne sont jamais altérés par cette action.
+
+**Organisation plus modulaire.** L'ancien gros JavaScript embarqué dans `index.html` se trouve désormais dans `src/ui.js`. Le dictionnaire, sa sérialisation JSON et l'opération de taggage par lot sont dans `src/tags.js`. Le moteur (`src/engine.js`) et l'importeur (`src/normalize.js`) restent des modules indépendants. La section **« Versions des modules »** en haut de l’interface affiche leurs versions spécifiques : une évolution du seul module de tags n'implique pas un changement de version du moteur. La version globale suit `package.json` et `src/version.js`. Le CLI, les générateurs de configuration/démo, les tests et la feuille CSS intégrée ne sont pas tous découpés en modules supplémentaires : nous évitons une refonte artificielle.
+
+**Pour mise à jour :** exporte d'abord tes annotations JSON. Décompresse **toute** l'archive en conservant le dossier `src/` à côté de `index.html`. Ne copie pas `index.html` seul : il référence désormais explicitement `src/ui.js` et `src/tags.js`. Le site GitHub Pages publie ces nouveaux fichiers. `./run-tests.sh` vérifie 84 tests Node et la cohérence de version ; un parcours Chromium/Plotly a vérifié la recherche, la sélection de 24 lignes, le taggage groupé, les soldes et l'import/export JSON. Le test navigateur utilise une injection des scripts à cause des restrictions d'accès aux fichiers locaux de l'environnement ; ce n'est pas une certification du déploiement Pages.
+
 ## V0.16.0 — Dictionnaire de tags, tableau et Sunburst (2 à 8 niveaux)
 
 **L’idée de Wallex : un tag saisi librement devient une dimension, sans compréhension métier codée en dur.**
 
-1. Dans **« Tags · catégories et dimensions du tableau »**, cliquer sur **+ Catégorie**, donner un nom (ex. `Nature`) et saisir ses tags séparés par des virgules (`transport, repas, logement`). Les boutons **↑ ↓** déterminent l’ordre des colonnes de dimensions et de la hiérarchie du Sunburst. Supprimer une catégorie ne supprime aucun tag des opérations.
+1. Dans **« Tags · catégories et dimensions du tableau »**, cliquer sur **+ Catégorie**, donner un nom (ex. `Nature`) et saisir ses tags séparés par des virgules (`transport, repas, logement`). Les **onglets ⠿ glissables** déterminent l’ordre des colonnes de dimensions et de la hiérarchie du Sunburst. Supprimer une catégorie ne supprime aucun tag des opérations.
 2. Dans **« 8 · Opérations datées et annotations »**, renseigner les tags librement, comme précédemment. Une colonne est automatiquement créée pour chaque catégorie ; **« Tags (saisie libre) »** conserve la liste complète, y compris les tags non classés. Un tag est affecté à une seule catégorie pour éviter les ambiguïtés. Si plusieurs tags appartiennent à une même catégorie, la colonne affiche tous les tags ; le graphique choisit le premier **uniquement pour éviter de compter deux fois le montant**. La règle est explicite et ne modifie ni la dépense ni sa liste de tags.
 3. Déplacer le curseur **Sunburst · profondeur** de **2 à 8**. Les niveaux suivent l’ordre des catégories configurées. Si tu n’as que 3 catégories, monter à 8 conserve 3 niveaux : il ne crée pas de dimension fictive. Sans catégories, le Sunburst historique *premier tag → libellé* fonctionne toujours.
 4. Les **boutons radio du camembert** choisissent une dimension pour le camembert **seulement**. Ils n’ont aucun effet sur les colonnes du tableau, le Sunburst ou les soldes. Recherche et filtres ET/OU restent communs au tableau et aux graphiques d’analyse.
@@ -214,3 +233,7 @@ GitHub > Settings > Pages > Source : **GitHub Actions**. GitHub Pages est potent
 ## Périmètre à venir
 
 Multi-tags complets et filtres ET/OU, opérations calculées et scénarios SASU, liens entre transferts, choix explicite de désactiver une opération **sans suppression automatique**. La présente version consolide le socle existant et explicite la règle « aucune suppression automatique », sans constituer une simulation fiscale validée.
+
+### Ergonomie V0.18.1 — onglets et Sunburst
+
+Les **onglets de catégories sont placés directement au-dessus du Sunburst**. Glisse-les pour changer l’ordre des dimensions affichées, sans quitter le graphique ; les colonnes du tableau suivent le même ordre. Au clavier, utilise `Alt + ←/→` lorsque l’onglet est sélectionné. Le panneau « Tags · catégories » reste consacré à l’édition du dictionnaire et aux imports/exports JSON.

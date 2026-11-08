@@ -176,7 +176,7 @@ async function normalizeFiles(files,settings){
  rows.sort((a,b)=>a.date.localeCompare(b.date)||a.banque.localeCompare(b.banque,'en')||a.id.localeCompare(b.id));
  return {rows, csv:renderCsv(rows,spec),sources,duplicates:rows.filter(x=>x.doublon_potentiel==='oui').length,columns:spec.names};
 }
-const api={normalizeFiles,decode,csvRows,parseNumber,parseDate,outputSpec,sha256Fallback};
+const api={version:'0.15.0',normalizeFiles,decode,csvRows,parseNumber,parseDate,outputSpec,sha256Fallback};
 if(typeof module==='object'&&module.exports)module.exports=api;
 root.QBudgetNormalize=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

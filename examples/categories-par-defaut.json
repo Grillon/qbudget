@@ -1,0 +1,78 @@
+{
+  "format": "qbudget-tag-categories",
+  "schemaVersion": 1,
+  "categories": [
+    {
+      "name": "Nature",
+      "tags": [
+        "alimentation",
+        "courses",
+        "repas",
+        "restaurant",
+        "essence",
+        "peage",
+        "transport",
+        "telecom",
+        "logement",
+        "streaming",
+        "energie",
+        "eau",
+        "assurance",
+        "sante",
+        "loisirs",
+        "sport",
+        "IK",
+        "noteDeFrais",
+        "copro",
+        "impots",
+        "vetements",
+        "cadeaux",
+        "revenu"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Périodicité",
+      "tags": [
+        "Récurrent",
+        "Ponctuel"
+      ],
+      "source": "type"
+    },
+    {
+      "name": "Contexte",
+      "tags": [
+        "mission",
+        "quotidien",
+        "deplacement",
+        "travail"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Entité",
+      "tags": [
+        "SASU",
+        "personnel"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Traitement",
+      "tags": [
+        "remboursement",
+        "payéPerso",
+        "enCoursDeCreation"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Variabilité",
+      "tags": [
+        "fixe",
+        "variable"
+      ],
+      "source": "tags"
+    }
+  ]
+}

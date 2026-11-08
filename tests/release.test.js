@@ -15,7 +15,7 @@ test('version CLI, importateur, HTML et package identiques',()=>{
  const cli=execFileSync(process.execPath,['src/cli.js','--version'],{cwd:root,encoding:'utf8'}).trim();
  const cliFromCommand=execFileSync(process.execPath,['src/cli.js','forecast','--version'],{cwd:root,encoding:'utf8'}).trim();
  const py=execFileSync('python3',['import_releves.py','--version'],{cwd:root,encoding:'utf8'}).trim();
- const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+ const html=fs.readFileSync(path.join(root,'index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  assert.equal(cli,pkg.version);assert.equal(cliFromCommand,pkg.version);
  assert.ok(py.endsWith(pkg.version));assert.equal(version.version,pkg.version);
  assert.match(html,/id="appVersion"/);assert.match(html,/QBudgetVersion\.version/);
@@ -32,7 +32,7 @@ test('démonstration HTML : 92 transactions bancaires et 7 exemples manuels dont
  assert.equal(rows.filter(r=>r.date==='2026-10-25').length,4);
  assert.equal(rows.filter(r=>r.desc==='Ticket métro'&&r.amount===-2.5&&r.date==='2026-10-01').length,2);
  assert.equal(demo.asof,'2026-10-25');assert.equal(demo.until,'2026-11-30');
- assert.match(fs.readFileSync(path.join(root,'index.html'),'utf8'),/QBudgetDemo/);
+ assert.match(fs.readFileSync(path.join(root,'src/ui.js'),'utf8'),/QBudgetDemo/);
 });
 test('générateurs de version et de démo restent synchronisés',()=>{
  execFileSync('python3',['scripts/sync-version.py','--check'],{cwd:root});

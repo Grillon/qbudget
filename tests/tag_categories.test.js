@@ -86,8 +86,55 @@ test('sauvegarde / rechargement : dictionnaire persistant sans perte des tags',(
  assert.equal(fresh.rows.length,m.rows.length);
 });
 test('l’interface expose le slider, les radios camembert et les colonnes du tableau distinctement',()=>{
- const ui=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+ const ui=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  for(const id of ['sunburstDepth','sunburstDepthText','donutRadios','tagCategoryList','addTagCategory','typeColumnHeader'])assert.match(ui,new RegExp(`id="${id}"`));
  assert.match(ui,/max="8"/);assert.match(ui,/min="2"/);
  assert.match(ui,/renderTagColumnHeaders/);assert.match(ui,/renderDonutRadios/);
+});
+
+test('onglets glissables : changer leur ordre ne modifie que les dimensions, jamais les soldes',()=>{
+ const tags=require('../src/tags.js'),m=make();
+ const baseline=e.forecast(m,'2026-10-25','2026-12-31');
+ const audit=e.auditCsv(e.auditOperations(m,{scope:'all',at:'2026-10-25',until:'2026-12-31'}));
+ const before=e.tagCategories(m);
+ const reordered=tags.moveCategory(before,0,2);
+ assert.deepEqual(reordered.map(c=>c.name),['Nature','Périodicité','Entité']);
+ assert.deepEqual(before.map(c=>c.name),['Entité','Nature','Périodicité']);
+ assert.equal(tags.moveCategory(before,1,1),null);
+ assert.equal(tags.moveCategory(before,3,0),null);
+ m.tagCategories=reordered;
+ assert.equal(e.totalBalance(m,'2026-10-25'),1250);
+ assert.deepEqual(e.forecast(m,'2026-10-25','2026-12-31'),baseline);
+ assert.equal(e.auditCsv(e.auditOperations(m,{scope:'all',at:'2026-10-25',until:'2026-12-31'})),audit);
+ const saved=tags.parseJson(tags.exportJson(m.tagCategories));
+ assert.deepEqual(saved,reordered);
+});
+
+test('interface : curseur de profondeur séparé du texte variable, onglets glissables et raccourci clavier',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+ const js=fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
+ assert.match(html,/class="sunburst-heading"/);
+ assert.match(html,/class="field sunburst-depth-control"/);
+ assert.match(html,/class="sunburst-dimensions"/);
+ assert.match(html,/id="tagCategoryOrder"/);
+ assert.match(html,/category-tab/);
+ assert.match(js,/tab\.draggable=true/);
+ assert.match(js,/addEventListener\('drop'/);
+ assert.match(js,/event\.altKey/);
+ assert.doesNotMatch(js,/button\('↑','Monter la dimension'/);
+});
+
+test('V0.18.1 : les onglets sont dans le panneau Sunburst, sans saut vers l’éditeur',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+ const js=fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
+ const positionTabs=html.indexOf('id="tagCategoryOrder"');
+ const positionChart=html.indexOf('id="sunburstChart"');
+ const positionEditor=html.indexOf('id="tagCategoriesCard"');
+ assert.ok(positionTabs>0 && positionChart>0 && positionEditor>0);
+ assert.ok(positionTabs<positionChart,'onglets immédiatement avant le graphique');
+ assert.ok(positionEditor>positionChart,'éditeur séparé, plus bas dans le document');
+ assert.equal((html.match(/id="tagCategoryOrder"/g)||[]).length,1);
+ assert.match(html,/class="sunburst-tab-controls"/);
+ assert.doesNotMatch(js,/scrollIntoView\(\{behavior:'smooth'/);
+ assert.match(js,/reorderTagCategories\(source,target\)/);
 });

@@ -87,7 +87,7 @@ test('les multi-tags ne multiplient jamais un montant et les récurrences resten
 });
 
 test('interface : filtres reliés, tracé analytique sur axe secondaire, balance séparée',()=>{
- const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+ const html=fs.readFileSync(path.join(root,'index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  for(const id of ['operationTags','operationTagMode','filteredInfo','chart','flowsChart','donutChart','sunburstChart']) assert.ok(html.includes(`id="${id}"`));
  assert.match(html,/filteredAnalysisRows\(\[\.\.\.saved,\.\.\.forecastRows\]\)/);
  assert.match(html,/filteredAnalysisRows\(aggregateRows\(\)/);

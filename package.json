@@ -1,11 +1,11 @@
 {
   "name": "qbudget",
   "private": true,
-  "version": "0.16.0",
-  "description": "qbudget : tags catégorisés, tableau multidimensionnel, sunburst 2–8 niveaux",
+  "version": "0.18.1",
+  "description": "qbudget : onglets de dimensions au-dessus du Sunburst, réorganisation immédiate et curseur stable",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/engine.js && node --check src/normalize.js && node --check src/bank-config.js && node --check src/cli.js && node --check src/repl.js && node --check src/version.js && node --check src/demo.js",
+    "check": "node --check src/engine.js && node --check src/normalize.js && node --check src/bank-config.js && node --check src/cli.js && node --check src/repl.js && node --check src/version.js && node --check src/demo.js && node --check src/tags.js && node --check src/ui.js",
     "cli": "node src/cli.js"
   },
   "engines": {

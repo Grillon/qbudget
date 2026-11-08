@@ -1,3 +1,24 @@
+# V0.18.1 — Onglets de dimensions à côté de leur graphique
+
+- Les onglets de catégories sont déplacés depuis la rubrique d’édition des tags vers le **haut du panneau Sunburst**, directement au-dessus du graphique ; le réordonnancement agit immédiatement sur le Sunburst et les colonnes du tableau.
+- Suppression du saut automatique vers l’éditeur lorsqu’on clique sur un onglet : la visualisation reste sous les yeux. Le glisser-déposer et le raccourci Alt + ←/→ restent disponibles.
+- Le dictionnaire, son import/export JSON, l’ordre persistant des catégories et le moteur financier sont inchangés. Mise à jour de l’interface seule (0.18.1) ; module Tags toujours 0.18.0.
+
+# V0.18.0 — Ergonomie Sunburst et réorganisation des catégories par onglets
+
+- **Curseur de profondeur stable** : largeur et position fixes (2 à 8), quelle que soit la longueur de la description dynamique des dimensions affichée à droite. Mise en page responsive sans bibliothèque.
+- **Onglets de catégories glissables** au-dessus du dictionnaire, à la place des boutons ↑/↓ catégorie par catégorie. Un déplacement réordonne simultanément les colonnes du tableau et les dimensions du Sunburst. Possibilité de réordonner au clavier avec Alt + ←/→.
+- L'ordre des catégories est toujours enregistré dans le dictionnaire actuel (local et JSON import/export). Aucune modification des opérations, montants, comptes, soldes, règles, graphiques de flux ou de répartition.
+- Versions mises à jour : application, interface et module Tags 0.18.0 ; moteur et normaliseur inchangés. Deux nouveaux tests de non-régression, soit **86 tests**. Vérification interactive Chromium/Plotly du déplacement des onglets et de la position du curseur ; vérification du rechargement local non réalisée en navigateur, mais export/import de l'ordre testé.
+
+# V0.17.0 — Catalogue de catégories, import/export JSON dédié, taggage groupé, modules visibles
+
+- Six catégories de tags fournies par défaut, éditables et remplaçables sans toucher aux opérations ; anciens réglages locaux respectés.
+- Export JSON autonome `qbudget-categories.json` + import validé avant modification, sans effet sur les annotations bancaires ou les références ; fichier d'exemple livré.
+- Filtrage par mot-clé/compte/tags puis sélection individuelle ou de toutes les lignes affichées ; ajout d’un tag en masse sans écraser les tags précédents. Lignes de forecast calculées jamais modifiables ; sélection remise à zéro aux changements de filtre.
+- Extraction de l’interface vers `src/ui.js`, nouvelle bibliothèque autonome `src/tags.js`, versions spécifiques des modules affichées dans l’interface ; scripts GitHub Pages mis à jour pour publier les nouveaux modules.
+- 84 tests automatisés, vérification Chromium/Plotly avec 24 opérations « Supermarché », valeur globale inchangée et réimport du catalogue JSON. Pas de dépendance supplémentaire.
+
 # V0.16.0 — Tags organisés et exploration multidimensionnelle façon Wallex
 
 - Dictionnaire éditable de catégories et tags : les tags restent saisis librement, et le tableau les redistribue automatiquement dans une colonne par dimension, dans l’ordre choisi avec ↑/↓. Aucun changement des opérations bancaires ni des formules de solde.
