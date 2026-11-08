@@ -1,3 +1,12 @@
+# V0.15.0 — Normalisation des relevés dans le navigateur
+
+- Import direct de plusieurs CSV bancaires bruts (BoursoBank, BPS, Revolut), sans dépendance ni serveur : sélection → prévisualisation → import explicite.
+- Même configuration `banques.json` embarquée localement ; profils personnalisés rechargeables via l'interface.
+- Encodages UTF-8 (avec BOM) et Windows-1252, détection des formats, dates ISO, décimales virgule/point et traitement correct des débits BPS négatifs.
+- SHA-256 identiques au script Python (Web Crypto ou repli JS natif), doublons **signalés et conservés**, jamais supprimés ; sortie CSV optionnelle pour le CLI.
+- Échec atomique sur fichiers/lignes invalides, sans modifier les données du tableau ; parcours ancien « CSV déjà normalisé » conservé.
+- Tests de parité octet pour octet navigateur/Python, sans modification du moteur de soldes ni des prévisions.
+
 # V0.14.0 — Filtrage partagé et impact cumulé indépendant des soldes
 
 - Recherche, type et tags ET/OU partagés entre tableau des opérations et graphiques de flux / répartition / sunburst.

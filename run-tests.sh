@@ -4,6 +4,7 @@ cd "$(dirname "$0")"
 
 echo '== Cohérence version, démo, documentation =='
 python3 scripts/sync-version.py --check
+python3 scripts/build-bank-config.py --check
 python3 scripts/build-demo.py --check
 npm run check
 
@@ -42,6 +43,8 @@ grep -q 'src/engine.js' index.html
 grep -q 'plotly.min.js' index.html
 grep -q 'src/version.js' index.html
 grep -q 'src/demo.js' index.html
+grep -q 'src/normalize.js' index.html
+grep -q 'src/bank-config.js' index.html
 node src/cli.js --version
 python3 import_releves.py --version
 

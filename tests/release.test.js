@@ -37,6 +37,7 @@ test('démonstration HTML : 92 transactions bancaires et 7 exemples manuels dont
 test('générateurs de version et de démo restent synchronisés',()=>{
  execFileSync('python3',['scripts/sync-version.py','--check'],{cwd:root});
  execFileSync('python3',['scripts/build-demo.py','--check'],{cwd:root});
+ execFileSync('python3',['scripts/build-bank-config.py','--check'],{cwd:root});
 });
 test('scénario démo et CLI produisent le même audit',()=>{
  const demo=demoSandbox.QBudgetDemo;

@@ -91,7 +91,8 @@ Ces méthodes n'enregistrent aucune modification ; les tests échouent explicite
 | `src/repl.js` | REPL pour explorer les données et simuler plusieurs scénarios en mémoire |
 | `src/version.js` | Version du navigateur, générée depuis `package.json` |
 | `src/demo.js` | **Démo fictive** générée depuis les fixtures des tests |
-| `import_releves.py`, `banques.json` | Importateur Python indépendant et configurable (`--version`) |
+| `import_releves.py`, `banques.json` | Normalisation Python conservée pour CLI/tests et configuration des banques |
+| `src/normalize.js`, `src/bank-config.js` | Normalisation JavaScript native dans le navigateur, profils générés depuis `banques.json` |
 | `tests/` | Fixtures et tests sans données privées |
 | `run-tests.sh` | Test local et GitHub Actions |
 
@@ -99,7 +100,7 @@ Ces méthodes n'enregistrent aucune modification ; les tests échouent explicite
 
 ## Navigateur
 
-Garder `index.html`, `plotly.min.js`, `src/engine.js`, `src/version.js` et `src/demo.js` aux mêmes emplacements. Ouvrir `index.html` ou, en cas de limitation de `file://`, démarrer :
+Garder `index.html`, `plotly.min.js`, `src/engine.js`, `src/normalize.js`, `src/bank-config.js`, `src/version.js` et `src/demo.js` aux mêmes emplacements. Ouvrir `index.html` ou, en cas de limitation de `file://`, démarrer :
 
 ```bash
 python3 -m http.server 8000

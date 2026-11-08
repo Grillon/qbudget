@@ -30,11 +30,13 @@ jobs:
           test -s src/engine.js
           test -s src/version.js
           test -s src/demo.js
+          test -s src/normalize.js
+          test -s src/bank-config.js
       - name: Prepare sanitized site
         run: |
           mkdir -p public-site/src
           cp index.html plotly.min.js public-site/
-          cp src/engine.js src/version.js src/demo.js public-site/src/
+          cp src/engine.js src/version.js src/demo.js src/normalize.js src/bank-config.js public-site/src/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

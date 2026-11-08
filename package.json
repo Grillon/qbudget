@@ -1,11 +1,11 @@
 {
   "name": "qbudget",
   "private": true,
-  "version": "0.14.0",
-  "description": "qbudget : filtres partagés et courbe d’impact filtré indépendante des soldes",
+  "version": "0.15.0",
+  "description": "qbudget : import et normalisation bancaire locale dans le navigateur",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/engine.js && node --check src/cli.js && node --check src/repl.js && node --check src/version.js && node --check src/demo.js",
+    "check": "node --check src/engine.js && node --check src/normalize.js && node --check src/bank-config.js && node --check src/cli.js && node --check src/repl.js && node --check src/version.js && node --check src/demo.js",
     "cli": "node src/cli.js"
   },
   "engines": {
