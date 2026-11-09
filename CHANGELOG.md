@@ -1,3 +1,12 @@
+# V0.19.0 — Éditeur de données intégré à qbudget
+
+- Navigation entre **Tableau de bord** et **Éditeur de données**, partageant le même modèle en mémoire, les mêmes opérations, les mêmes catégories et le même stockage local. Une seule application, aucun second outil à installer.
+- Vue éditable des saisies manuelles, annotations bancaires, récurrences, comptes/références ; liaisons visibles par leurs libellés plutôt que par leurs identifiants techniques ; références orphelines conservées et recherchables.
+- Dictionnaire de catégories **déplacé**, pas recopié ; exploration catégorie → tag → opérations, filtre/recherche.
+- `src/annotations.js` centralise le **format natif** d'export/import d'annotations, partagé par les deux vues. `qbudget-categories.json` reste inchangé. Pas de nouveau schéma. Champs JSON inconnus et identifiants conservés. Import atomique et confirmation avant remplacement des annotations locales.
+- `src/editor.js` expose l'interface indépendante du moteur ; aucun changement à `src/engine.js`, `src/tags.js`, `src/normalize.js`, `src/visual-select.js`. GitHub Pages, documentation et suite de tests mis à jour.
+- Tests : 110 automatisés réussis et 18 étapes interactives Chromium avec Plotly réel (scripts injectés). Aucune erreur JS. Déploiement GitHub Pages non validé en ligne.
+
 ## V0.18.5 — Saisies manuelles et prévisions dans les répartitions
 
 - Camembert, Sunburst et Treemap : les **saisies manuelles datées** (réalisées ou prévues) sont incluses, ainsi que les **échéances récurrentes calculées** jusqu’à la date de fin de prévision choisie.

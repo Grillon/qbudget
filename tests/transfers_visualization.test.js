@@ -77,7 +77,8 @@ test('les deux graphiques se synchronisent via la même préférence, qui est ex
  assert.match(js,/const breakdownRows=exclude\?QBudgetTags\.withoutTag/);
  assert.match(js,/expenseCategoryTotals\(model,breakdownRows/);
  assert.match(js,/expenseBreakdown\(model,breakdownRows/);
- assert.match(js,/excludeTransfersFromCharts:model\.excludeTransfersFromCharts!==false/);
- assert.match(js,/model\.excludeTransfersFromCharts=o\.excludeTransfersFromCharts!==false/);
+ const ann=fs.readFileSync(path.join(root,'src/annotations.js'),'utf8');
+ assert.match(ann,/excludeTransfersFromCharts:model\.excludeTransfersFromCharts!==false/);
+ assert.match(ann,/excludeTransfersFromCharts:o\.excludeTransfersFromCharts!==false/);
  assert.match(js,/model\.excludeTransfersFromCharts=e\.target\.checked;save\(\);renderVisuals\(\)/);
 });

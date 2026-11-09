@@ -1,3 +1,19 @@
+# qbudget — V0.19.0 · Tableau de bord + éditeur de données
+
+**Deux vues, un seul produit et un seul modèle de données.** Dans `index.html`, sélectionne **Tableau de bord** ou **Éditeur de données**. Les modifications de l'éditeur se répercutent directement dans le tableau de bord et sont sauvegardées dans le stockage local du navigateur, comme auparavant.
+
+L'éditeur affiche les **libellés lisibles** à la place des identifiants techniques : comptes et soldes de référence, règles de récurrence et leurs opérations liées, écritures bancaires et leurs annotations, saisies manuelles (datées ou flottantes). Il permet de rechercher, filtrer les types d'éléments, modifier les champs applicables et suivre les relations en cliquant sur les liens. Une rubrique relie **catégories → tags → opérations**. Les annotations sans opération correspondante (CSV non chargé, par exemple) restent visibles sous « Références non résolues » avec leur ID intact.
+
+**Un seul éditeur de catégories** : celui de la version précédente est déplacé dans la vue Éditeur ; il conserve l'import/export `qbudget-categories.json`. Les onglets de réordonnancement à côté du Sunburst restent dans le tableau de bord.
+
+**Aucun nouveau format de données.** Les boutons Importer/Exporter utilisent directement `qbudget-annotations.json` (même structure native `version:3` que précédemment), tandis que les relevés bancaires restent des `operations.csv` normalisés. Les lignes bancaires sont en lecture seule dans l'éditeur (seuls leurs tags, type et liens aux règles sont modifiables), alors que les opérations manuelles sont modifiables dans `manualRows`. Les identifiants de référence et les champs inconnus sont conservés. L'import remplace les annotations locales après confirmation, **jamais** le fichier original sur disque. Il faut exporter de nouveau pour récupérer les modifications en fichier ; penser à sauvegarder l'ancien JSON avant import.
+
+**Installation :** décompresser l'archive complète avec `index.html`, `plotly.min.js` et le répertoire `src/`. Les modules ajoutés sont `src/editor.js` (interface d'édition) et `src/annotations.js` (lecture/écriture native partagée) ; aucune dépendance ni installation modulaire. GitHub Pages publie aussi ces deux fichiers.
+
+**Versions des modules :** interface/éditeur/annotations `0.19.0` ; moteur financier `0.16.0`, tags `0.18.3`, normalisation `0.15.0`, sélection graphique `0.18.5`. Les calculs et exports d'audit n'ont pas été modifiés. 110 tests automatisés et un parcours Chromium **avec Plotly réel**, scripts injectés sans navigation réseau (18 contrôles d'interaction) ; publication GitHub Pages non testée en ligne.
+
+---
+
 ### V0.18.5 — Répartitions avec saisies manuelles et prévisions
 
 Les graphiques **camembert**, **Sunburst** et **Treemap** incluent désormais : les dépenses réalisées (importées ou manuelles), les opérations **manuelles prévues ayant une date**, et les échéances `FORECAST` produites par les règles de récurrence entre la date de consultation et la **fin de prévision** choisie. La période passée est conservée dans la répartition. Les opérations flottantes **sans date** n’y entrent pas.

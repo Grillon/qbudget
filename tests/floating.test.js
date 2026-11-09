@@ -103,6 +103,7 @@ test('l’interface propose le compte Qonto, la file filtrable et la datation',(
  const html=fs.readFileSync(path.join(root,'index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  for(const id of ['newAccountName','addAccount','manualTags','manualDate','pendingRows','pendingCount','pendingSearch','pendingTags','pendingTagMode'])assert.match(html,new RegExp(`id="${id}"`));
  assert.match(html,/QBudgetEngine\.pendingOperations/);
- assert.match(html,/manualRows:model\.rows\.filter\(r=>r\.manual\)/);
- assert.match(html,/model\.accounts=o\.accounts\|\|\[\]/);
+ const ann=fs.readFileSync(path.join(root,'src/annotations.js'),'utf8');
+ assert.match(ann,/manualRows:\(model\.rows\|\|\[\]\)\.filter\(r=>r\.manual\)/);
+ assert.match(ann,/accounts:o\.accounts\|\|\[\]/);
 });

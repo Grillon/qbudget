@@ -74,6 +74,7 @@ test('interface : cases comptes, chart x+1, édition indépendante, réorganisat
  assert.match(html,/drop'/);
  assert.match(html,/localStorage\.setItem\(LAYOUT_KEY/);
  assert.match(html,/localStorage\.removeItem\(LAYOUT_KEY/);
- assert.match(html,/excludedAccounts:model\.excludedAccounts/);
- assert.match(html,/model\.excludedAccounts=o\.excludedAccounts\|\|\[\]/);
+ const ann=fs.readFileSync(path.join(root,'src/annotations.js'),'utf8');
+ assert.match(ann,/excludedAccounts:model\.excludedAccounts/);
+ assert.match(ann,/excludedAccounts:o\.excludedAccounts\|\|\[\]/);
 });
