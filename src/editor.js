@@ -5,7 +5,7 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.0';
+ const version='0.19.1';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
@@ -30,7 +30,7 @@
   const doc=root.document,host=doc.getElementById('editorScreen');
   if(!host)throw Error('Vue éditeur introuvable');
   const byId=id=>doc.getElementById(id),getModel=options.getModel;
-  let selectedKey='',selectedTag='',categoryOverviewOpen=false;
+  let selectedKey='',selectedTag='',categoryOverviewOpen=false,visibleLimit=120;
   const elt=(tag,text,cls)=>{const e=doc.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e};
   function field(parent,label,value,type='text',opts={}){
    const wrap=elt('label',undefined,'editor-field'),name=elt('span',label),input=elt(type==='select'?'select':type==='textarea'?'textarea':'input');
@@ -43,8 +43,8 @@
   function link(parent,label,key){const b=elt('button',label,'secondary editor-link');b.type='button';b.onclick=()=>{selectedKey=key;byId('editorScope').value='all';byId('editorSearch').value='';selectedTag='';render()};parent.append(b)}
   function status(text,failed=false){const e=byId('editorStatus');e.textContent=text;e.classList.toggle('editor-error',failed)}
   function commit(change){try{change(getModel());options.onChange();status('Modifications enregistrées dans qbudget. Exporte tes annotations pour créer un fichier.')}catch(e){status(e.message,true)}}
-  function renderDetail(){
-   const panel=byId('editorDetail');panel.replaceChildren();const model=getModel();const list=itemList(model);
+  function renderDetail(list){
+   const panel=byId('editorDetail');panel.replaceChildren();const model=getModel();
    const item=list.find(i=>i.key===selectedKey);
    if(!item){panel.append(elt('p','Sélectionne un élément à gauche pour voir et modifier ses propriétés.','mutednote'));return}
    panel.append(elt('h3',item.label));panel.append(elt('p',item.detail,'mutednote'));
@@ -113,15 +113,32 @@
   }
   function renderCategoryOverview(model){
    const host=byId('editorCategoryOverview');host.replaceChildren();
-   const details=elt('details'),summary=elt('summary','Catégories → tags → opérations : retrouver les liens');details.open=categoryOverviewOpen;
-   details.ontoggle=()=>{categoryOverviewOpen=details.open};details.append(summary);
+   const details=elt('details'),summary=elt('summary','Catégories → tags → opérations : retrouver les liens');
+   details.open=categoryOverviewOpen;
+   details.addEventListener('toggle',()=>{
+    if(categoryOverviewOpen===details.open)return;
+    categoryOverviewOpen=details.open;
+    if(categoryOverviewOpen)renderCategoryOverview(getModel());
+   });
+   details.append(summary);
+   // Les liens sont calculés UNIQUEMENT si la rubrique est ouverte.
+   // Un seul parcours de chaque opération remplace un parcours par tag.
+   if(!categoryOverviewOpen){host.append(details);return}
+   const counts=new Map();
+   const categories=model.tagCategories||[];
+   for(const row of model.rows||[]){
+    for(const category of categories){
+     const unique=new Set(root.QBudgetEngine.tagsByCategory(model,row,category).map(lower));
+     for(const tag of unique)counts.set(tag,(counts.get(tag)||0)+1);
+    }
+   }
    const buttonWrap=elt('p',undefined,'mutednote');buttonWrap.append(elt('span','Choisis un tag pour afficher exactement les opérations annotées avec celui-ci. '));
-   const clear=elt('button','Voir tout','secondary editor-link');clear.onclick=()=>{selectedTag='';byId('editorSearch').value='';render()};buttonWrap.append(clear);details.append(buttonWrap);
-   for(const category of model.tagCategories||[]){
+   const clear=elt('button','Voir tout','secondary editor-link');clear.onclick=()=>{selectedTag='';byId('editorSearch').value='';visibleLimit=120;render()};buttonWrap.append(clear);details.append(buttonWrap);
+   for(const category of categories){
     const line=elt('div',undefined,'editor-category-line');line.append(elt('strong',category.name));
     for(const tag of category.tags||[]){
-     const count=(model.rows||[]).filter(r=>matchesTag(model,r,tag)).length;
-     const b=elt('button',tag+' ('+count+')','secondary editor-link');b.type='button';b.onclick=()=>{selectedTag=tag;selectedKey='';byId('editorScope').value='all';byId('editorSearch').value='';render();byId('editorItems').scrollIntoView({behavior:'smooth',block:'nearest'})};
+     const b=elt('button',tag+' ('+(counts.get(lower(tag))||0)+')','secondary editor-link');b.type='button';
+     b.onclick=()=>{selectedTag=tag;selectedKey='';visibleLimit=120;byId('editorScope').value='all';byId('editorSearch').value='';render();byId('editorItems').scrollIntoView({behavior:'smooth',block:'nearest'})};
      line.append(b);
     }
     details.append(line);
@@ -130,23 +147,33 @@
   }
   function render(){
    const model=getModel(),scope=byId('editorScope').value||'all',term=lower(byId('editorSearch').value.trim());
-   const all=itemList(model),visible=all.filter(i=>{
+   const all=itemList(model),rowById=new Map((model.rows||[]).map(r=>[r.id,r]));
+   const visible=all.filter(i=>{
     if(scope!=='all'&&i.kind!==scope)return false;
     if(term&&!lower([i.label,i.detail,i.search].join(' ')).includes(term))return false;
     if(!selectedTag)return true;
-    const row=(model.rows||[]).find(r=>r.id===i.id);
+    const row=rowById.get(i.id);
     if(row)return matchesTag(model,row,selectedTag);
     if(i.kind==='orphan')return (model.notes[i.id]?.tags||[]).some(t=>lower(t)===lower(selectedTag));
     return false;
    });
-   byId('editorCount').textContent=`${visible.length} / ${all.length} élément(s)`+(selectedTag?' · tag '+selectedTag:'');
+   byId('editorCount').textContent=`${visible.length} / ${all.length} élément(s)`+(selectedTag?' · tag '+selectedTag:'')+(visible.length>visibleLimit?` · ${visibleLimit} affichés`:'');
    renderCategoryOverview(model);
    const host=byId('editorItems');host.replaceChildren();
-   for(const i of visible){const b=elt('button',undefined,'editor-item'+(i.key===selectedKey?' active':''));b.type='button';b.append(elt('strong',i.label),elt('small',i.detail));b.onclick=()=>{selectedKey=i.key;render()};host.append(b)}
+   const fragment=doc.createDocumentFragment();
+   for(const i of visible.slice(0,visibleLimit)){
+    const b=elt('button',undefined,'editor-item'+(i.key===selectedKey?' active':''));b.type='button';
+    b.append(elt('strong',i.label),elt('small',i.detail));
+    b.onclick=()=>{selectedKey=i.key;renderDetail(all);for(const prev of host.querySelectorAll('.editor-item.active'))prev.classList.remove('active');b.classList.add('active')};
+    fragment.append(b);
+   }
+   host.append(fragment);
+   const more=byId('editorMore');more.hidden=visible.length<=visibleLimit;
    if(!all.some(i=>i.key===selectedKey))selectedKey=visible[0]?.key||'';
-   renderDetail();
+   renderDetail(all);
   }
-  byId('editorScope').onchange=()=>{selectedKey='';selectedTag='';render()};byId('editorSearch').oninput=()=>{selectedKey='';selectedTag='';render()};
+  byId('editorMore').onclick=()=>{visibleLimit+=120;render()};
+  byId('editorScope').onchange=()=>{selectedKey='';selectedTag='';visibleLimit=120;render()};byId('editorSearch').oninput=()=>{selectedKey='';selectedTag='';visibleLimit=120;render()};
   byId('editorExport').onclick=()=>options.exportAnnotations();
   byId('editorImport').onclick=()=>options.importAnnotations();
   byId('editorExportCategories').onclick=()=>options.exportCategories();

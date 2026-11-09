@@ -1,3 +1,21 @@
+# qbudget — V0.19.1 · Interface accélérée
+
+**Correction de performance, sans changement du moteur financier ni des formats CSV/JSON.**
+
+- **Deux vues réellement indépendantes à l'affichage :** l'éditeur ne provoque plus de redessin des graphiques Plotly, et le tableau de bord ne reconstruit plus l'éditeur caché. Les modifications restent communes et apparaissent lors du retour dans l'autre vue.
+- **L'éditeur affiche les 120 premiers éléments** puis « Afficher 120 éléments supplémentaires ». La recherche et le filtre portent toujours sur **tous** les éléments, pas seulement ceux affichés. Les liens et l'édition restent disponibles.
+- **Le tableau affiche les 150 premières lignes** puis « Afficher 150 opérations supplémentaires », sans changer les résultats des filtres ou graphiques. « Sélectionner les résultats affichés » sélectionne uniquement les lignes effectivement visibles, jamais les occurrences `FORECAST`.
+- **Courbe historique plus rapide :** un passage chronologique inverse remplace le recalcul du solde à chaque date. Chaque point est comparé dans les tests au moteur financier inchangé.
+- **Recherche fluide :** l'éditeur ne reconstruit plus systématiquement tous les boutons de catégories ; ils sont calculés à l'ouverture de la rubrique correspondante. Les graphiques réagissent après une courte pause (220 ms) lors de la saisie dans les filtres, tandis que le tableau reste immédiat. Le redimensionnement de fenêtre ne déclenche plus tous les calculs.
+
+**Mesures Chromium headless, avec 500 opérations fictives supplémentaires** (mêmes données et environnement, valeurs indicatives) : ouverture de l'éditeur ~258 ms → ~5 ms ; filtrage/recherche dans l'éditeur ~275 ms → ~4 ms ; rendu complet du tableau de bord initial ~501 ms → ~123 ms (hors cas de courbes historiques à dates nombreuses). Un essai avec 3 000 écritures supplémentaires donne une recherche dans l'éditeur ~13 ms. Les performances réelles varient selon ton navigateur et les données ; Plotly reste la dépendance graphique la plus lourde au premier chargement.
+
+**Installation :** décompresser l'archive complète. Le nouveau module `src/history-plot.js` est requis ; le workflow GitHub Pages le publie. Les annotations en stockage local restent au format précédent, aucune migration ni réimport nécessaire. Exporter ses annotations avant de remplacer une version reste conseillé.
+
+Modules modifiés : `Interface` et `Éditeur` **0.19.1**, nouveau module `Courbes historiques` **0.19.1**. Le moteur financier demeure en 0.16.0, les autres modules inchangés.
+
+---
+
 # qbudget — V0.19.0 · Tableau de bord + éditeur de données
 
 **Deux vues, un seul produit et un seul modèle de données.** Dans `index.html`, sélectionne **Tableau de bord** ou **Éditeur de données**. Les modifications de l'éditeur se répercutent directement dans le tableau de bord et sont sauvegardées dans le stockage local du navigateur, comme auparavant.

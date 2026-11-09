@@ -1,13 +1,13 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.0';
+const UI_VERSION='0.19.1';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
-$('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
+$('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
 const readCsv=QBudgetEngine.readCsv;
-function initModel(){model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));editorApi?.render();return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
+function initModel(){model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
 function load(){try{const s=localStorage.getItem(KEY);if(s)model=JSON.parse(s);initModel();for(const r of model.rows){r.account=r.bank;r.balance=null}const refs={};for(const [k,v] of Object.entries(model.references)){const bank=k.split(' · ')[0];if(!(bank in refs))refs[bank]=v}model.references=refs;for(const rule of Object.values(model.rules))rule.account=(rule.account||'').split(' · ')[0]}catch{}finally{initModel()}}function accounts(){return QBudgetEngine.accountNames(model)};function key(r){return r.bank}function inAccount(){return model.rows.filter(r=>!selected||key(r)===selected)}function aggregateRows(){const allowed=new Set(selected?[selected]:QBudgetEngine.includedAccountNames(model));return model.rows.filter(r=>allowed.has(key(r)))}function notes(r){return model.notes[r.id]||{}}
-function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
+function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Courbes historiques',QBudgetHistoryPlot.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
 function renderAccounts(){const list=accounts();$('account').replaceChildren(new Option('Tous les comptes',''),...list.map(a=>new Option(a,a)));if(selected&&!list.includes(selected))selected='';$('account').value=selected;const ref=model.references[selected];$('refBalance').value=ref?.balance??'';$('refDate').value=ref?.date??'';$('saveRef').disabled=!selected;const ma=$('manualAccount'),previous=ma.value;ma.replaceChildren(new Option('À attribuer (file d’attente)',''),...list.map(a=>new Option(a,a)));ma.value=list.includes(previous)?previous:(selected||list[0]||'');
  const toggles=$('accountToggles');toggles.replaceChildren();const excluded=new Set(model.excludedAccounts);
  for(const name of list){const label=document.createElement('label');label.className='account-toggle'+(excluded.has(name)?' excluded':'');label.title='Activé : inclus dans le cumul global. Désactivé : visible séparément sur le graphique.';
@@ -53,7 +53,7 @@ function curveFor(account,at,end){
  if(reference&&reference<=at)dates.add(reference);
  if(actual.length){const prev=asDate(actual[0].date);prev.setDate(prev.getDate()-1);dates.add(dateStr(prev))}
  dates.add(at);
- const history=[...dates].filter(d=>d<=at).sort().map(date=>({date,v:QBudgetEngine.totalBalance(model,date,account)})).filter(p=>p.v!==null);
+ const history=QBudgetHistoryPlot.points(actual,[...dates].filter(d=>d<=at),QBudgetEngine.totalBalance(model,at,account));
  const calculated=QBudgetEngine.forecast(model,at,end,account);
  const future=calculated.opening===null?[]:[{date:at,v:calculated.opening},...calculated.events.map(ev=>({date:ev.date,v:ev.balance}))];
  if(calculated.closing!==null&&end>=at)future.push({date:end,v:calculated.closing});
@@ -277,10 +277,7 @@ const refDates=selected?[model.references[selected]?.date]:QBudgetEngine.include
 for(const d of refDates)if(d&&d<=date)pointDates.add(d);
 if(history.length){const previous=asDate(history[0].date);previous.setDate(previous.getDate()-1);pointDates.add(dateStr(previous))}
 pointDates.add(date);
-const points=[];
-for(const d of [...pointDates].filter(d=>d<=date).sort()){
-  const b=historicBalance(rows,d);if(b!==null)points.push({date:d,v:b});
-}
+const points=QBudgetHistoryPlot.points(history,[...pointDates].filter(d=>d<=date),balance);
 let next=balance;const projected=balance===null?[]:[{date,v:balance}];for(const e of events){next+=e.amount;projected.push({date:e.date,v:next})}if(prediction!==null)projected.push({date:end,v:prediction});drawChart(points,projected,end);renderVisuals();
 const warning=$('warning');if(!selected&&QBudgetEngine.includedAccountNames(model).some(a=>!model.references[a])){$('refInfo').textContent='Sélectionne un compte pour enregistrer un solde de référence. Le total global requiert un solde connu pour chaque compte.'}else $('refInfo').textContent='Le solde saisi est un solde de fin de journée : qbudget soustrait les opérations pour reconstituer le passé et les ajoute pour calculer la suite.';const currencies=new Set(rows.map(r=>r.currency).filter(Boolean));warning.style.display=currencies.size>1?'block':'none';if(currencies.size>1)warning.textContent='Plusieurs devises : le cumul sans conversion n’est pas fiable. Filtre par compte.'}
 function clearBulkSelection(){selectedRowIds.clear();updateBulkStatus()}
@@ -301,6 +298,7 @@ $('applyBulkTag').onclick=()=>{
   updateBulkStatus(`Tag ajouté à ${result.changed} opération(s) sur ${result.selected} sélectionnée(s) · ${result.alreadyPresent} déjà taguée(s).`);
  }catch(error){updateBulkStatus(error.message)}
 };
+$('moreOperations').onclick=()=>{tableRowLimit+=150;renderRows()};
 function renderRows(){
  const at=$('asof').value||today,until=$('horizon').value||addMonths(at,1);
  const saved=inAccount().filter(r=>!QBudgetEngine.isFloating(r));
@@ -310,13 +308,14 @@ function renderRows(){
  const mode=$('sort').value;
  rows.sort((a,b)=>mode==='amount'?a.amount-b.amount:mode==='asc'?a.date.localeCompare(b.date):b.date.localeCompare(a.date));
  const body=$('rows');body.replaceChildren();
- displayedEditableIds=rows.slice(0,1000).filter(r=>!r.forecast).map(r=>r.id);
+ displayedEditableIds=rows.slice(0,tableRowLimit).filter(r=>!r.forecast).map(r=>r.id);
  for(const id of [...selectedRowIds])if(!displayedEditableIds.includes(id))selectedRowIds.delete(id);
  updateBulkStatus();
+ $('moreOperations').hidden=rows.length<=tableRowLimit;
  $('tableInfo').textContent=chartSelection
   ?`${chartSelection.source} · ${rows.length} écriture(s) à l'origine de ${amount(chartSelection.total)} de dépenses · sélection sans effet sur les soldes`
-  :`${saved.length} écriture(s) datée(s) enregistrée(s) · ${forecastRows.length} échéance(s) FORECAST non enregistrée(s) · ${at} → ${until} · tags et contrôles sous chaque opération`;
- for(const r of rows.slice(0,1000)){
+  :`${saved.length} écriture(s) datée(s) enregistrée(s) · ${forecastRows.length} échéance(s) FORECAST non enregistrée(s) · ${Math.min(rows.length,tableRowLimit)}/${rows.length} lignes affichées · ${at} → ${until} · tags et contrôles sous chaque opération`;
+ for(const r of rows.slice(0,tableRowLimit)){
   const n=r.forecast?{}:notes(r),tr=document.createElement('tr');
   tr.className='operation-main'+(r.forecast?' forecast-row':!selected&&(model.excludedAccounts||[]).includes(r.bank)?' excluded-row':'');
   function cell(v,cls=''){const td=document.createElement('td');td.textContent=v;td.className=cls;tr.append(td);return td}
@@ -392,7 +391,12 @@ function renderPending(){
    const actions=document.createElement('div');actions.className='queue-actions';const schedule=document.createElement('button');schedule.textContent='Dater';schedule.onclick=()=>{if(!date.value){alert('Choisis une date dans le calendrier.');return}if(!r.bank){alert('Attribue un compte pour dater cette opération.');return}if(nature.value==='planned'&&date.value<=($('asof').value||today)){alert('Pour une opération prévue, choisis une date après la consultation ; sinon sélectionne « Réalisé ».');return}r.date=date.value;r.nature=nature.value;save();render()};const del=document.createElement('button');del.className='warn';del.textContent='Supprimer';del.onclick=()=>{if(!confirm('Supprimer définitivement cette opération manuelle en attente ?'))return;model.rows=model.rows.filter(row=>row!==r);delete model.notes[r.id];save();render()};actions.append(schedule,del);cell().append(actions);body.append(tr);
  }
 }
-function render(){renderAccounts();renderTagCategories();renderSummary();renderRows();renderPending();renderRules();$('importStatus').textContent=`${model.rows.length} opérations chargées · ${accounts().length} compte(s) · stockage local au navigateur`;editorApi?.render()}
+// Ne jamais recalculer Plotly ni reconstruire les milliers de lignes d'une vue cachée.
+function render(){
+ if(!$('editorScreen').hidden){renderTagCategories();editorApi?.render()}
+ else{renderAccounts();renderSummary();renderRows();renderPending();renderRules()}
+ $('importStatus').textContent=`${model.rows.length} opérations chargées · ${accounts().length} compte(s) · stockage local au navigateur`;
+}
 // Prévisualisation isolée : aucun changement du modèle tant que l'import n'est pas confirmé.
 let normalization=null,bankConfig=QBudgetBankConfig;
 function clearNormalization(message){normalization=null;$('importRaw').disabled=true;$('downloadNormalized').disabled=true;$('normalizationPreview').classList.add('hidden');$('normalizationRows').replaceChildren();$('normalizationStatus').textContent=message}
@@ -443,7 +447,12 @@ $('sample').onclick=()=>{
   $('importStatus').textContent=`Démonstration fictive : ${rows.length} bancaires + ${model.rows.length-rows.length} manuelles (${model.rows.filter(QBudgetEngine.isFloating).length} flottantes), ${Object.keys(model.rules).length} récurrences · du 01/09 au 25/10/2026`;
  }catch(e){alert('Démo impossible : '+e.message)}
 };
-$('account').onchange=()=>{selected=$('account').value;clearChartSelection();clearBulkSelection();render()};$('asof').onchange=()=>{clearChartSelection();renderSummary();renderRows()};$('horizon').onchange=()=>{clearChartSelection();renderSummary();renderRows()};for(const id of ['search','typeFilter','operationTags','operationTagMode','showForecastRows'])$(id).addEventListener('input',()=>{clearChartSelection();clearBulkSelection();renderRows();renderSummary()});$('sort').addEventListener('input',()=>{clearBulkSelection();renderRows()});$('saveRef').onclick=()=>{if(!selected)return;const b=numeric($('refBalance').value),date=$('refDate').value;if(b===null||!date){alert('Renseigne une date et un solde valides.');return}model.references[selected]={date,balance:b};save();renderSummary()};$('clearData').onclick=()=>{if(!confirm('Effacer opérations, tags et références stockés dans ce navigateur ?'))return;model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};selected='';clearChartSelection();clearBulkSelection();localStorage.removeItem(KEY);$('sunburstDepth').value=2;render()};
+$('account').onchange=()=>{selected=$('account').value;clearChartSelection();clearBulkSelection();render()};$('asof').onchange=()=>{clearChartSelection();renderSummary();renderRows()};$('horizon').onchange=()=>{clearChartSelection();renderSummary();renderRows()};let filterTimer=0;
+for(const id of ['search','typeFilter','operationTags','operationTagMode','showForecastRows'])$(id).addEventListener('input',()=>{
+ clearTimeout(filterTimer);clearChartSelection();clearBulkSelection();tableRowLimit=150;renderRows();
+ filterTimer=setTimeout(()=>{if(!$('dashboardScreen').hidden)renderSummary()},220);
+});
+$('sort').addEventListener('input',()=>{clearBulkSelection();tableRowLimit=150;renderRows()});$('saveRef').onclick=()=>{if(!selected)return;const b=numeric($('refBalance').value),date=$('refDate').value;if(b===null||!date){alert('Renseigne une date et un solde valides.');return}model.references[selected]={date,balance:b};save();renderSummary()};$('clearData').onclick=()=>{if(!confirm('Effacer opérations, tags et références stockés dans ce navigateur ?'))return;model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};selected='';clearChartSelection();clearBulkSelection();localStorage.removeItem(KEY);$('sunburstDepth').value=2;render()};
 $('exportCli').onclick=()=>download(JSON.stringify(model,null,2),'qbudget-data.json','application/json');$('auditAt').value=$('asof').value;
 $('horizon').value=addMonths($('asof').value,1);$('auditUntil').value=$('horizon').value;
 $('asof').addEventListener('change',()=>{$('auditAt').value=$('asof').value});
@@ -562,7 +571,9 @@ editorApi=QBudgetEditor.mount({getModel:()=>model,asOf:()=>$('asof').value||toda
 function showView(name){
  const editor=name==='editor';$('dashboardScreen').hidden=editor;$('editorScreen').hidden=!editor;
  $('viewDashboard').setAttribute('aria-selected',String(!editor));$('viewEditor').setAttribute('aria-selected',String(editor));
- if(editor)editorApi.render();else{renderSummary();resizePlots()}
+ // Les deux interfaces lisent le même modèle, mais seule la vue active est reconstruite.
+ render();
+ if(!editor)resizePlots();
 }
 $('viewDashboard').onclick=()=>showView('dashboard');$('viewEditor').onclick=()=>showView('editor');
-renderModuleVersions();load();$('sunburstDepth').value=Math.max(2,Math.min(8,Number(model.sunburstDepth)||2));render();window.addEventListener('resize',()=>{if(!$('dashboardScreen').hidden)renderSummary()});
+renderModuleVersions();load();$('sunburstDepth').value=Math.max(2,Math.min(8,Number(model.sunburstDepth)||2));render();let resizeFrame=0;window.addEventListener('resize',()=>{if(!$('dashboardScreen').hidden&&!resizeFrame)resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;resizePlots()})});

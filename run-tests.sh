@@ -51,6 +51,7 @@ test -s src/tags.js
 test -s src/visual-select.js
 test -s src/annotations.js
 test -s src/editor.js
+test -s src/history-plot.js
 test -s src/ui.js
 node src/cli.js --version
 python3 import_releves.py --version

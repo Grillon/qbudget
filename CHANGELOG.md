@@ -1,3 +1,12 @@
+## 0.19.1 — Accélération des interfaces (9 novembre 2026)
+
+- Évite tous les rendus de vues masquées, notamment Plotly pendant une édition et l'éditeur sur chaque sauvegarde.
+- Affichage progressif : 150 lignes par lot dans le tableau, 120 éléments par lot dans l'éditeur ; recherches et filtres restent globaux.
+- Rubrique des liens catégories/tags calculée uniquement à son ouverture, en un passage sur les écritures ; sélection d'élément sans reconstruire la liste entière.
+- Courbes historiques en O(n log n), module `src/history-plot.js`, moteur financier inchangé et points vérifiés sur données de test.
+- Rafraîchissement des graphiques légèrement différé pour les filtres saisis au clavier et redimensionnement sans reconstitution de tous les graphiques.
+- Publication GitHub Pages du nouveau module ; annotations JSON et CSV inchangés.
+
 # V0.19.0 — Éditeur de données intégré à qbudget
 
 - Navigation entre **Tableau de bord** et **Éditeur de données**, partageant le même modèle en mémoire, les mêmes opérations, les mêmes catégories et le même stockage local. Une seule application, aucun second outil à installer.
