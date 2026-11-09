@@ -1,8 +1,8 @@
 {
   "name": "qbudget",
   "private": true,
-  "version": "0.18.2",
-  "description": "qbudget : tableau en deux lignes par opération, tags catégorisés sous les mouvements",
+  "version": "0.18.3",
+  "description": "qbudget : virements internes exclus des répartitions par tag (désactivable)",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "check": "node --check src/engine.js && node --check src/normalize.js && node --check src/bank-config.js && node --check src/cli.js && node --check src/repl.js && node --check src/version.js && node --check src/demo.js && node --check src/tags.js && node --check src/ui.js",

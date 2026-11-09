@@ -62,7 +62,8 @@
       "tags": [
         "remboursement",
         "payéPerso",
-        "enCoursDeCreation"
+        "enCoursDeCreation",
+        "transfert_intercomptes"
       ],
       "source": "tags"
     },

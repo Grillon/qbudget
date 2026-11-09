@@ -241,3 +241,9 @@ Multi-tags complets et filtres ET/OU, opérations calculées et scénarios SASU,
 ### Ergonomie V0.18.1 — onglets et Sunburst
 
 Les **onglets de catégories sont placés directement au-dessus du Sunburst**. Glisse-les pour changer l’ordre des dimensions affichées, sans quitter le graphique ; les colonnes du tableau suivent le même ordre. Au clavier, utilise `Alt + ←/→` lorsque l’onglet est sélectionné. Le panneau « Tags · catégories » reste consacré à l’édition du dictionnaire et aux imports/exports JSON.
+
+### Transferts entre comptes et graphiques de répartition (V0.18.3)
+
+Pour un virement entre tes comptes (par exemple BoursoBank → BPS), ajoute manuellement `transfert_intercomptes` aux **deux** écritures, éventuellement via la sélection multiple des résultats de recherche. Par défaut, le camembert et le Sunburst ignorent les lignes portant ce tag ; une case à cocher dans chacun des deux graphiques permet de réafficher ces mouvements (les deux cases sont synchronisées). Les autres graphiques, le tableau, les soldes et l’audit conservent **tous** les mouvements, sans suppression ni compensation automatique.
+
+Le tag appartient à la catégorie **Traitement** du catalogue par défaut. Lors d’une mise à jour depuis V0.18.2, une catégorie Traitement strictement conforme à l’ancien catalogue reçoit le nouveau tag ; les catégories personnalisées ne sont jamais écrasées (le tag libre reste utilisable et peut être ajouté manuellement au catalogue). La préférence d’exclusion est sauvegardée et exportée avec les annotations. Une fois la mise à jour du catalogue réalisée, retirer volontairement le nouveau tag du dictionnaire ne le réintroduit pas au prochain chargement.

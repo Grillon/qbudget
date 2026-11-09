@@ -5,16 +5,43 @@
  root.QBudgetTags=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.18.0';
+ const version='0.18.3';
  // Catégories de départ éditables et supprimables, jamais imposées aux opérations.
  const defaultData=[
   {name:'Nature',tags:['alimentation','courses','repas','restaurant','essence','peage','transport','telecom','logement','streaming','energie','eau','assurance','sante','loisirs','sport','IK','noteDeFrais','copro','impots','vetements','cadeaux','revenu'],source:'tags'},
   {name:'Périodicité',tags:['Récurrent','Ponctuel'],source:'type'},
   {name:'Contexte',tags:['mission','quotidien','deplacement','travail'],source:'tags'},
   {name:'Entité',tags:['SASU','personnel'],source:'tags'},
-  {name:'Traitement',tags:['remboursement','payéPerso','enCoursDeCreation'],source:'tags'},
+  {name:'Traitement',tags:['remboursement','payéPerso','enCoursDeCreation','transfert_intercomptes'],source:'tags'},
   {name:'Variabilité',tags:['fixe','variable'],source:'tags'}
  ];
+ // Migration ciblée : ajoute le nouveau tag uniquement lorsque la dimension
+ // Traitement possède toujours les valeurs du catalogue d'origine.
+ // Un dictionnaire personnalisé reste intact, y compris après suppression volontaire du tag.
+ function upgradeDefaultTreatment(categories){
+  if(!Array.isArray(categories))return categories;
+  const idx=categories.findIndex(c=>String(c.name||'').toLocaleLowerCase('fr')==='traitement'&&c.source==='tags');
+  if(idx<0)return categories;
+  const old=['remboursement','payéPerso','enCoursDeCreation'];
+  const values=categories[idx].tags;
+  if(!Array.isArray(values)||values.length!==old.length||values.some((v,i)=>v!==old[i]))return categories;
+  if(categories.some(c=>(c.tags||[]).some(t=>String(t).toLocaleLowerCase('fr')==='transfert_intercomptes')))return categories;
+  const next=clone(categories);
+  next[idx].tags.push('transfert_intercomptes');
+  return next;
+ }
+ // Filtrage générique, seulement pour une visualisation (jamais une mutation).
+ // Accepte les tags des écritures enregistrées comme ceux des prévisions.
+ function withoutTag(model,rows,tag){
+  const wanted=String(tag).trim().toLocaleLowerCase('fr');
+  if(!wanted)return [...rows];
+  return rows.filter(row=>{
+   const tags=row.forecast?(row.tags||[]):(typeof root.QBudgetEngine?.tagsFor==='function'
+    ?root.QBudgetEngine.tagsFor(model,row)
+    :[...(model.notes?.[row.id]?.tags||[])]);
+   return !tags.some(t=>String(t).trim().toLocaleLowerCase('fr')===wanted);
+  });
+ }
  function clone(data){return JSON.parse(JSON.stringify(data))}
  function defaults(){return clone(defaultData)}
  function validate(data){
@@ -65,5 +92,5 @@
   model.notes=updatedNotes;
   return {selected:valid.length,changed,alreadyPresent:valid.length-changed};
  }
- return Object.freeze({version,defaults,validate,exportJson,parseJson,moveCategory,addTag});
+ return Object.freeze({version,defaults,validate,exportJson,parseJson,moveCategory,addTag,upgradeDefaultTreatment,withoutTag});
 });

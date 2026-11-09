@@ -1,3 +1,11 @@
+# V0.18.3 — Transferts intercomptes dans les répartitions
+
+- Nouveau tag prédéfini `transfert_intercomptes` dans la catégorie **Traitement** ; les tags des écritures demeurent libres, aucune détection ou attribution automatique.
+- Camembert et Sunburst excluent **par défaut** les opérations portant ce tag, avec option synchronisée sur les deux cartes pour afficher les transferts. Filtre appliqué après les filtres de recherche / période / compte, sans modifier le moteur financier.
+- Solde, prévision, audit, flux mensuels, tableau des opérations et courbe d'impact ne sont jamais modifiés par cette préférence d'affichage.
+- Préférence conservée dans le navigateur et l'export/import des annotations. Migration ciblée du dictionnaire Traitement conservé à l'identique depuis la version précédente ; les dictionnaires personnalisés restent respectés.
+- Versions : interface et module Tags 0.18.3 ; moteur 0.16.0 et normalisation 0.15.0 inchangés.
+
 # V0.18.2 — Tableau compact : données puis tags par catégorie
 
 - Chaque opération enregistrée ou prévisionnelle est affichée sur deux lignes visuelles : informations financières en haut, tags regroupés par catégorie et contrôles en dessous. Le modèle et les calculs restent inchangés.
