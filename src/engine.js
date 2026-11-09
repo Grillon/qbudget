@@ -91,16 +91,31 @@ function validateTagCategories(input){
   return {name,tags,source};
  });
 }
+// Recherche native du navigateur : même critère pour tableau, analyses et impact.
+// L'expression est compilée UNE fois par rafraîchissement côté interface.
+function compileSearch(search='',mode='text'){
+ if(mode!=='regex'||!String(search).trim())return null;
+ const source=String(search).trim();
+ if(source.length>250)throw Error('Regex trop longue (250 caractères maximum).');
+ try{return new RegExp(source,'i')}catch(e){throw Error('Regex invalide : '+e.message)}
+}
 // Filtre unique pour le tableau, les analyses et l'impact sur le graphique.
 // Les tags ne créent aucune logique métier ni multiplication des montants.
-function operationMatchesFilter(model,row,{search='',type='',tags=[],tagMode='all'}={}){
+function operationMatchesFilter(model,row,{search='',searchMode='text',searchRegex=null,type='',tags=[],tagMode='all'}={}){
  const rowTags=(row.forecast?(row.tags||[]):tagsFor(model,row)).map(t=>String(t).toLocaleLowerCase('fr'));
  const wanted=tags.map(t=>String(t).trim().toLocaleLowerCase('fr')).filter(Boolean);
  if(wanted.length&&!(tagMode==='any'?wanted.some(t=>rowTags.includes(t)):wanted.every(t=>rowTags.includes(t))))return false;
  const kind=row.forecast?'recurrent':(model.notes?.[row.id]?.type||'');
  if(type&&kind!==type)return false;
- const term=String(search).trim().toLocaleLowerCase('fr');
- return !term||[row.desc,row.bank,row.account,row.currency,...rowTags,...(row.forecast?['prévision récurrente','forecast']:[])].some(x=>String(x||'').toLocaleLowerCase('fr').includes(term));
+ const term=String(search).trim();
+ if(!term)return true;
+ const fields=[row.desc,row.bank,row.account,row.currency,...rowTags,...(row.forecast?['prévision récurrente','forecast']:[])];
+ if(searchMode==='regex'){
+  const regex=searchRegex||compileSearch(term,'regex');
+  return fields.some(x=>regex.test(String(x||'')));
+ }
+ const lowered=term.toLocaleLowerCase('fr');
+ return fields.some(x=>String(x||'').toLocaleLowerCase('fr').includes(lowered));
 }
 function hasOperationFilter({search='',type='',tags=[]}={}){
  return !!(String(search).trim()||String(type).trim()||tags.some(t=>String(t).trim()));
@@ -256,5 +271,5 @@ function check(model){const errors=[],warnings=[];
  for(const bank of cashAccountNames(model))if(!model.references?.[bank])warnings.push('Missing reference: '+bank);
  return {ok:errors.length===0,errors,warnings};
 }
-return {version:'0.16.0',readCsv,mergeAnnotations,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {version:'0.19.2',compileSearch,readCsv,mergeAnnotations,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });

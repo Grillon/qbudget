@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.1';
+const UI_VERSION='0.19.2';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
@@ -59,7 +59,13 @@ function curveFor(account,at,end){
  if(calculated.closing!==null&&end>=at)future.push({date:end,v:calculated.closing});
  return {history,future};
 }
-function operationFilter(){return {search:$('search').value,type:$('typeFilter').value,tags:$('operationTags').value.split(',').map(t=>t.trim()).filter(Boolean),tagMode:$('operationTagMode').value}}
+function operationFilter(){
+ const search=$('search').value,searchMode=$('searchMode').value;
+ let searchRegex=null,error='';
+ try{searchRegex=QBudgetEngine.compileSearch(search,searchMode)}catch(e){error=e.message;searchRegex=/(?!)/}
+ $('searchError').textContent=error;
+ return {search,searchMode,searchRegex,searchError:error,type:$('typeFilter').value,tags:$('operationTags').value.split(',').map(t=>t.trim()).filter(Boolean),tagMode:$('operationTagMode').value};
+}
 function filteredAnalysisRows(rows){const filter=operationFilter();return rows.filter(r=>QBudgetEngine.operationMatchesFilter(model,r,filter))}
 
 // La sélection du graphique agit seulement sur les lignes du tableau, jamais sur les soldes.
@@ -298,13 +304,41 @@ $('applyBulkTag').onclick=()=>{
   updateBulkStatus(`Tag ajouté à ${result.changed} opération(s) sur ${result.selected} sélectionnée(s) · ${result.alreadyPresent} déjà taguée(s).`);
  }catch(error){updateBulkStatus(error.message)}
 };
+// Taguer les correspondances sans pagination : action explicite après aperçu et confirmation.
+// Ne modifie jamais les lignes FORECAST (générées et absentes du modèle enregistré).
+let matchingSavedRows=[];
+function updateMatchingTagButton(){
+ $('applyMatchingTag').disabled=!matchingSavedRows.length||!$('search').value.trim()||!!$('searchError').textContent||!$('bulkTag').value.trim();
+}
+$('bulkTag').addEventListener('input',updateMatchingTagButton);
+$('applyMatchingTag').onclick=()=>{
+ const filter=operationFilter();
+ if(!filter.search.trim()||filter.searchError)return;
+ const matches=inAccount().filter(r=>!QBudgetEngine.isFloating(r)&&QBudgetEngine.operationMatchesFilter(model,r,filter)&&(!chartSelection||chartSelection.ids.has(r.id)));
+ const tag=$('bulkTag').value.trim();
+ if(!matches.length||!tag)return;
+ if(!confirm(`Ajouter « ${tag} » aux ${matches.length} opération(s) enregistrée(s) correspondant à la recherche ?\nLes prévisions FORECAST ne seront pas modifiées.`))return;
+ try{
+  const result=QBudgetTags.addTag(model,matches.map(r=>r.id),tag);
+  save();clearBulkSelection();render();
+  updateBulkStatus(`Tag « ${tag} » ajouté à ${result.changed} opération(s) / ${result.selected} correspondance(s) · ${result.alreadyPresent} déjà taguée(s).`);
+ }catch(e){updateBulkStatus(e.message)}
+};
 $('moreOperations').onclick=()=>{tableRowLimit+=150;renderRows()};
 function renderRows(){
  const at=$('asof').value||today,until=$('horizon').value||addMonths(at,1);
  const saved=inAccount().filter(r=>!QBudgetEngine.isFloating(r));
  const forecastRows=($('showForecastRows').checked||chartSelection)?QBudgetEngine.recurrencePreview(model,at,until,selected):[];
+ const filter=operationFilter();
  let rows=filteredAnalysisRows([...saved,...forecastRows]);
  if(chartSelection)rows=rows.filter(r=>chartSelection.ids.has(r.id));
+ matchingSavedRows=rows.filter(r=>!r.forecast);
+ const futureCount=rows.length-matchingSavedRows.length;
+ $('searchPreview').textContent=filter.searchError
+  ?filter.searchError
+  :`${matchingSavedRows.length} opération(s) enregistrée(s) correspondante(s) · ${futureCount} prévision(s) FORECAST en lecture seule. La liste ci-dessous constitue l’aperçu avant taggage.`;
+ $('searchPreview').classList.toggle('filter-error',!!filter.searchError);
+ updateMatchingTagButton();
  const mode=$('sort').value;
  rows.sort((a,b)=>mode==='amount'?a.amount-b.amount:mode==='asc'?a.date.localeCompare(b.date):b.date.localeCompare(a.date));
  const body=$('rows');body.replaceChildren();
@@ -448,7 +482,7 @@ $('sample').onclick=()=>{
  }catch(e){alert('Démo impossible : '+e.message)}
 };
 $('account').onchange=()=>{selected=$('account').value;clearChartSelection();clearBulkSelection();render()};$('asof').onchange=()=>{clearChartSelection();renderSummary();renderRows()};$('horizon').onchange=()=>{clearChartSelection();renderSummary();renderRows()};let filterTimer=0;
-for(const id of ['search','typeFilter','operationTags','operationTagMode','showForecastRows'])$(id).addEventListener('input',()=>{
+for(const id of ['search','searchMode','typeFilter','operationTags','operationTagMode','showForecastRows'])$(id).addEventListener('input',()=>{
  clearTimeout(filterTimer);clearChartSelection();clearBulkSelection();tableRowLimit=150;renderRows();
  filterTimer=setTimeout(()=>{if(!$('dashboardScreen').hidden)renderSummary()},220);
 });

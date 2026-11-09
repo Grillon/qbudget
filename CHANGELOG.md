@@ -1,3 +1,28 @@
+# qbudget V0.19.2 — Recherche Regex et taggage des correspondances
+
+**Sélectionner → vérifier → taguer, sans règle implicite.** La recherche existante du tableau de bord et celle de l'éditeur acceptent désormais un mode **Texte** (comportement historique) ou **Regex** (expressions régulières natives JavaScript, insensibles à la casse).
+
+Exemples :
+
+- `CARREFOUR|AUCHAN|LECLERC` : plusieurs commerçants en une recherche.
+- `^VIR|VIREMENT` : libellés qui commencent par VIR ou comportent VIREMENT.
+- `ESSENCE|CARBURANT|PÉAGE` : regrouper les frais de déplacement pour inspection.
+
+La recherche s'applique comme avant aux **libellés, comptes et tags** (ainsi qu'à la devise côté tableau de bord). Les filtres Compte, Type et Tags ET/OU restent combinables. **Le tableau lui-même constitue l'aperçu** ; une ligne indique combien d'opérations enregistrées correspondent et combien d'échéances `FORECAST` ne sont pas modifiables. Dans l'éditeur, le compteur donne aussi le nombre d'opérations taguables dans les résultats.
+
+**Deux actions différentes :**
+
+1. « Ajouter le tag aux lignes sélectionnées » reste disponible et ne touche que les cases cochées.
+2. « Taguer toutes les correspondances » ajoute le tag à **toutes les opérations enregistrées** répondant à la recherche, y compris au-delà des 150 premières affichées. L'éditeur propose la même action sur les opérations de ses résultats. L'action exige un motif non vide, un tag et une confirmation explicite. Les tags existants sont conservés, et les tags déjà présents ne sont pas dupliqués.
+
+Une Regex invalide affiche un message et **bloque le taggage groupé** au lieu d'élargir les résultats. Limite de 250 caractères par motif. Les expressions utilisent la syntaxe JavaScript (`RegExp`), sans notation `/.../`. Aucun pattern n'est enregistré comme règle ni appliqué automatiquement aux imports : cette automatisation pourra être envisagée plus tard si elle devient utile.
+
+**Architecture :** aucune dépendance ajoutée, aucun nouveau format, aucun calcul financier changé. Le module Moteur passe en 0.19.2 parce que son **filtre partagé** sait interpréter Regex ; les calculs de soldes et prévisions ne changent pas. Interface et Éditeur passent en 0.19.2 ; les autres modules gardent leur version. Les imports/exports natifs `operations.csv`, `qbudget-annotations.json` et `qbudget-categories.json` ne changent pas. Pense à exporter tes annotations avant mise à jour.
+
+**Tests :** tests Node pour les Regex, les motifs invalides, les tags ET/OU, la prévision, l'absence de doublon, les soldes et l'audit. Vérification interactive dans Chromium avec Plotly réel, en chargeant les scripts par injection (le navigateur de cet environnement bloque l'ouverture directe des fichiers locaux). Le déploiement GitHub Pages n'a pas été testé.
+
+---
+
 ## 0.19.1 — Accélération des interfaces (9 novembre 2026)
 
 - Évite tous les rendus de vues masquées, notamment Plotly pendant une édition et l'éditeur sur chaque sauvegarde.

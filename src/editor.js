@@ -5,7 +5,7 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.1';
+ const version='0.19.2';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
@@ -31,6 +31,7 @@
   if(!host)throw Error('Vue éditeur introuvable');
   const byId=id=>doc.getElementById(id),getModel=options.getModel;
   let selectedKey='',selectedTag='',categoryOverviewOpen=false,visibleLimit=120;
+  let matchingEditableIds=[];
   const elt=(tag,text,cls)=>{const e=doc.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e};
   function field(parent,label,value,type='text',opts={}){
    const wrap=elt('label',undefined,'editor-field'),name=elt('span',label),input=elt(type==='select'?'select':type==='textarea'?'textarea':'input');
@@ -146,18 +147,24 @@
    host.append(details);
   }
   function render(){
-   const model=getModel(),scope=byId('editorScope').value||'all',term=lower(byId('editorSearch').value.trim());
+   const model=getModel(),scope=byId('editorScope').value||'all',term=byId('editorSearch').value.trim(),mode=byId('editorSearchMode').value;
+   let regex=null,searchError='';
+   try{regex=root.QBudgetEngine.compileSearch(term,mode)}catch(e){searchError=e.message}
+   byId('editorSearchError').textContent=searchError;
    const all=itemList(model),rowById=new Map((model.rows||[]).map(r=>[r.id,r]));
    const visible=all.filter(i=>{
     if(scope!=='all'&&i.kind!==scope)return false;
-    if(term&&!lower([i.label,i.detail,i.search].join(' ')).includes(term))return false;
+    if(searchError)return false;
+    if(term){const content=[i.label,i.detail,i.search].join(' ');if(mode==='regex'?!regex.test(content):!lower(content).includes(lower(term)))return false}
     if(!selectedTag)return true;
     const row=rowById.get(i.id);
     if(row)return matchesTag(model,row,selectedTag);
     if(i.kind==='orphan')return (model.notes[i.id]?.tags||[]).some(t=>lower(t)===lower(selectedTag));
     return false;
    });
-   byId('editorCount').textContent=`${visible.length} / ${all.length} élément(s)`+(selectedTag?' · tag '+selectedTag:'')+(visible.length>visibleLimit?` · ${visibleLimit} affichés`:'');
+   matchingEditableIds=visible.filter(i=>i.kind==='manual'||i.kind==='bank').map(i=>i.id);
+   byId('editorCount').textContent=`${visible.length} / ${all.length} élément(s)`+(selectedTag?' · tag '+selectedTag:'')+(visible.length>visibleLimit?` · ${visibleLimit} affichés`:'')+` · ${matchingEditableIds.length} opération(s) taguables`;
+   byId('editorApplyTag').disabled=!matchingEditableIds.length||!term||!!searchError||!byId('editorBulkTag').value.trim();
    renderCategoryOverview(model);
    const host=byId('editorItems');host.replaceChildren();
    const fragment=doc.createDocumentFragment();
@@ -173,7 +180,15 @@
    renderDetail(all);
   }
   byId('editorMore').onclick=()=>{visibleLimit+=120;render()};
-  byId('editorScope').onchange=()=>{selectedKey='';selectedTag='';visibleLimit=120;render()};byId('editorSearch').oninput=()=>{selectedKey='';selectedTag='';visibleLimit=120;render()};
+  byId('editorBulkTag').addEventListener('input',()=>{byId('editorApplyTag').disabled=!matchingEditableIds.length||!byId('editorSearch').value.trim()||!!byId('editorSearchError').textContent||!byId('editorBulkTag').value.trim()});
+  byId('editorApplyTag').onclick=()=>{
+   const tag=byId('editorBulkTag').value.trim(),ids=[...matchingEditableIds];
+   if(!ids.length||!tag||!byId('editorSearch').value.trim()||byId('editorSearchError').textContent)return;
+   if(!root.confirm(`Ajouter « ${tag} » aux ${ids.length} opération(s) trouvée(s) ?\nAucune prévision FORECAST ne sera modifiée.`))return;
+   try{const result=root.QBudgetTags.addTag(getModel(),ids,tag);options.onChange();byId('editorBulkStatus').textContent=`${result.changed} opération(s) modifiée(s) · ${result.alreadyPresent} déjà taguée(s).`}
+   catch(e){byId('editorBulkStatus').textContent=e.message}
+  };
+  byId('editorScope').onchange=()=>{selectedKey='';selectedTag='';visibleLimit=120;render()};byId('editorSearchMode').onchange=()=>{selectedKey='';selectedTag='';visibleLimit=120;render()};byId('editorSearch').oninput=()=>{selectedKey='';selectedTag='';visibleLimit=120;render()};
   byId('editorExport').onclick=()=>options.exportAnnotations();
   byId('editorImport').onclick=()=>options.importAnnotations();
   byId('editorExportCategories').onclick=()=>options.exportCategories();
