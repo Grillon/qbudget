@@ -1,13 +1,13 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.18.3';
+const UI_VERSION='0.18.4';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
-$('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — navigation & prévisions';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
+$('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — navigation & prévisions';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
 const readCsv=QBudgetEngine.readCsv;
-function initModel(){model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.donutCategory??='';model.sunburstDepth??=2;model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
+function initModel(){model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
 function load(){try{const s=localStorage.getItem(KEY);if(s)model=JSON.parse(s);initModel();for(const r of model.rows){r.account=r.bank;r.balance=null}const refs={};for(const [k,v] of Object.entries(model.references)){const bank=k.split(' · ')[0];if(!(bank in refs))refs[bank]=v}model.references=refs;for(const rule of Object.values(model.rules))rule.account=(rule.account||'').split(' · ')[0]}catch{}finally{initModel()}}function accounts(){return QBudgetEngine.accountNames(model)};function key(r){return r.bank}function inAccount(){return model.rows.filter(r=>!selected||key(r)===selected)}function aggregateRows(){const allowed=new Set(selected?[selected]:QBudgetEngine.includedAccountNames(model));return model.rows.filter(r=>allowed.has(key(r)))}function notes(r){return model.notes[r.id]||{}}
-function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
+function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
 function renderAccounts(){const list=accounts();$('account').replaceChildren(new Option('Tous les comptes',''),...list.map(a=>new Option(a,a)));if(selected&&!list.includes(selected))selected='';$('account').value=selected;const ref=model.references[selected];$('refBalance').value=ref?.balance??'';$('refDate').value=ref?.date??'';$('saveRef').disabled=!selected;const ma=$('manualAccount'),previous=ma.value;ma.replaceChildren(new Option('À attribuer (file d’attente)',''),...list.map(a=>new Option(a,a)));ma.value=list.includes(previous)?previous:(selected||list[0]||'');
  const toggles=$('accountToggles');toggles.replaceChildren();const excluded=new Set(model.excludedAccounts);
  for(const name of list){const label=document.createElement('label');label.className='account-toggle'+(excluded.has(name)?' excluded':'');label.title='Activé : inclus dans le cumul global. Désactivé : visible séparément sur le graphique.';
@@ -61,6 +61,41 @@ function curveFor(account,at,end){
 }
 function operationFilter(){return {search:$('search').value,type:$('typeFilter').value,tags:$('operationTags').value.split(',').map(t=>t.trim()).filter(Boolean),tagMode:$('operationTagMode').value}}
 function filteredAnalysisRows(rows){const filter=operationFilter();return rows.filter(r=>QBudgetEngine.operationMatchesFilter(model,r,filter))}
+
+// La sélection du graphique agit seulement sur les lignes du tableau, jamais sur les soldes.
+function clearChartSelection(){
+ chartSelection=null;
+ $('chartDrilldown').classList.add('hidden');
+}
+function chooseGraphRows(kind,source,label,nodeId=''){
+ if(!breakdownSnapshot)return;
+ const result=QBudgetVisualSelect.select(model,breakdownSnapshot.rows,{
+  kind,category:breakdownSnapshot.category,dimensions:breakdownSnapshot.dimensions,label,nodeId
+ });
+ if(!result||!result.count)return;
+ chartSelection={ids:new Set(result.ids),source,label,total:result.total,count:result.count};
+ $('chartDrilldownText').textContent=`${source} · ${label} · ${result.count} écriture(s) · ${amount(result.total)} de dépenses. Somme vérifiable dans le tableau.`;
+ $('chartDrilldown').classList.remove('hidden');
+ clearBulkSelection();renderRows();
+ $('chartDrilldown').scrollIntoView({behavior:'smooth',block:'center'});
+}
+$('clearChartDrilldown').onclick=()=>{clearChartSelection();clearBulkSelection();renderRows()};
+function bindBreakdownClick(element,kind){
+ const chart=$(element);
+ if(chart.__qbudgetClickBound)return;
+ chart.__qbudgetClickBound=true;
+ chart.on('plotly_click',event=>{
+  const point=event?.points?.[0];if(!point)return;
+  if(kind==='pie')chooseGraphRows('pie','Camembert',point.label||point.data?.labels?.[point.pointNumber]||'');
+  else {
+   const nodeId=point.id||point.data?.ids?.[point.pointNumber]||point.data?.ids?.[point.pointIndex];
+   if(!nodeId)return;
+   const name=point.label||point.data?.labels?.[point.pointNumber]||'Dépenses';
+   chooseGraphRows('hierarchy',model.hierarchyView==='treemap'?'Treemap':'Sunburst',name,nodeId);
+  }
+ });
+}
+
 function drawChart(actual,forecast,limit){
  const name=selected?selected:'Global (comptes actifs)';
  const traces=[{x:actual.map(q=>q.date),y:actual.map(q=>q.v),name,type:'scatter',mode:'lines+markers',line:{color:'#2563eb',width:2.5},marker:{size:5},legendgroup:'global',hovertemplate:'%{x}<br>%{y:,.2f} €<extra>'+name+' · historique</extra>'},
@@ -121,7 +156,7 @@ function renderVisuals(){
   :'Transferts inclus dans les répartitions. Les soldes ne changent pas.';
  renderDonutRadios();
  const pie=QBudgetEngine.expenseCategoryTotals(model,breakdownRows,selectedDonutCategory());
- Plotly.react('donutChart',pie.length?[{type:'pie',hole:.57,labels:pie.map(x=>x[0]),values:pie.map(x=>x[1]),textinfo:'percent',hovertemplate:'%{label}<br>%{value:,.2f} €<extra></extra>'}]:[],plotLayout({height:340,margin:{l:12,r:12,t:12,b:12},showlegend:true,legend:{orientation:'h',y:-.1},...(pie.length?{}:noData)}),{responsive:true,displaylogo:false,locale:'fr'});
+ Plotly.react('donutChart',pie.length?[{type:'pie',hole:.57,labels:pie.map(x=>x[0]),values:pie.map(x=>x[1]),textinfo:'percent',hovertemplate:'%{label}<br>%{value:,.2f} €<extra></extra>'}]:[],plotLayout({height:340,margin:{l:12,r:12,t:12,b:12},showlegend:true,legend:{orientation:'h',y:-.1},...(pie.length?{}:noData)}),{responsive:true,displaylogo:false,locale:'fr'}).then(()=>bindBreakdownClick('donutChart','pie'));
  const categories=QBudgetEngine.tagCategories(model);
  const depth=Math.max(2,Math.min(8,Number($('sunburstDepth').value)||2));
  $('sunburstDepthText').textContent=depth;
@@ -129,7 +164,11 @@ function renderVisuals(){
  $('sunburstDimensions').textContent=names.length?names.join(' → ')+(categories.length<depth?' · profondeur limitée aux catégories disponibles':''):'Sans catégorie : tag → libellé';
  const tree=QBudgetEngine.expenseBreakdown(model,breakdownRows,names);
  const hasExpenses=tree.values[0]>0;
- Plotly.react('sunburstChart',hasExpenses?[{type:'sunburst',ids:tree.ids,labels:tree.labels,parents:tree.parents,values:tree.values,branchvalues:'total',maxdepth:depth+1,hovertemplate:'%{label}<br>%{value:,.2f} €<extra></extra>'}]:[],plotLayout({height:470,margin:{l:12,r:12,t:15,b:12},...(hasExpenses?{}:noData)}),{responsive:true,displaylogo:false,locale:'fr'});
+ // Sunburst et Treemap utilisent EXACTEMENT la même arborescence et les mêmes montants.
+ breakdownSnapshot={rows:breakdownRows,category:selectedDonutCategory(),dimensions:names};
+ const chartType=model.hierarchyView==='treemap'?'treemap':'sunburst';
+ for(const radio of document.querySelectorAll('input[name="hierarchyView"]'))radio.checked=radio.value===chartType;
+ Plotly.react('sunburstChart',hasExpenses?[{type:chartType,ids:tree.ids,labels:tree.labels,parents:tree.parents,values:tree.values,branchvalues:'total',maxdepth:depth+1,hovertemplate:'%{label}<br>%{value:,.2f} €<extra></extra>'}]:[],plotLayout({height:470,margin:{l:12,r:12,t:15,b:12},...(hasExpenses?{}:noData)}),{responsive:true,displaylogo:false,locale:'fr'}).then(()=>bindBreakdownClick('sunburstChart','hierarchy'));
 }
 // Le vocabulaire est configurable sans transformer les tags enregistrés.
 // Ordre des dimensions : onglets natifs glissables, sans nouvelle bibliothèque.
@@ -212,6 +251,10 @@ $('exportTagCategories').onclick=()=>download(QBudgetTags.exportJson(model.tagCa
 $('importTagCategories').onclick=()=>$('tagCategoriesFile').click();
 $('tagCategoriesFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const next=QBudgetTags.parseJson(await file.text());model.tagCategories=next;if(!next.some(c=>c.name===model.donutCategory))model.donutCategory=next[0]?.name||'';save();render();$('tagCategoryStatus').textContent=next.length+' catégories importées. Les opérations et leurs tags n’ont pas été modifiés.'}catch(error){$('tagCategoryStatus').textContent='Import non effectué : '+error.message}finally{e.target.value=''}};
 $('resetTagCategories').onclick=()=>{if(!confirm('Remplacer uniquement le dictionnaire de catégories par celui de départ ? Les tags des opérations seront conservés.'))return;model.tagCategories=QBudgetTags.defaults();model.donutCategory='Nature';save();render()};
+for(const radio of document.querySelectorAll('input[name="hierarchyView"]'))radio.onchange=()=>{
+ if(!radio.checked)return;
+ model.hierarchyView=radio.value;clearChartSelection();save();renderRows();renderVisuals();
+};
 $('sunburstDepth').oninput=()=>{model.sunburstDepth=Number($('sunburstDepth').value);save();renderVisuals()};
 for(const id of ['excludeTransfersDonut','excludeTransfersSunburst'])$(id).onchange=e=>{
  model.excludeTransfersFromCharts=e.target.checked;save();renderVisuals();
@@ -256,13 +299,16 @@ function renderRows(){
  const saved=inAccount().filter(r=>!QBudgetEngine.isFloating(r));
  const forecastRows=$('showForecastRows').checked?QBudgetEngine.recurrencePreview(model,at,until,selected):[];
  let rows=filteredAnalysisRows([...saved,...forecastRows]);
+ if(chartSelection)rows=rows.filter(r=>!r.forecast&&chartSelection.ids.has(r.id));
  const mode=$('sort').value;
  rows.sort((a,b)=>mode==='amount'?a.amount-b.amount:mode==='asc'?a.date.localeCompare(b.date):b.date.localeCompare(a.date));
  const body=$('rows');body.replaceChildren();
  displayedEditableIds=rows.slice(0,1000).filter(r=>!r.forecast).map(r=>r.id);
  for(const id of [...selectedRowIds])if(!displayedEditableIds.includes(id))selectedRowIds.delete(id);
  updateBulkStatus();
- $('tableInfo').textContent=`${saved.length} écriture(s) datée(s) enregistrée(s) · ${forecastRows.length} échéance(s) FORECAST non enregistrée(s) · ${at} → ${until} · tags et contrôles sous chaque opération`;
+ $('tableInfo').textContent=chartSelection
+  ?`${chartSelection.source} · ${rows.length} écriture(s) à l'origine de ${amount(chartSelection.total)} de dépenses · sélection sans effet sur les soldes`
+  :`${saved.length} écriture(s) datée(s) enregistrée(s) · ${forecastRows.length} échéance(s) FORECAST non enregistrée(s) · ${at} → ${until} · tags et contrôles sous chaque opération`;
  for(const r of rows.slice(0,1000)){
   const n=r.forecast?{}:notes(r),tr=document.createElement('tr');
   tr.className='operation-main'+(r.forecast?' forecast-row':!selected&&(model.excludedAccounts||[]).includes(r.bank)?' excluded-row':'');
@@ -370,7 +416,7 @@ $('normalizeRaw').onclick=async()=>{
 };
 function applyBankRows(items){
  if(model.rows.length&&!confirm('Remplacer les lignes bancaires du CSV ? Les comptes, opérations manuelles et annotations seront conservés. Exporte tes annotations avant si nécessaire.'))return false;
- model.rows=[...items,...model.rows.filter(r=>r.manual&&!items.some(x=>x.id===r.id))];selected='';clearBulkSelection();save();render();return true;
+ model.rows=[...items,...model.rows.filter(r=>r.manual&&!items.some(x=>x.id===r.id))];selected='';clearChartSelection();clearBulkSelection();save();render();return true;
 }
 $('importRaw').onclick=()=>{if(!normalization)return;try{if(applyBankRows(normalization.items))$('normalizationStatus').textContent+=` · ${normalization.items.length} lignes importées dans qbudget.`}catch(e){alert('Import interrompu : '+e.message)}};
 $('downloadNormalized').onclick=()=>{if(normalization)download(normalization.csv,'operations_normalisees.csv','text/csv;charset=utf-8')};
@@ -384,13 +430,13 @@ $('sample').onclick=()=>{
   model=QBudgetEngine.mergeAnnotations(rows,structuredClone(demo.annotations));
   model.tagCategories=QBudgetTags.defaults();
   model.donutCategory='Nature';model.excludeTransfersFromCharts=true;model.tagDefaultsVersion=2;model.sunburstDepth=3;$('sunburstDepth').value=3;
-  selected='';clearBulkSelection();$('asof').value=demo.asof;$('horizon').value=demo.until;
+  selected='';clearChartSelection();clearBulkSelection();$('asof').value=demo.asof;$('horizon').value=demo.until;
   $('auditAt').value=demo.asof;$('auditUntil').value=demo.until;
   save();render();
   $('importStatus').textContent=`Démonstration fictive : ${rows.length} bancaires + ${model.rows.length-rows.length} manuelles (${model.rows.filter(QBudgetEngine.isFloating).length} flottantes), ${Object.keys(model.rules).length} récurrences · du 01/09 au 25/10/2026`;
  }catch(e){alert('Démo impossible : '+e.message)}
 };
-$('account').onchange=()=>{selected=$('account').value;clearBulkSelection();render()};$('asof').onchange=()=>{renderSummary();renderRows()};$('horizon').onchange=()=>{renderSummary();renderRows()};for(const id of ['search','typeFilter','operationTags','operationTagMode','showForecastRows'])$(id).addEventListener('input',()=>{clearBulkSelection();renderRows();renderSummary()});$('sort').addEventListener('input',()=>{clearBulkSelection();renderRows()});$('saveRef').onclick=()=>{if(!selected)return;const b=numeric($('refBalance').value),date=$('refDate').value;if(b===null||!date){alert('Renseigne une date et un solde valides.');return}model.references[selected]={date,balance:b};save();renderSummary()};$('clearData').onclick=()=>{if(!confirm('Effacer opérations, tags et références stockés dans ce navigateur ?'))return;model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,excludeTransfersFromCharts:true,tagDefaultsVersion:2};selected='';clearBulkSelection();localStorage.removeItem(KEY);$('sunburstDepth').value=2;render()};
+$('account').onchange=()=>{selected=$('account').value;clearChartSelection();clearBulkSelection();render()};$('asof').onchange=()=>{clearChartSelection();renderSummary();renderRows()};$('horizon').onchange=()=>{clearChartSelection();renderSummary();renderRows()};for(const id of ['search','typeFilter','operationTags','operationTagMode','showForecastRows'])$(id).addEventListener('input',()=>{clearChartSelection();clearBulkSelection();renderRows();renderSummary()});$('sort').addEventListener('input',()=>{clearBulkSelection();renderRows()});$('saveRef').onclick=()=>{if(!selected)return;const b=numeric($('refBalance').value),date=$('refDate').value;if(b===null||!date){alert('Renseigne une date et un solde valides.');return}model.references[selected]={date,balance:b};save();renderSummary()};$('clearData').onclick=()=>{if(!confirm('Effacer opérations, tags et références stockés dans ce navigateur ?'))return;model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};selected='';clearChartSelection();clearBulkSelection();localStorage.removeItem(KEY);$('sunburstDepth').value=2;render()};
 $('exportCli').onclick=()=>download(JSON.stringify(model,null,2),'qbudget-data.json','application/json');$('auditAt').value=$('asof').value;
 $('horizon').value=addMonths($('asof').value,1);$('auditUntil').value=$('horizon').value;
 $('asof').addEventListener('change',()=>{$('auditAt').value=$('asof').value});
@@ -405,7 +451,7 @@ function exportAuditCsv(){
   }catch(e){alert('Export impossible : '+e.message)}
 }
 $('downloadAudit').onclick=exportAuditCsv;
-$('exportAudit').onclick=exportAuditCsv;$('exportSettings').onclick=()=>{const obj={version:3,notes:model.notes,references:model.references,rules:model.rules,accounts:model.accounts,excludedAccounts:model.excludedAccounts,tagCategories:model.tagCategories,donutCategory:model.donutCategory,sunburstDepth:model.sunburstDepth,excludeTransfersFromCharts:model.excludeTransfersFromCharts!==false,tagDefaultsVersion:model.tagDefaultsVersion||2,manualRows:model.rows.filter(r=>r.manual)};download(JSON.stringify(obj,null,2),'qbudget-annotations.json','application/json')};function download(data,name,type){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}$('importSettings').onclick=()=>$('annotationsFile').click();$('annotationsFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(!o.notes||!o.references)throw Error('Format incompatible');model.notes=o.notes;model.references=o.references;model.rules=o.rules||{};model.accounts=o.accounts||[];model.excludedAccounts=o.excludedAccounts||[];model.tagCategories=QBudgetTags.validate(o.tagCategories===undefined?QBudgetTags.defaults():o.tagCategories);if(!o.tagDefaultsVersion)model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2;model.donutCategory=o.donutCategory||'';model.excludeTransfersFromCharts=o.excludeTransfersFromCharts!==false;model.sunburstDepth=Math.max(2,Math.min(8,Number(o.sunburstDepth)||2));$('sunburstDepth').value=model.sunburstDepth;model.rows=[...model.rows.filter(r=>!r.manual),...(o.manualRows||[])];save();render()}catch(err){alert(err.message)}};$('addAccount').onclick=()=>{
+$('exportAudit').onclick=exportAuditCsv;$('exportSettings').onclick=()=>{const obj={version:3,notes:model.notes,references:model.references,rules:model.rules,accounts:model.accounts,excludedAccounts:model.excludedAccounts,tagCategories:model.tagCategories,donutCategory:model.donutCategory,sunburstDepth:model.sunburstDepth,hierarchyView:model.hierarchyView,excludeTransfersFromCharts:model.excludeTransfersFromCharts!==false,tagDefaultsVersion:model.tagDefaultsVersion||2,manualRows:model.rows.filter(r=>r.manual)};download(JSON.stringify(obj,null,2),'qbudget-annotations.json','application/json')};function download(data,name,type){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}$('importSettings').onclick=()=>$('annotationsFile').click();$('annotationsFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(!o.notes||!o.references)throw Error('Format incompatible');model.notes=o.notes;model.references=o.references;model.rules=o.rules||{};model.accounts=o.accounts||[];model.excludedAccounts=o.excludedAccounts||[];model.tagCategories=QBudgetTags.validate(o.tagCategories===undefined?QBudgetTags.defaults():o.tagCategories);if(!o.tagDefaultsVersion)model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2;model.donutCategory=o.donutCategory||'';model.excludeTransfersFromCharts=o.excludeTransfersFromCharts!==false;model.sunburstDepth=Math.max(2,Math.min(8,Number(o.sunburstDepth)||2));model.hierarchyView=o.hierarchyView==='treemap'?'treemap':'sunburst';$('sunburstDepth').value=model.sunburstDepth;model.rows=[...model.rows.filter(r=>!r.manual),...(o.manualRows||[])];save();render()}catch(err){alert(err.message)}};$('addAccount').onclick=()=>{
  const name=$('newAccountName').value.trim(),balance=numeric($('newAccountBalance').value),at=$('asof').value;
  if(!name||balance===null||!at){alert('Renseigne le compte, son solde et une date de consultation.');return}
  if(accounts().includes(name)){selected=name;render();alert('Ce compte existe déjà.');return}

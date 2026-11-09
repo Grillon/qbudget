@@ -1,3 +1,11 @@
+# V0.18.4 — Navigation graphique et Treemap
+
+- Vue au choix **Sunburst / Treemap Plotly** dans le même panneau, sans ajout de dépendance ; partage de l’ordre des catégories, du curseur de profondeur et de la même agrégation de dépenses.
+- Cliquer sur une part du camembert ou un nœud Sunburst/Treemap affiche **les écritures exactes qui composent son montant** dans le tableau, avec un compteur, un total et un bouton de retour. La sélection par clic ne change pas les filtres globaux ni les soldes.
+- Exclusions de transferts respectées ; aucun montant multiplié par le nombre de niveaux ou de tags. La somme du détail est recomptée une fois par opération source.
+- Petit module indépendant `src/visual-select.js` (0.18.4), interface 0.18.4 ; moteur financier 0.16.0, tags 0.18.3 et normalisation 0.15.0 inchangés. Choix de vue exportable en JSON, publication Pages inclut le nouveau module.
+- 99 tests automatisés, parcours Chromium/Plotly : affichage Treemap, sélection camembert/Sunburst/Treemap et retour au tableau ; aucun changement du moteur financier.
+
 # V0.18.3 — Transferts intercomptes dans les répartitions
 
 - Nouveau tag prédéfini `transfert_intercomptes` dans la catégorie **Traitement** ; les tags des écritures demeurent libres, aucune détection ou attribution automatique.

@@ -135,7 +135,9 @@ test('V0.18.1 : les onglets sont dans le panneau Sunburst, sans saut vers l’é
  assert.ok(positionEditor>positionChart,'éditeur séparé, plus bas dans le document');
  assert.equal((html.match(/id="tagCategoryOrder"/g)||[]).length,1);
  assert.match(html,/class="sunburst-tab-controls"/);
- assert.doesNotMatch(js,/scrollIntoView\(\{behavior:'smooth'/);
+ // Un clic sur le graphique peut mener au tableau ; un déplacement d'onglet ne doit jamais faire défiler.
+ const tabsLogic=js.slice(js.indexOf('function renderCategoryTabs('),js.indexOf('function renderTagCategories('));
+ assert.doesNotMatch(tabsLogic,/scrollIntoView/);
  assert.match(js,/reorderTagCategories\(source,target\)/);
 });
 

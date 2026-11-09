@@ -1,8 +1,18 @@
-# qbudget — V0.18.2
+# qbudget — V0.18.4
 
 Outil **local** de visualisation et simulation financière. Pas de compte bancaire connecté, pas de serveur de données, pas de base distante. Projet en développement : les projections sont des hypothèses, **pas** un outil comptable ou fiscal.
 
 
+
+## V0.18.4 — Treemap et navigation graphique vers les écritures
+
+La répartition hiérarchique Plotly propose désormais deux représentations du **même arbre de données** : **Sunburst** (anneaux) et **Treemap** (rectangles imbriqués). Choisis la vue avec les deux boutons radio directement au-dessus du graphique. L’ordre des catégories par onglets et la profondeur de 2 à 8 s’appliquent aux deux vues. Le choix est conservé dans les annotations JSON et le stockage du navigateur.
+
+**Cliquer pour auditer une dépense :** clique sur une part du camembert ou un secteur du Sunburst/Treemap. qbudget filtre **uniquement le tableau** sur les écritures réelles composant exactement ce montant, et affiche une bannière avec leur nombre et leur total. Tu peux les consulter et leur ajouter un tag en lot. **« Voir toutes les opérations »** quitte ce détail. Modifier un filtre, une date ou le compte sélectionné abandonne également cette navigation ponctuelle.
+
+Les transferts portant `transfert_intercomptes` restent exclus des deux répartitions si l’option est active ; ils ne sont pas automatiquement supprimés des écritures. Les recettes, opérations flottantes et prévisions ne sont pas comptées comme dépenses des graphiques. Les comptes, soldes, prévisions, exports d’audit, flux mensuels et courbe d’impact ne sont **jamais modifiés par un clic**. Le total du détail est calculé sur les opérations sources **une seule fois**, pas en additionnant les niveaux du graphique.
+
+Le petit module `src/visual-select.js` fait cette correspondance lecture seule ; Plotly reste l’unique dépendance graphique. Versions affichées : interface et sélection graphique `0.18.4`, moteur financier `0.16.0`, tags `0.18.3`, normalisation `0.15.0`. La suite compte 99 tests. Les clics réels ont été contrôlés dans Chromium avec Plotly (scripts injectés ; déploiement Pages non vérifié).
 
 ## V0.18.2 — Tableau sur deux lignes
 
@@ -129,6 +139,7 @@ Ces méthodes n'enregistrent aucune modification ; les tests échouent explicite
 |---|---|
 | `index.html` | Interface navigateur (version affichée dans le titre) |
 | `src/engine.js` | Moteur JavaScript commun (normalisation CSV, soldes, récurrences, audit) |
+| `src/visual-select.js` | Relie les secteurs Plotly aux écritures du tableau, sans modifier les opérations |
 | `src/cli.js` | CLI Node.js pour les commandes ponctuelles et les scripts (`qbudget --version`) |
 | `src/repl.js` | REPL pour explorer les données et simuler plusieurs scénarios en mémoire |
 | `src/version.js` | Version du navigateur, générée depuis `package.json` |

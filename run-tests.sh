@@ -48,6 +48,7 @@ grep -q 'src/bank-config.js' index.html
 grep -q 'src/tags.js' index.html
 grep -q 'src/ui.js' index.html
 test -s src/tags.js
+test -s src/visual-select.js
 test -s src/ui.js
 node src/cli.js --version
 python3 import_releves.py --version
