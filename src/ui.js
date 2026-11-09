@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.18.4';
+const UI_VERSION='0.18.5';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — navigation & prévisions';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
@@ -74,7 +74,7 @@ function chooseGraphRows(kind,source,label,nodeId=''){
  });
  if(!result||!result.count)return;
  chartSelection={ids:new Set(result.ids),source,label,total:result.total,count:result.count};
- $('chartDrilldownText').textContent=`${source} · ${label} · ${result.count} écriture(s) · ${amount(result.total)} de dépenses. Somme vérifiable dans le tableau.`;
+ $('chartDrilldownText').textContent=`${source} · ${label} · ${result.count} opération(s), réalisées ou prévues · ${amount(result.total)} de dépenses. Somme vérifiable dans le tableau.`;
  $('chartDrilldown').classList.remove('hidden');
  clearBulkSelection();renderRows();
  $('chartDrilldown').scrollIntoView({behavior:'smooth',block:'center'});
@@ -139,7 +139,14 @@ function renderDonutRadios(){
  }
 }
 function renderVisuals(){
- const until=$('asof').value||today,rows=filteredAnalysisRows(aggregateRows().filter(r=>!QBudgetEngine.isFloating(r)&&r.date<=until&&r.nature!=='planned'&&r.currency==='EUR'));
+ const at=$('asof').value||today,until=$('horizon').value||addMonths(at,1);
+ const analysis=QBudgetVisualSelect.analysisRows(model,{at,until,account:selected,filter:operationFilter()});
+ // Le graphique des flux mensuels conserve sa lecture historique : les trois graphiques
+ // de répartition utilisent les opérations datées, manuelles prévues et échéances FORECAST.
+ const rows=filteredAnalysisRows(aggregateRows().filter(r=>!QBudgetEngine.isFloating(r)&&r.date<=at&&r.nature!=='planned'&&(!r.currency||r.currency==='EUR')));
+ const scopeText=`Jusqu’au ${analysis.end} : ${analysis.actualCount} opération(s) réalisée(s), ${analysis.plannedCount} prévue(s) saisie(s) ou datée(s), ${analysis.forecastCount} échéance(s) FORECAST calculée(s). Les flottantes restent exclues ; seules les dépenses entrent dans la répartition. Pas de déduplication automatique entre saisies et récurrences.`;
+ $('analysisScopeInfo').textContent=scopeText;
+ $('sunburstAnalysisScopeInfo').textContent=scopeText;
  const monthly=new Map();
  for(const r of rows){const m=r.date.slice(0,7),v=monthly.get(m)||{income:0,expense:0};if(r.amount>=0)v.income+=r.amount;else v.expense+=-r.amount;monthly.set(m,v)}
  const months=[...monthly.keys()].sort();
@@ -148,9 +155,9 @@ function renderVisuals(){
  // Écarter les virements internes SEULEMENT des graphiques de répartition.
  // Les soldes, le tableau, l'impact filtré et les flux mensuels gardent toutes les écritures.
  const exclude=model.excludeTransfersFromCharts!==false;
- const breakdownRows=exclude?QBudgetTags.withoutTag(model,rows,'transfert_intercomptes'):rows;
+ const breakdownRows=exclude?QBudgetTags.withoutTag(model,analysis.rows,'transfert_intercomptes'):analysis.rows;
  for(const id of ['excludeTransfersDonut','excludeTransfersSunburst'])$(id).checked=exclude;
- const ignored=rows.length-breakdownRows.length;
+ const ignored=analysis.rows.length-breakdownRows.length;
  $('transferBreakdownInfo').textContent=exclude
   ?`${ignored} opération(s) avec le tag transfert_intercomptes écartée(s) des deux répartitions uniquement.`
   :'Transferts inclus dans les répartitions. Les soldes ne changent pas.';
@@ -297,9 +304,9 @@ $('applyBulkTag').onclick=()=>{
 function renderRows(){
  const at=$('asof').value||today,until=$('horizon').value||addMonths(at,1);
  const saved=inAccount().filter(r=>!QBudgetEngine.isFloating(r));
- const forecastRows=$('showForecastRows').checked?QBudgetEngine.recurrencePreview(model,at,until,selected):[];
+ const forecastRows=($('showForecastRows').checked||chartSelection)?QBudgetEngine.recurrencePreview(model,at,until,selected):[];
  let rows=filteredAnalysisRows([...saved,...forecastRows]);
- if(chartSelection)rows=rows.filter(r=>!r.forecast&&chartSelection.ids.has(r.id));
+ if(chartSelection)rows=rows.filter(r=>chartSelection.ids.has(r.id));
  const mode=$('sort').value;
  rows.sort((a,b)=>mode==='amount'?a.amount-b.amount:mode==='asc'?a.date.localeCompare(b.date):b.date.localeCompare(a.date));
  const body=$('rows');body.replaceChildren();

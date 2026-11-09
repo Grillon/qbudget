@@ -1,3 +1,13 @@
+### V0.18.5 — Répartitions avec saisies manuelles et prévisions
+
+Les graphiques **camembert**, **Sunburst** et **Treemap** incluent désormais : les dépenses réalisées (importées ou manuelles), les opérations **manuelles prévues ayant une date**, et les échéances `FORECAST` produites par les règles de récurrence entre la date de consultation et la **fin de prévision** choisie. La période passée est conservée dans la répartition. Les opérations flottantes **sans date** n’y entrent pas.
+
+Les graphiques indiquent le nombre d’opérations réalisées, prévues et récurrentes calculées. Leurs montants sont des **dépenses brutes** : les recettes ne viennent pas les annuler. La case d’exclusion des transferts fonctionne toujours. Un clic sur un secteur/rectangle retrouve dans le tableau les écritures enregistrées **et** les occurrences `FORECAST`, qui restent consultables mais non modifiables.
+
+Il n’y a **pas de déduplication automatique** entre une saisie manuelle et une récurrence générée : si les deux décrivent la même dépense, elles apparaissent séparément dans les répartitions. Cela préserve la traçabilité des hypothèses.
+
+Aucun changement du moteur des soldes, des exports d’audit, du calendrier de récurrences ni du graphique d’évolution des soldes. Les **flux mensuels** conservent pour l’instant leur affichage historique.
+
 # qbudget — V0.18.4
 
 Outil **local** de visualisation et simulation financière. Pas de compte bancaire connecté, pas de serveur de données, pas de base distante. Projet en développement : les projections sont des hypothèses, **pas** un outil comptable ou fiscal.

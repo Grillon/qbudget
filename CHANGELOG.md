@@ -1,3 +1,15 @@
+## V0.18.5 — Saisies manuelles et prévisions dans les répartitions
+
+- Camembert, Sunburst et Treemap : les **saisies manuelles datées** (réalisées ou prévues) sont incluses, ainsi que les **échéances récurrentes calculées** jusqu’à la date de fin de prévision choisie.
+- Les écritures enregistrées sont conservées une seule fois, les récurrences sont virtuelles et non enregistrées ; les opérations flottantes sans date restent exclues.
+- Les comptes hors cumul restent exclus de la vue globale et consultables individuellement ; filtres par tags et exclusion `transfert_intercomptes` conservés.
+- Rappel explicite du périmètre analysé à côté des graphiques, avec compteurs par provenance. Les graphiques montrent les **dépenses brutes**, non des soldes ou flux nets.
+- Navigation depuis le camembert / Sunburst / Treemap : les lignes `FORECAST` sont retrouvables dans le tableau même si la case générale « Afficher les récurrences futures » est décochée. Elles demeurent non éditables.
+- Modules modifiés : `src/ui.js` et `src/visual-select.js` (v0.18.5). Moteur `src/engine.js` (v0.16.0) inchangé.
+- Tests de régression : présence des opérations manuelles datées, bornes d’horizon, exclusion des flottantes, conservation des comptes exclus et des montants, clic graphique vers FORECAST ; test interactif Chromium avec Plotly.
+
+**Attention** : aucun rapprochement automatique n’est effectué entre une saisie datée et une échéance générée semblable. Les deux peuvent apparaître dans une même répartition et doivent être auditées séparément.
+
 # V0.18.4 — Navigation graphique et Treemap
 
 - Vue au choix **Sunburst / Treemap Plotly** dans le même panneau, sans ajout de dépendance ; partage de l’ordre des catégories, du curseur de profondeur et de la même agrégation de dépenses.

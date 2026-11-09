@@ -8,7 +8,7 @@
  const fold=s=>String(s??'').trim().toLocaleLowerCase('fr');
  const round=n=>Math.round(n*100)/100;
  const categoryFor=(model,name)=>engine.tagCategories(model).find(c=>c.name===name);
- const fallbackLabel=(model,row)=>engine.tagsFor(model,row)[0]||row.category||'Sans tag';
+ const fallbackLabel=(model,row)=>(row.forecast?(row.tags||[]):engine.tagsFor(model,row))[0]||row.category||'Sans tag';
  function categoryLabel(model,row,name){
   const category=categoryFor(model,name);
   return category?(engine.tagsByCategory(model,row,category)[0]||'Non renseigné'):fallbackLabel(model,row);
@@ -18,6 +18,22 @@
   return categories.length
    ?categories.map(c=>engine.tagsByCategory(model,row,c)[0]||'Non renseigné')
    :[fallbackLabel(model,row),(row.desc||'Sans libellé').trim()||'Sans libellé'];
+ }
+ // Une seule sélection de dépenses pour Camembert / Sunburst / Treemap.
+ // Les opérations prévues saisies par l'utilisateur sont conservées ; les flottantes
+ // restent hors horizon. Les récurrences sont générées à la volée (aucune sauvegarde).
+ function analysisRows(model,{at,until,account='',filter={}}={}){
+  const end=until>=at?until:at;
+  const accounts=new Set(account?[account]:engine.includedAccountNames(model));
+  const valid=row=>accounts.has(row.bank)&&(!row.currency||row.currency==='EUR')&&engine.operationMatchesFilter(model,row,filter);
+  const stored=(model.rows||[]).filter(row=>!engine.isFloating(row)&&row.date<=end&&valid(row));
+  const recurrent=until>=at?engine.recurrencePreview(model,at,until,account).filter(valid):[];
+  return {
+   rows:[...stored,...recurrent],end,
+   actualCount:stored.filter(row=>row.nature!=='planned'&&row.date<=at).length,
+   plannedCount:stored.filter(row=>row.nature==='planned'||row.date>at).length,
+   forecastCount:recurrent.length
+  };
  }
  // rows doit être EXACTEMENT la sélection déjà affichée dans les graphiques (filtres, date, transferts).
  // Un montant apparaît une seule fois : les niveaux hiérarchiques ne sont jamais additionnés.
@@ -38,5 +54,5 @@
   });
   return {ids:selected.map(r=>r.id),count:selected.length,total:round(selected.reduce((sum,r)=>sum-Number(r.amount),0))};
  }
- return Object.freeze({version:'0.18.4',select});
+ return Object.freeze({version:'0.18.5',select,analysisRows});
 });

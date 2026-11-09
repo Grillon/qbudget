@@ -1,8 +1,8 @@
 {
   "name": "qbudget",
   "private": true,
-  "version": "0.18.4",
-  "description": "qbudget : navigation graphique vers opérations et vue Treemap Plotly",
+  "version": "0.18.5",
+  "description": "qbudget : saisies manuelles et prévisions dans les répartitions Plotly",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "check": "node --check src/engine.js && node --check src/normalize.js && node --check src/bank-config.js && node --check src/cli.js && node --check src/repl.js && node --check src/version.js && node --check src/demo.js && node --check src/tags.js && node --check src/visual-select.js && node --check src/ui.js",
