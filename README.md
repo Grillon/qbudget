@@ -1,3 +1,20 @@
+# qbudget V0.19.3 — Éditeur compact et filtres pour le taggage
+
+**Une grille pleine largeur à la place de la liste étroite**, avec une ligne par opération : date, compte, libellé, montant et tags visibles sans défilement horizontal à largeur de bureau. Un bouton **Modifier** ouvre le détail seulement à la demande. La liste est limitée à 120 éléments rendus au départ pour rester fluide ; les filtres et actions groupées portent sur **toutes** les correspondances, pas seulement les lignes visibles.
+
+La sélection conserve **Texte / Regex** et s'enrichit du clic, `Ctrl/Cmd + clic` (ajout/retrait) et `Shift + clic` (plage). Deux actions indépendantes : **Taguer la sélection** ou **Taguer toutes les correspondances du filtre**. Pour protéger les données, la confirmation indique combien de lignes vont recevoir le tag ; les annotations existantes ne sont jamais effacées.
+
+**Filtres supplémentaires dans l'éditeur :**
+
+- **Montant minimal / maximal** en valeur absolue (la même recherche trouve un débit de −1 000 € ou un crédit de +1 000 €). Les montants décimaux acceptent `1 200,50` ou `1200.50` ; bornes incluses.
+- **Période du / au** : dates incluses ; les opérations flottantes sans date ne correspondent pas à un filtre de période. Sans période, elles restent recherchables par montant.
+- Les quatre champs se combinent avec Texte/Regex ; **un filtre de montant ou de période suffit** pour activer « Taguer toutes les correspondances », sans mot-clé obligatoire. Les bornes incohérentes affichent une erreur et bloquent le taggage.
+- « Effacer ces filtres » remet à zéro uniquement les montants et dates, **sans perdre la recherche Texte/Regex**. Les contraintes de montant/période concernent les opérations enregistrées, pas les comptes ou règles.
+
+**Techniquement :** seul l'éditeur `src/editor.js` et sa présentation changent. Aucun changement du moteur financier, des soldes, des prévisions, des formats d'import/export ou du dictionnaire des tags. Pas de bibliothèque nouvelle. Les valeurs filtrées sont préparées en mémoire, sans suppression ni transformation des opérations. Tests unitaires, tests de non-régression et contrôle Chromium sur démo fictive.
+
+---
+
 # qbudget V0.19.2 — Recherche Regex et taggage des correspondances
 
 **Sélectionner → vérifier → taguer, sans règle implicite.** La recherche existante du tableau de bord et celle de l'éditeur acceptent désormais un mode **Texte** (comportement historique) ou **Regex** (expressions régulières natives JavaScript, insensibles à la casse).

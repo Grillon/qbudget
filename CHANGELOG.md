@@ -1,3 +1,14 @@
+# qbudget V0.19.3 — Éditeur compact, sélection multiple et filtres montant/période
+
+- **Tableau compact pleine largeur** dans l'onglet Éditeur ; aucune liste latérale étroite, pas de défilement horizontal au format bureau. Détail modifiable dans une fenêtre à la demande, non ouvert par le simple fait de sélectionner une ligne.
+- Clic, `Ctrl/Cmd + clic`, `Shift + clic` pour la sélection ; recherche **Texte et Regex inchangée**, avec actions séparées pour taguer la sélection ou **toutes** les correspondances, même au-delà du lot affiché.
+- Filtres **montant absolu min/max** (positifs, inclusifs, virgule ou point décimal) et **date de début/fin** inclusives, tous combinables avec recherche Texte/Regex. Filtre montant ou date seul suffit à autoriser l'action groupée ; valeurs invalides bloquées. Les opérations flottantes sont exclues uniquement si la période les exclut.
+- Bouton « Effacer ces filtres » sans effacer la recherche ; les filtres sont une sélection temporaire, ni règles ni données persistées.
+- Moteur financier, tags, prévisions, import/export JSON et CSV **inchangés**. Seul le module Éditeur est en 0.19.3 ; l'enveloppe produit affiche 0.19.3.
+- Tests unitaires de sélection, de bornes, de combinaison Regex+période+montant, de taggage et de conservation des montants ; vérification de l'interface sous Chromium via chargement direct des scripts, sans publication distante.
+
+---
+
 # qbudget V0.19.2 — Recherche Regex et taggage des correspondances
 
 **Sélectionner → vérifier → taguer, sans règle implicite.** La recherche existante du tableau de bord et celle de l'éditeur acceptent désormais un mode **Texte** (comportement historique) ou **Regex** (expressions régulières natives JavaScript, insensibles à la casse).
