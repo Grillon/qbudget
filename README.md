@@ -1,6 +1,10 @@
-# qbudget V0.19.6 — Retrait groupé des tags
+# qbudget V0.19.7 — Récurrences potentielles
 
-**Nouveau :** retirer un tag manuel de la sélection ou de toutes les opérations filtrées, dans le tableau de bord et l’éditeur. Aperçu du nombre de retraits, confirmation, autres annotations préservées. [Mode d’emploi](docs/retrait-tags.md).
+**Nouveau :** lancer la détection de récurrences potentielles, puis examiner les propositions dans un backlog sauvegardé. Ajuster et confirmer la création d’une règle, ou ignorer la proposition. Aucun effet sur les calculs avant validation. [Mode d’emploi et essai rapide](docs/detection-recurrences.md).
+
+Le module partagé `src/recurrences.js` contient la détection et les décisions ; les règles validées utilisent le moteur financier existant, sans dépendance supplémentaire.
+
+**Retrait groupé des tags :** retirer un tag manuel de la sélection ou de toutes les opérations filtrées, dans le tableau de bord et l’éditeur. Aperçu du nombre de retraits, confirmation, autres annotations préservées. [Mode d’emploi](docs/retrait-tags.md).
 
 **Rapprochements après import :** les imports se terminent sans demander de résoudre chaque ambiguïté. Une liste **Rapprochements à traiter** permet de reprendre les annotations ensuite, sans écrasement ni fusion de lignes. Elle est incluse dans la sauvegarde JSON. [Mode d’emploi et essai rapide](docs/rapprochements.md).
 

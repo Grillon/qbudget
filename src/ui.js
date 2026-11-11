@@ -1,14 +1,14 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.6';
+const UI_VERSION='0.19.7';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
 const readCsv=QBudgetEngine.readCsv;
 let labelAssociationEditIndex=-1,labelAssociationPreviewLimit=100;
-function initModel(){model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.labelAssociations??=[];model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
+function initModel(){model.recurrenceBacklog??=[];model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.labelAssociations??=[];model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
 function load(){try{const s=localStorage.getItem(KEY);if(s)model=JSON.parse(s);initModel();for(const r of model.rows){r.account=r.bank;r.balance=null}const refs={};for(const [k,v] of Object.entries(model.references)){const bank=k.split(' · ')[0];if(!(bank in refs))refs[bank]=v}model.references=refs;for(const rule of Object.values(model.rules))rule.account=(rule.account||'').split(' · ')[0];model=QBudgetEngine.reimportBankRows(model,model.rows,resolveBankIdentity);showOrphanAnnotations()}catch(error){$('importStatus').textContent='Chargement : '+error.message}finally{initModel()}}function accounts(){return QBudgetEngine.accountNames(model)};function key(r){return r.bank}function inAccount(){return model.rows.filter(r=>!selected||key(r)===selected)}function aggregateRows(){const allowed=new Set(selected?[selected]:QBudgetEngine.includedAccountNames(model));return model.rows.filter(r=>allowed.has(key(r)))}function notes(r){return model.notes[r.id]||{}}
-function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Courbes historiques',QBudgetHistoryPlot.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
+function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Courbes historiques',QBudgetHistoryPlot.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Détection de récurrences',QBudgetRecurrences.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
 function renderAccounts(){const list=accounts();$('account').replaceChildren(new Option('Tous les comptes',''),...list.map(a=>new Option(a,a)));if(selected&&!list.includes(selected))selected='';$('account').value=selected;const ref=model.references[selected];$('refBalance').value=ref?.balance??'';$('refDate').value=ref?.date??'';$('saveRef').disabled=!selected;const ma=$('manualAccount'),previous=ma.value;ma.replaceChildren(new Option('À attribuer (file d’attente)',''),...list.map(a=>new Option(a,a)));ma.value=list.includes(previous)?previous:(selected||list[0]||'');
  const toggles=$('accountToggles');toggles.replaceChildren();const excluded=new Set(model.excludedAccounts);
  for(const name of list){const label=document.createElement('label');label.className='account-toggle'+(excluded.has(name)?' excluded':'');label.title='Activé : inclus dans le cumul global. Désactivé : visible séparément sur le graphique.';
@@ -517,7 +517,7 @@ function renderPending(){
 }
 // Ne jamais recalculer Plotly ni reconstruire les milliers de lignes d'une vue cachée.
 function render(){
- renderBankMatches();
+ renderBankMatches();renderRecurrenceBacklog();
  if(!$('editorScreen').hidden){renderTagCategories();editorApi?.render()}
  else{renderAccounts();renderSummary();renderRows();renderPending();renderRules()}
  $('importStatus').textContent=`${model.rows.length} opérations chargées · ${accounts().length} compte(s) · stockage local au navigateur`;
@@ -587,6 +587,70 @@ function renderBankMatches(){
 }
 $('openBankMatches').onclick=$('editorOpenBankMatches').onclick=openBankMatches;
 $('bankMatchesDetails').addEventListener('toggle',()=>{if($('bankMatchesDetails').open)renderBankMatches()});
+function openRecurrenceBacklog(){
+ showView('editor');$('recurrenceBacklogDetails').open=true;renderRecurrenceBacklog();
+ $('recurrenceBacklogCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function detectRecurrences(){
+ try{
+  const before=new Set((model.recurrenceBacklog||[]).map(c=>c.id));
+  model=QBudgetRecurrences.scan(model);save();openRecurrenceBacklog();
+  const pending=model.recurrenceBacklog.filter(c=>c.status==='pending');
+  $('recurrenceBacklogStatus').textContent=`Détection terminée : ${pending.length} proposition(s) à examiner, dont ${pending.filter(c=>!before.has(c.id)).length} nouvelle(s). Aucune règle créée. Les décisions antérieures sont conservées.`;
+ }catch(error){$('recurrenceBacklogStatus').textContent=error.message}
+}
+function renderRecurrenceBacklog(){
+ const backlog=model.recurrenceBacklog||[],pending=backlog.filter(c=>c.status==='pending'),reviewed=backlog.filter(c=>c.status!=='pending');
+ $('recurrencePendingCount').textContent=$('recurrenceBacklogCount').textContent=pending.length;
+ $('editorOpenRecurrences').textContent=`Récurrences potentielles · ${pending.length}`;
+ $('recurrenceReviewedCount').textContent=reviewed.length;
+ if(!$('recurrenceBacklogDetails').open)return;
+ const host=$('recurrenceBacklogList');host.replaceChildren();
+ if(!pending.length)host.textContent='Aucune proposition en attente. Lance la détection après un import pour rechercher de nouvelles récurrences.';
+ const rowIds=new Set(model.rows.map(r=>r.id));
+ const node=(tag,text,cls='')=>{const n=document.createElement(tag);n.textContent=text;n.className=cls;return n};
+ const act=fn=>{try{model=fn();clearChartSelection();clearBulkSelection();save();render();return true}catch(error){$('recurrenceBacklogStatus').textContent=error.message;return false}};
+ for(const c of pending){
+  const card=node('details','','bank-match-item recurrence-candidate');card.dataset.candidate=c.id;
+  card.append(node('summary',`${c.desc} · ${c.account}${c.sourceAccount?' / '+c.sourceAccount:''} · ${c.frequency} · ${amount(c.amount)} · ${c.evidence.length} occurrences`));
+  const values=c.evidence.map(e=>e.amount),missing=c.evidence.filter(e=>!rowIds.has(e.id)).length;
+  card.append(node('p',`Observations du ${c.evidence[0].date} au ${c.anchor} · montants de ${amount(Math.min(...values))} à ${amount(Math.max(...values))}. Le montant proposé est celui de la dernière opération.`,'mutednote'));
+  if(missing)card.append(node('p',`${missing} opération(s) absente(s) de l’import actuel. Réimporte cet historique puis relance la détection avant de créer une règle.`,'filter-error'));
+  else if(c.stale)card.append(node('p','Cette proposition n’est plus détectée dans les données actuelles. Réimporte l’historique utile ou ignore cette proposition.','filter-error'));
+  const evidence=node('details','');evidence.append(node('summary','Voir les opérations observées'));
+  const wrap=node('div','','table-wrap');wrap.style.maxHeight='300px';wrap.style.overflow='auto';
+  const table=document.createElement('table'),head=document.createElement('thead'),tr=document.createElement('tr');
+  for(const text of ['Date','Compte','Libellé bancaire original','Montant','Tags actuels'])tr.append(node('th',text));head.append(tr);table.append(head);
+  const body=document.createElement('tbody');
+  for(const e of c.evidence){const row=document.createElement('tr');for(const value of [e.date,e.bank+(e.sourceAccount?' / '+e.sourceAccount:''),e.desc,amount(e.amount),QBudgetEngine.tagsFor(model,e).join(', ')])row.append(node('td',value));body.append(row)}
+  table.append(body);wrap.append(table);evidence.append(wrap);card.append(evidence);
+  const form=node('div','','toolbar');form.style.alignItems='end';
+  const field=(label,name,value,type='text')=>{const l=node('label',label,'field'),input=document.createElement(type==='select'?'select':'input');input.dataset.field=name;
+   if(type==='select')for(const f of ['quotidien','hebdomadaire','mensuel','trimestriel','annuel'])input.add(new Option(f,f));
+   else{input.type=type;if(type==='number')input.step='0.01'}input.value=value;l.append(input);form.append(l);return input};
+  const desc=field('Libellé de la règle','desc',c.desc),value=field('Montant signé (€)','amount',c.amount,'number'),frequency=field('Fréquence','frequency',c.frequency,'select'),anchor=field('Dernière échéance de référence','anchor',c.anchor,'date');
+  const next=node('p','','mutednote');
+  const preview=()=>{try{next.textContent='Première échéance calculée : '+shiftDate(anchor.value,frequency.value,1)+'. La création sera revérifiée sur les opérations actuelles.'}catch{next.textContent='Choisis une date de référence valide.'}};
+  anchor.oninput=frequency.onchange=preview;preview();
+  const accept=node('button','Créer la récurrence'),ignore=node('button','Ignorer','secondary');accept.type=ignore.type='button';accept.disabled=!!missing||!!c.stale;
+  accept.onclick=()=>{
+   const val=numeric(value.value);if(val===null||!val){$('recurrenceBacklogStatus').textContent='Montant de récurrence invalide';return}
+   let nextDate;try{nextDate=shiftDate(anchor.value,frequency.value,1)}catch{$('recurrenceBacklogStatus').textContent='Date de référence invalide';return}
+   if(!confirm(`Créer la récurrence « ${desc.value.trim()} » sur ${c.account} : ${amount(val)}, ${frequency.value}, première échéance ${nextDate} ?\nElle modifiera les prévisions. Les opérations prévues existantes restent comptées séparément.\nLes ${c.evidence.length} opérations observées seront liées à cette règle ; leurs tags seront conservés.`))return;
+   if(act(()=>QBudgetRecurrences.accept(model,c.id,{id:uid(),desc:desc.value,amount:val,frequency:frequency.value,anchor:anchor.value})))$('recurrenceBacklogStatus').textContent='Récurrence créée et sauvegardée. Les prévisions incluent désormais ses échéances ; elle reste modifiable dans l’éditeur.';
+  };
+  ignore.onclick=()=>{if(act(()=>QBudgetRecurrences.ignore(model,c.id)))$('recurrenceBacklogStatus').textContent='Proposition ignorée. Elle ne sera pas reproposée à chaque détection ; elle reste consultable dans les décisions déjà prises.'};
+  form.append(accept,ignore);card.append(form,next);host.append(card);
+ }
+ const history=$('recurrenceReviewedList');history.replaceChildren();
+ for(const c of reviewed){
+  const card=node('div','','bank-match-item');card.append(node('span',`${c.desc} · ${c.account} · ${c.status==='ignored'?'Ignorée':model.rules[c.ruleId]?'Règle créée':'Règle créée puis supprimée'}`));
+  if(c.status==='ignored'){const reopen=node('button','Réexaminer','secondary');reopen.type='button';reopen.onclick=()=>act(()=>QBudgetRecurrences.reopen(model,c.id));card.append(reopen)}history.append(card);
+ }
+}
+$('openRecurrenceBacklog').onclick=$('editorOpenRecurrences').onclick=openRecurrenceBacklog;
+$('detectRecurrences').onclick=$('editorDetectRecurrences').onclick=detectRecurrences;
+$('recurrenceBacklogDetails').addEventListener('toggle',()=>{if($('recurrenceBacklogDetails').open)renderRecurrenceBacklog()});
 function showOrphanAnnotations(){
  const ids=new Set(model.rows.map(r=>r.id));
  const waiting=new Set(QBudgetEngine.pendingBankMatches(model).flatMap(p=>[p.id,...p.candidates.map(c=>c.id)]));

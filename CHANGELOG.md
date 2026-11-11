@@ -1,3 +1,12 @@
+# qbudget V0.19.7 — Backlog des récurrences potentielles
+
+- Détection déclenchée manuellement sur les opérations réalisées : compte source, libellé normalisé ou alias explicites, au moins trois occurrences régulières.
+- Backlog persistant avec opérations observées, montant et fréquence proposés, création modifiable puis confirmée ou décision d’ignorer réversible.
+- Aucune modification financière avant validation. Création d’une règle native, tags conservés et échéances auditables par les exports existants.
+- Scans sans doublons, décisions exportées et restaurées en JSON ; création refusée sur un historique devenu absent ou modifié.
+
+---
+
 # qbudget V0.19.6 — Retrait groupé des tags manuels
 
 - Retrait d’un tag sur la sélection ou sur tous les résultats filtrés, dans le tableau de bord et l’éditeur, y compris au-delà des limites d’affichage.
