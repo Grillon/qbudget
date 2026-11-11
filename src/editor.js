@@ -5,7 +5,7 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.4';
+ const version='0.19.6';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
@@ -221,6 +221,15 @@
    byId('editorSelectedCount').textContent=`${count} opération(s) sélectionnée(s)`;
    byId('editorApplySelectedTag').disabled=!count||!tag||!!byId('editorSearchError').textContent;
    byId('editorApplyTag').disabled=!matchingEditableIds.length||!(term||['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))||!!byId('editorSearchError').textContent||!tag;
+   byId('editorRemoveSelectedTag').disabled=byId('editorRemoveTag').disabled=true;
+   if(tag&&!byId('editorSearchError').textContent){
+    try{
+     const ids=visibleItems.filter(i=>selectedKeys.has(i.key)&&(i.kind==='bank'||i.kind==='manual')).map(i=>i.id);
+     const selected=root.QBudgetTags.removeTagPreview(getModel(),ids,tag),all=root.QBudgetTags.removeTagPreview(getModel(),matchingEditableIds,tag);
+     byId('editorRemoveSelectedTag').disabled=!selected.changed;byId('editorRemoveTag').disabled=!all.changed;
+     byId('editorRemovePreview').textContent=`Retrait manuel possible : ${selected.changed}/${selected.selected} sur la sélection · ${all.changed}/${all.selected} dans les résultats actuels.`+(all.automatic?` Le tag restera présent par association sur ${all.automatic} opération(s).`:'');
+    }catch(error){byId('editorRemovePreview').textContent=error.message}
+   }else byId('editorRemovePreview').textContent='Saisis le tag à retirer pour voir le nombre d’opérations concernées.';
    const lines=byId('editorItems').querySelectorAll('tr[data-key]');
    for(const row of lines){
     const active=selectedKeys.has(row.dataset.key);
@@ -306,6 +315,17 @@
    try{const result=root.QBudgetTags.addTag(getModel(),ids,tag);options.onChange();byId('editorBulkStatus').textContent=`${result.changed} opération(s) modifiée(s) · ${result.alreadyPresent} déjà taguée(s).`}
    catch(e){byId('editorBulkStatus').textContent=e.message}
   }
+  function bulkRemoveTag(ids,kind){
+   const tag=byId('editorBulkTag').value.trim();
+   if(!tag||byId('editorSearchError').textContent)return;
+   try{
+    const preview=root.QBudgetTags.removeTagPreview(getModel(),ids,tag);
+    if(!preview.changed){byId('editorBulkStatus').textContent=preview.automatic?'Aucun tag manuel à retirer ; modifie l’association de libellé pour retirer le tag automatique.':'Aucun tag manuel correspondant à retirer.';return}
+    if(!root.confirm(`Retirer le tag manuel « ${tag} » de ${preview.changed} opération(s) parmi ${preview.selected} ${kind} ?\nLes autres tags et annotations sont conservés.`+(preview.automatic?`\nLe tag restera affiché par association sur ${preview.automatic} opération(s).`:'')))return;
+    const result=root.QBudgetTags.removeTag(getModel(),ids,tag);options.onChange();
+    byId('editorBulkStatus').textContent=`Tag manuel « ${tag} » retiré de ${result.changed} opération(s).`+(result.automatic?` Encore présent par association sur ${result.automatic} opération(s) : modifie l’association si nécessaire.`:'');
+   }catch(error){byId('editorBulkStatus').textContent=error.message}
+  }
   byId('editorApplySelectedTag').onclick=()=>{
    const selected=new Set(selectedKeys);
    const ids=visibleItems.filter(i=>selected.has(i.key)&&(i.kind==='bank'||i.kind==='manual')).map(i=>i.id);
@@ -316,6 +336,11 @@
    if(!byId('editorSearch').value.trim()&&!['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))return;
    bulkTag(ids,'trouvée(s)');
   };
+  byId('editorRemoveSelectedTag').onclick=()=>{
+   const ids=visibleItems.filter(i=>selectedKeys.has(i.key)&&(i.kind==='bank'||i.kind==='manual')).map(i=>i.id);
+   bulkRemoveTag(ids,'sélectionnée(s)');
+  };
+  byId('editorRemoveTag').onclick=()=>bulkRemoveTag([...matchingEditableIds],'correspondant aux filtres actuels');
   function resetFilter(){selectedKey='';selectedTag='';selectedKeys.clear();selectionAnchor='';visibleLimit=120;closeDetail();render()}
   byId('editorScope').onchange=resetFilter;
   byId('editorSearchMode').onchange=resetFilter;

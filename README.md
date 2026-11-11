@@ -1,6 +1,8 @@
-# qbudget V0.19.5 — Rapprochements après import
+# qbudget V0.19.6 — Retrait groupé des tags
 
-**Nouveau :** les imports se terminent sans demander de résoudre chaque ambiguïté. Une liste **Rapprochements à traiter** permet de reprendre les annotations ensuite, sans écrasement ni fusion de lignes. Elle est incluse dans la sauvegarde JSON. [Mode d’emploi et essai rapide](docs/rapprochements.md).
+**Nouveau :** retirer un tag manuel de la sélection ou de toutes les opérations filtrées, dans le tableau de bord et l’éditeur. Aperçu du nombre de retraits, confirmation, autres annotations préservées. [Mode d’emploi](docs/retrait-tags.md).
+
+**Rapprochements après import :** les imports se terminent sans demander de résoudre chaque ambiguïté. Une liste **Rapprochements à traiter** permet de reprendre les annotations ensuite, sans écrasement ni fusion de lignes. Elle est incluse dans la sauvegarde JSON. [Mode d’emploi et essai rapide](docs/rapprochements.md).
 
 **Associations de libellés :** dans l’éditeur, associer des motifs de libellés à un tag existant (`NETFLIX` OU `NFLX` → `Netflix`). Aperçu avant enregistrement, application aux imports futurs, tags manuels préservés et sauvegarde dans les annotations JSON. [Mode d’emploi et essai rapide](docs/associations-libelles.md).
 

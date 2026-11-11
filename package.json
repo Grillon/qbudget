@@ -1,7 +1,7 @@
 {
   "name": "qbudget",
   "private": true,
-  "version": "0.19.5",
+  "version": "0.19.6",
   "description": "qbudget : réimports fiables et associations de libellés vers les tags",
   "scripts": {
     "test": "node --test tests/*.test.js",

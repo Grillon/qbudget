@@ -1,3 +1,12 @@
+# qbudget V0.19.6 — Retrait groupé des tags manuels
+
+- Retrait d’un tag sur la sélection ou sur tous les résultats filtrés, dans le tableau de bord et l’éditeur, y compris au-delà des limites d’affichage.
+- Aperçu du nombre d’opérations concernées et confirmation avant retrait ; correspondance exacte et insensible à la casse.
+- Autres tags, annotations, identifiants, opérations flottantes, règles et montants conservés. Le champ historique `tag` est mis à jour pour éviter toute réapparition du tag supprimé.
+- Les tags d’associations ne sont pas supprimés : le nombre d’opérations où le tag restera automatique est signalé. Les associations et le type restent gérés dans leurs réglages.
+
+---
+
 # qbudget V0.19.5 — Rapprochements à traiter après import
 
 - Les ambiguïtés d’identité sont reportées dans une liste persistante : plus de questions de rapprochement pendant l’import navigateur.

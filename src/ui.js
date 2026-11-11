@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.5';
+const UI_VERSION='0.19.6';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
@@ -356,6 +356,7 @@ function updateBulkStatus(message=''){
  $('applyBulkTag').disabled=!count;
  $('clearSelectedRows').disabled=!count;
  $('selectVisibleRows').disabled=!displayedEditableIds.length;
+ updateTagRemovalPreview();
 }
 $('selectVisibleRows').onclick=()=>{for(const id of displayedEditableIds)selectedRowIds.add(id);updateBulkStatus();renderRows()};
 $('clearSelectedRows').onclick=()=>{clearBulkSelection();renderRows()};
@@ -373,7 +374,7 @@ let matchingSavedRows=[];
 function updateMatchingTagButton(){
  $('applyMatchingTag').disabled=!matchingSavedRows.length||!$('search').value.trim()||!!$('searchError').textContent||!$('bulkTag').value.trim();
 }
-$('bulkTag').addEventListener('input',updateMatchingTagButton);
+$('bulkTag').addEventListener('input',()=>{updateMatchingTagButton();updateBulkStatus()});
 $('applyMatchingTag').onclick=()=>{
  const filter=operationFilter();
  if(!filter.search.trim()||filter.searchError)return;
@@ -387,6 +388,30 @@ $('applyMatchingTag').onclick=()=>{
   updateBulkStatus(`Tag « ${tag} » ajouté à ${result.changed} opération(s) / ${result.selected} correspondance(s) · ${result.alreadyPresent} déjà taguée(s).`);
  }catch(e){updateBulkStatus(e.message)}
 };
+function updateTagRemovalPreview(){
+ const tag=$('bulkTag').value.trim(),error=!!$('searchError').textContent;
+ $('removeBulkTag').disabled=$('removeMatchingTag').disabled=true;
+ if(!tag){$('bulkRemovePreview').textContent='Saisis le tag à retirer pour voir le nombre d’opérations concernées.';return}
+ try{
+  const selected=QBudgetTags.removeTagPreview(model,[...selectedRowIds],tag),all=QBudgetTags.removeTagPreview(model,matchingSavedRows.map(r=>r.id),tag);
+  $('removeBulkTag').disabled=error||!selected.changed;$('removeMatchingTag').disabled=error||!all.changed;
+  $('bulkRemovePreview').textContent=`Retrait manuel possible : ${selected.changed}/${selected.selected} sur la sélection · ${all.changed}/${all.selected} dans les résultats actuels.`+(all.automatic?` Le tag restera présent par association sur ${all.automatic} opération(s).`:'');
+ }catch(error){$('bulkRemovePreview').textContent=error.message}
+}
+function removeManualTags(ids,scope){
+ const tag=$('bulkTag').value.trim();
+ try{
+  if(operationFilter().searchError)return;
+  const preview=QBudgetTags.removeTagPreview(model,ids,tag);
+  if(!preview.changed){updateBulkStatus(preview.automatic?'Aucun tag manuel à retirer ; ce tag provient d’une association. Modifie cette association dans l’éditeur.':'Aucun tag manuel correspondant à retirer.');return}
+  if(!confirm(`Retirer le tag manuel « ${tag} » de ${preview.changed} opération(s) parmi ${preview.selected} ${scope} ?\nLes autres tags et annotations sont conservés.`+(preview.automatic?`\nIl restera affiché par association sur ${preview.automatic} opération(s).`:'')))return;
+  const result=QBudgetTags.removeTag(model,ids,tag);
+  clearChartSelection();save();clearBulkSelection();render();
+  updateBulkStatus(`Tag manuel « ${tag} » retiré de ${result.changed} opération(s).`+(result.automatic?` Encore présent par association sur ${result.automatic} opération(s) : modifie l’association si nécessaire.`:''));
+ }catch(error){updateBulkStatus(error.message)}
+}
+$('removeBulkTag').onclick=()=>removeManualTags([...selectedRowIds],'sélectionnée(s)');
+$('removeMatchingTag').onclick=()=>removeManualTags(matchingSavedRows.map(r=>r.id),'correspondant aux filtres actuels');
 $('moreOperations').onclick=()=>{tableRowLimit+=150;renderRows()};
 function renderRows(){
  const at=$('asof').value||today,until=$('horizon').value||addMonths(at,1);
@@ -711,7 +736,7 @@ function resizePlots(){if(typeof Plotly==='undefined')return;for(const id of ['c
 // L'éditeur de catégories existant change seulement de place : pas de copie d'interface ni de donnees.
 $('editorCategoriesHost').append($('tagCategoriesCard'));
 initializeLayout();
-editorApi=QBudgetEditor.mount({getModel:()=>model,asOf:()=>$('asof').value||today,onChange:()=>{save();render()},exportAnnotations:()=>$('exportSettings').click(),importAnnotations:()=>$('importSettings').click(),exportCategories:()=>$('exportTagCategories').click(),importCategories:()=>$('importTagCategories').click()});
+editorApi=QBudgetEditor.mount({getModel:()=>model,asOf:()=>$('asof').value||today,onChange:()=>{clearChartSelection();save();render()},exportAnnotations:()=>$('exportSettings').click(),importAnnotations:()=>$('importSettings').click(),exportCategories:()=>$('exportTagCategories').click(),importCategories:()=>$('importTagCategories').click()});
 function showView(name){
  const editor=name==='editor';$('dashboardScreen').hidden=editor;$('editorScreen').hidden=!editor;
  $('viewDashboard').setAttribute('aria-selected',String(!editor));$('viewEditor').setAttribute('aria-selected',String(editor));

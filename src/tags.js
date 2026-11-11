@@ -5,7 +5,7 @@
  root.QBudgetTags=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.18.3';
+ const version='0.19.6';
  // Catégories de départ éditables et supprimables, jamais imposées aux opérations.
  const defaultData=[
   {name:'Nature',tags:['alimentation','courses','repas','restaurant','essence','peage','transport','telecom','logement','streaming','energie','eau','assurance','sante','loisirs','sport','IK','noteDeFrais','copro','impots','vetements','cadeaux','revenu'],source:'tags'},
@@ -92,5 +92,32 @@
   model.notes=updatedNotes;
   return {selected:valid.length,changed,alreadyPresent:valid.length-changed};
  }
- return Object.freeze({version,defaults,validate,exportJson,parseJson,moveCategory,addTag,upgradeDefaultTreatment,withoutTag});
+ // Plan pur : retrait exact des tags manuels, sans toucher aux autres annotations.
+ function removalPlan(model,ids,tag){
+  const value=String(tag??'').trim(),fold=t=>String(t).trim().toLocaleLowerCase('fr');
+  if(!value||value.includes(','))throw Error('Saisis un seul tag, sans virgule.');
+  if(!Array.isArray(ids))throw Error('Sélection invalide');
+  const wanted=fold(value),index=new Map((model.rows||[]).filter(r=>!r.forecast).map(r=>[r.id,r]));
+  const valid=[...new Set(ids)].filter(id=>index.has(id)),changes=[];
+  const checkAutomatic=typeof root.QBudgetEngine?.automaticTagsFor==='function'&&(model.labelAssociations||[]).some(a=>fold(a.tag)===wanted);
+  let automatic=0;
+  for(const id of valid){
+   const old=model.notes?.[id]||{};
+   const existing=[...(Array.isArray(old.tags)?old.tags:[]),...(typeof old.tag==='string'?old.tag.split(','):[])].map(t=>String(t).trim()).filter(Boolean);
+   const remaining=existing.filter(t=>fold(t)!==wanted);
+   if(remaining.length!==existing.length){
+    const tags=[...new Set(remaining)],hasOtherFields=Object.keys(old).some(key=>key!=='tags'&&key!=='tag');
+    changes.push({id,note:tags.length||hasOtherFields?{...old,tags,tag:tags[0]||''}:null});
+   }
+   if(checkAutomatic&&root.QBudgetEngine.automaticTagsFor(model,index.get(id)).some(t=>fold(t)===wanted))automatic++;
+  }
+  return {changes,result:{selected:valid.length,changed:changes.length,notPresent:valid.length-changes.length,automatic}};
+ }
+ function removeTagPreview(model,ids,tag){return removalPlan(model,ids,tag).result}
+ function removeTag(model,ids,tag){
+  const {changes,result}=removalPlan(model,ids,tag);
+  if(changes.length){const notes={...model.notes};for(const {id,note} of changes){if(note===null)delete notes[id];else notes[id]=note}model.notes=notes}
+  return result;
+ }
+ return Object.freeze({version,defaults,validate,exportJson,parseJson,moveCategory,addTag,removeTag,removeTagPreview,upgradeDefaultTreatment,withoutTag});
 });
