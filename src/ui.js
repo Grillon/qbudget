@@ -1,11 +1,12 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.2';
+const UI_VERSION='0.19.4';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
-$('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
+$('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
 const readCsv=QBudgetEngine.readCsv;
-function initModel(){model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
+let labelAssociationEditIndex=-1,labelAssociationPreviewLimit=100;
+function initModel(){model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.labelAssociations??=[];model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
 function load(){try{const s=localStorage.getItem(KEY);if(s)model=JSON.parse(s);initModel();for(const r of model.rows){r.account=r.bank;r.balance=null}const refs={};for(const [k,v] of Object.entries(model.references)){const bank=k.split(' · ')[0];if(!(bank in refs))refs[bank]=v}model.references=refs;for(const rule of Object.values(model.rules))rule.account=(rule.account||'').split(' · ')[0];model=QBudgetEngine.reimportBankRows(model,model.rows,resolveBankIdentity);showOrphanAnnotations()}catch(error){$('importStatus').textContent='Chargement : '+error.message}finally{initModel()}}function accounts(){return QBudgetEngine.accountNames(model)};function key(r){return r.bank}function inAccount(){return model.rows.filter(r=>!selected||key(r)===selected)}function aggregateRows(){const allowed=new Set(selected?[selected]:QBudgetEngine.includedAccountNames(model));return model.rows.filter(r=>allowed.has(key(r)))}function notes(r){return model.notes[r.id]||{}}
 function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Courbes historiques',QBudgetHistoryPlot.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
 function renderAccounts(){const list=accounts();$('account').replaceChildren(new Option('Tous les comptes',''),...list.map(a=>new Option(a,a)));if(selected&&!list.includes(selected))selected='';$('account').value=selected;const ref=model.references[selected];$('refBalance').value=ref?.balance??'';$('refDate').value=ref?.date??'';$('saveRef').disabled=!selected;const ma=$('manualAccount'),previous=ma.value;ma.replaceChildren(new Option('À attribuer (file d’attente)',''),...list.map(a=>new Option(a,a)));ma.value=list.includes(previous)?previous:(selected||list[0]||'');
@@ -253,8 +254,70 @@ function renderTagCategories(){
   button('×','Retirer la catégorie (tags conservés)',()=>{model.tagCategories=categories.filter((_,index)=>index!==i);save();renderTagCategories();renderRows();renderSummary()});
   host.append(row);
  }
+ renderLabelAssociations();
  $('tagCategoryStatus').textContent=categories.length+' catégorie(s) · ordre modifiable par glisser-déposer des onglets · tags non classés toujours visibles dans la ligne de détail.';
 }
+
+function labelAssociationDraft(){
+ return QBudgetEngine.validateLabelAssociations([{tag:$('labelAssociationTag').value,patterns:$('labelAssociationPatterns').value.split(/\r?\n/).map(p=>p.trim()).filter(Boolean)}])[0];
+}
+function resetLabelAssociationEditor(){
+ labelAssociationEditIndex=-1;labelAssociationPreviewLimit=100;
+ $('labelAssociationTag').value='';$('labelAssociationPatterns').value='';
+ $('cancelLabelAssociation').hidden=true;
+}
+function renderLabelAssociationPreview(){
+ const body=$('labelAssociationPreviewRows');body.replaceChildren();
+ let rows=[];
+ try{rows=QBudgetEngine.labelAssociationPreview(model,labelAssociationDraft());$('saveLabelAssociation').disabled=false}
+ catch(error){$('saveLabelAssociation').disabled=true;$('moreLabelAssociationPreview').hidden=true;$('labelAssociationPreviewSummary').textContent=$('labelAssociationTag').value||$('labelAssociationPatterns').value.trim()?error.message:'Choisis un tag et saisis les motifs pour voir les correspondances, sans modifier les opérations.';return}
+ const floating=rows.filter(QBudgetEngine.isFloating).length;
+ $('labelAssociationPreviewSummary').textContent=`${rows.length} opération(s) correspondante(s), tous comptes · ${floating} en attente · ${Math.min(rows.length,labelAssociationPreviewLimit)}/${rows.length} affichées. L’association s’appliquera aussi aux futurs imports.`;
+ for(const row of rows.slice(0,labelAssociationPreviewLimit)){
+  const tr=document.createElement('tr');
+  for(const value of [row.date||'En attente',row.bank||'À attribuer',row.desc,amount(row.amount)]){const td=document.createElement('td');td.textContent=value;tr.append(td)}
+  body.append(tr);
+ }
+ $('moreLabelAssociationPreview').hidden=rows.length<=labelAssociationPreviewLimit;
+}
+function renderLabelAssociations(){
+ const rules=model.labelAssociations||[];
+ if(labelAssociationEditIndex>=rules.length)resetLabelAssociationEditor();
+ const selectedTag=$('labelAssociationTag').value,known=QBudgetEngine.knownTags(model);
+ $('labelAssociationTag').replaceChildren(new Option('Choisir un tag existant',''),...known.map(tag=>new Option(tag,tag)));
+ $('labelAssociationTag').value=known.includes(selectedTag)?selectedTag:'';
+ const body=$('labelAssociationList');body.replaceChildren();$('labelAssociationEmpty').hidden=rules.length>0;
+ rules.forEach((rule,index)=>{
+  const tr=document.createElement('tr');
+  for(const value of [rule.tag,rule.patterns.join(' OU '),QBudgetEngine.labelAssociationPreview(model,rule).length]){const td=document.createElement('td');td.textContent=value;tr.append(td)}
+  const actions=document.createElement('td'),edit=document.createElement('button'),remove=document.createElement('button');
+  edit.type=remove.type='button';edit.className=remove.className='secondary';edit.textContent='Modifier';remove.textContent='Supprimer';
+  edit.onclick=()=>{labelAssociationEditIndex=index;labelAssociationPreviewLimit=100;$('labelAssociationTag').value=rule.tag;$('labelAssociationPatterns').value=rule.patterns.join('\n');$('cancelLabelAssociation').hidden=false;renderLabelAssociationPreview()};
+  remove.onclick=()=>{
+   if(!confirm('Supprimer l’association « '+rule.tag+' » ? Les tags manuels seront conservés.'))return;
+   model.labelAssociations=rules.filter((_,i)=>i!==index);
+   if(labelAssociationEditIndex===index)resetLabelAssociationEditor();else if(labelAssociationEditIndex>index)labelAssociationEditIndex--;
+   clearChartSelection();clearBulkSelection();save();render();$('labelAssociationStatus').textContent='Association supprimée. Les tags manuels sont conservés.';
+  };
+  actions.append(edit,remove);tr.append(actions);body.append(tr);
+ });
+ renderLabelAssociationPreview();
+}
+$('openLabelAssociations').onclick=()=>{$('labelAssociationsDetails').open=true;$('labelAssociationsCard').scrollIntoView({behavior:'smooth',block:'start'})};
+for(const id of ['labelAssociationTag','labelAssociationPatterns'])$(id).addEventListener('input',()=>{labelAssociationPreviewLimit=100;renderLabelAssociationPreview()});
+$('moreLabelAssociationPreview').onclick=()=>{labelAssociationPreviewLimit+=100;renderLabelAssociationPreview()};
+$('cancelLabelAssociation').onclick=()=>{resetLabelAssociationEditor();renderLabelAssociationPreview()};
+$('saveLabelAssociation').onclick=()=>{
+ try{
+  const draft=labelAssociationDraft();
+  if(!QBudgetEngine.knownTags(model).some(tag=>tag.toLocaleLowerCase('fr')===draft.tag.toLocaleLowerCase('fr')))throw Error('Choisis un tag existant');
+  const next=[...(model.labelAssociations||[])];
+  if(labelAssociationEditIndex<0)next.push(draft);else next[labelAssociationEditIndex]=draft;
+  model.labelAssociations=QBudgetEngine.validateLabelAssociations(next);
+  resetLabelAssociationEditor();clearChartSelection();clearBulkSelection();save();render();
+  $('labelAssociationStatus').textContent='Association enregistrée. Les opérations actuelles et les futurs imports utilisent ces motifs. Exporte les annotations JSON pour la sauvegarder dans un fichier.';
+ }catch(error){$('labelAssociationStatus').textContent=error.message}
+};
 
 $('addTagCategory').onclick=()=>{
  const used=new Set(QBudgetEngine.tagCategories(model).map(c=>c.name.toLocaleLowerCase('fr')));let name='Nouvelle catégorie',i=2;while(used.has(name.toLocaleLowerCase('fr')))name='Nouvelle catégorie '+i++;
@@ -391,8 +454,10 @@ function renderRows(){
    const rule=document.createElement('span');rule.className='operation-detail-note';rule.textContent='Récurrence : '+(model.rules[r.ruleId]?.desc||r.ruleId||'règle calculée');controls.append(rule);
   }else{
    function field(labelText,control){const label=document.createElement('label');label.className='operation-detail-field';const name=document.createElement('span');name.textContent=labelText;label.append(name,control);controls.append(label);return control}
-   const tag=document.createElement('input');tag.className='tag';tag.value=QBudgetEngine.tagsFor(model,r).join(', ');tag.placeholder=r.category||'Ajouter un tag';
-   tag.addEventListener('change',()=>{setTags(r,tag.value);render()});field('Modifier les tags',tag);
+   const tag=document.createElement('input');tag.className='tag';tag.value=QBudgetEngine.manualTagsFor(model,r).join(', ');tag.placeholder=r.category||'Ajouter un tag';
+   tag.addEventListener('change',()=>{setTags(r,tag.value);render()});field('Tags manuels',tag);
+   const automatic=QBudgetEngine.automaticTagsFor(model,r);
+   if(automatic.length){const info=document.createElement('span');info.className='operation-detail-note';info.textContent='Associations : '+automatic.join(', ')+' · modifiables dans l’éditeur';controls.append(info)}
    const typ=document.createElement('select');for(const [value,label] of [['','Non défini'],['ponctuel','Ponctuel'],['recurrent','Récurrent']])typ.add(new Option(label,value));
    typ.value=n.type||'';typ.addEventListener('change',()=>{if(typ.value==='recurrent')connectRule(r);else{update(r,{type:typ.value,ruleId:null});render()}});field('Type',typ);
    const rule=document.createElement('button');rule.className='secondary';rule.type='button';const linked=model.rules[n.ruleId];rule.textContent=linked?linked.desc:'Lier / créer';rule.onclick=()=>connectRule(r);controls.append(rule);
@@ -419,7 +484,7 @@ function renderPending(){
    const acct=document.createElement('select');acct.add(new Option('À attribuer',''));for(const name of accounts())acct.add(new Option(name,name));acct.value=r.bank||'';acct.onchange=()=>{r.bank=acct.value;r.account=acct.value;save();render()};cell().append(acct);
    const desc=document.createElement('input');desc.value=r.desc||'';desc.onchange=()=>{if(!desc.value.trim()){alert('Libellé requis');desc.value=r.desc;return}r.desc=desc.value.trim();save();renderPending()};cell().append(desc);
    const val=document.createElement('input');val.type='number';val.step='0.01';val.value=r.amount;val.onchange=()=>{const n=numeric(val.value);if(n===null){alert('Montant invalide');val.value=r.amount;return}r.amount=n;save();renderPending()};cell().append(val);
-   const tag=document.createElement('input');tag.className='tag';tag.value=QBudgetEngine.tagsFor(model,r).join(', ');tag.onchange=()=>{setTags(r,tag.value);renderPending()};cell().append(tag);
+   const tag=document.createElement('input');tag.className='tag';tag.value=QBudgetEngine.manualTagsFor(model,r).join(', ');tag.onchange=()=>{setTags(r,tag.value);renderPending()};const tagCell=cell();tagCell.append(tag);const automatic=QBudgetEngine.automaticTagsFor(model,r);if(automatic.length){const info=document.createElement('small');info.textContent='Associations : '+automatic.join(', ');tagCell.append(info)}
    const date=document.createElement('input');date.type='date';cell().append(date);
    const nature=document.createElement('select');nature.add(new Option('Prévu','planned'));nature.add(new Option('Réalisé','actual'));nature.value=r.nature==='actual'?'actual':'planned';cell().append(nature);
    const actions=document.createElement('div');actions.className='queue-actions';const schedule=document.createElement('button');schedule.textContent='Dater';schedule.onclick=()=>{if(!date.value){alert('Choisis une date dans le calendrier.');return}if(!r.bank){alert('Attribue un compte pour dater cette opération.');return}if(nature.value==='planned'&&date.value<=($('asof').value||today)){alert('Pour une opération prévue, choisis une date après la consultation ; sinon sélectionne « Réalisé ».');return}r.date=date.value;r.nature=nature.value;save();render()};const del=document.createElement('button');del.className='warn';del.textContent='Supprimer';del.onclick=()=>{if(!confirm('Supprimer définitivement cette opération manuelle en attente ?'))return;model.rows=model.rows.filter(row=>row!==r);delete model.notes[r.id];save();render()};actions.append(schedule,del);cell().append(actions);body.append(tr);
@@ -502,7 +567,7 @@ for(const id of ['search','searchMode','typeFilter','operationTags','operationTa
  clearTimeout(filterTimer);clearChartSelection();clearBulkSelection();tableRowLimit=150;renderRows();
  filterTimer=setTimeout(()=>{if(!$('dashboardScreen').hidden)renderSummary()},220);
 });
-$('sort').addEventListener('input',()=>{clearBulkSelection();tableRowLimit=150;renderRows()});$('saveRef').onclick=()=>{if(!selected)return;const b=numeric($('refBalance').value),date=$('refDate').value;if(b===null||!date){alert('Renseigne une date et un solde valides.');return}model.references[selected]={date,balance:b};save();renderSummary()};$('clearData').onclick=()=>{if(!confirm('Effacer opérations, tags et références stockés dans ce navigateur ?'))return;model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};selected='';clearChartSelection();clearBulkSelection();localStorage.removeItem(KEY);$('sunburstDepth').value=2;render()};
+$('sort').addEventListener('input',()=>{clearBulkSelection();tableRowLimit=150;renderRows()});$('saveRef').onclick=()=>{if(!selected)return;const b=numeric($('refBalance').value),date=$('refDate').value;if(b===null||!date){alert('Renseigne une date et un solde valides.');return}model.references[selected]={date,balance:b};save();renderSummary()};$('clearData').onclick=()=>{if(!confirm('Effacer opérations, tags et références stockés dans ce navigateur ?'))return;model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};selected='';clearChartSelection();clearBulkSelection();localStorage.removeItem(KEY);$('sunburstDepth').value=2;render()};
 $('exportCli').onclick=()=>download(JSON.stringify(model,null,2),'qbudget-data.json','application/json');$('auditAt').value=$('asof').value;
 $('horizon').value=addMonths($('asof').value,1);$('auditUntil').value=$('horizon').value;
 $('asof').addEventListener('change',()=>{$('auditAt').value=$('asof').value});
@@ -521,7 +586,7 @@ $('exportAudit').onclick=exportAuditCsv;
 $('exportSettings').onclick=()=>download(QBudgetAnnotations.exportJson(model),'qbudget-annotations.json','application/json');
 function download(data,name,type){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
 $('importSettings').onclick=()=>$('annotationsFile').click();
-$('annotationsFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const imported=QBudgetAnnotations.importInto(model,JSON.parse(await f.text()),QBudgetTags,resolveBankIdentity);if((model.rows.length||Object.keys(model.notes).length)&&!confirm('Importer ces annotations remplacera tes annotations et opérations manuelles locales, sans toucher au CSV bancaire. Exporte la version actuelle avant de continuer. Confirmer ?'))return;model=imported;selected='';clearChartSelection();clearBulkSelection();$('sunburstDepth').value=model.sunburstDepth;save();render();showOrphanAnnotations()}catch(err){alert(err.message)}finally{e.target.value=''}};$('addAccount').onclick=()=>{
+$('annotationsFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const imported=QBudgetAnnotations.importInto(model,JSON.parse(await f.text()),QBudgetTags,resolveBankIdentity);if((model.rows.length||Object.keys(model.notes).length)&&!confirm('Importer ces annotations remplacera tes annotations et opérations manuelles locales, sans toucher au CSV bancaire. Exporte la version actuelle avant de continuer. Confirmer ?'))return;model=imported;resetLabelAssociationEditor();selected='';clearChartSelection();clearBulkSelection();$('sunburstDepth').value=model.sunburstDepth;save();render();showOrphanAnnotations()}catch(err){alert(err.message)}finally{e.target.value=''}};$('addAccount').onclick=()=>{
  const name=$('newAccountName').value.trim(),balance=numeric($('newAccountBalance').value),at=$('asof').value;
  if(!name||balance===null||!at){alert('Renseigne le compte, son solde et une date de consultation.');return}
  if(accounts().includes(name)){selected=name;render();alert('Ce compte existe déjà.');return}

@@ -5,7 +5,7 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.3';
+ const version='0.19.4';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
@@ -59,8 +59,8 @@
   const list=[];
   const rowIds=new Set();
   for(const r of model.rows||[]){
-   rowIds.add(r.id);const n=model.notes?.[r.id]||{};
-   list.push({key:'row:'+r.id,kind:r.manual?'manual':'bank',id:r.id,label:r.desc||'Sans libellé',detail:`${r.bank||'Sans compte'} · ${r.date||'En attente'} · ${Number(r.amount).toFixed(2)} €`,search:[r.desc,r.bank,r.date,r.amount,...(n.tags||[]),n.tag].join(' ')});
+   rowIds.add(r.id);
+   list.push({key:'row:'+r.id,kind:r.manual?'manual':'bank',id:r.id,label:r.desc||'Sans libellé',detail:`${r.bank||'Sans compte'} · ${r.date||'En attente'} · ${Number(r.amount).toFixed(2)} €`,search:[r.desc,r.bank,r.date,r.amount,...root.QBudgetEngine.tagsFor(model,r)].join(' ')});
   }
   for(const id of Object.keys(model.notes||{})){
    if(rowIds.has(id))continue;
@@ -110,7 +110,11 @@
      account=field(form,'Compte',row.bank||'','select',{items:[['','Sans compte (en attente)'],...root.QBudgetEngine.accountNames(model).map(a=>[a,a])]});
      nature=field(form,'État',row.nature==='actual'?'actual':'planned','select',{items:[['planned','Prévu'],['actual','Réalisé']]});
     }
-    const tags=field(form,'Tags (séparés par des virgules)',row?root.QBudgetEngine.tagsFor(model,row).join(', '):(n.tags||[]).join(', ')||n.tag||'','textarea');
+    const tags=field(form,'Tags manuels (séparés par des virgules)',root.QBudgetEngine.manualTagsFor(model,row||{id:item.id}).join(', '),'textarea');
+    if(row){
+     const automatic=root.QBudgetEngine.automaticTagsFor(model,row);
+     if(automatic.length)form.append(elt('p','Tags par association : '+automatic.join(', ')+'. Pour les modifier, utilise « Associations de libellés ».','mutednote'));
+    }
     const type=field(form,'Périodicité',n.type||'','select',{items:[['','Non définie'],['ponctuel','Ponctuel'],['recurrent','Récurrent']]});
     const choices=[['','Aucune règle'],...Object.entries(model.rules||{}).map(([id,r])=>[id,(r.desc||id)+' · '+r.account+' ('+r.frequency+')'])];
     if(n.ruleId&&!model.rules?.[n.ruleId])choices.push([n.ruleId,'Règle introuvable : '+n.ruleId]);

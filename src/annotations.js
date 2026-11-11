@@ -6,11 +6,11 @@
  root.QBudgetAnnotations=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.0';
- const fields=['bankIdentities','version','notes','references','rules','accounts','excludedAccounts','tagCategories','donutCategory','sunburstDepth','hierarchyView','excludeTransfersFromCharts','tagDefaultsVersion','manualRows'];
+ const version='0.19.4';
+ const fields=['labelAssociations','bankIdentities','version','notes','references','rules','accounts','excludedAccounts','tagCategories','donutCategory','sunburstDepth','hierarchyView','excludeTransfersFromCharts','tagDefaultsVersion','manualRows'];
  const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
  function exportObject(model){
-  const obj={...(model.annotationExtras||{}),version:3,bankIdentities:model.bankIdentities||[],notes:model.notes||{},references:model.references||{},rules:model.rules||{},accounts:model.accounts||[],excludedAccounts:model.excludedAccounts||[],tagCategories:model.tagCategories||[],donutCategory:model.donutCategory||'',sunburstDepth:model.sunburstDepth||2,hierarchyView:model.hierarchyView||'sunburst',excludeTransfersFromCharts:model.excludeTransfersFromCharts!==false,tagDefaultsVersion:model.tagDefaultsVersion||2,manualRows:(model.rows||[]).filter(r=>r.manual)};
+  const obj={...(model.annotationExtras||{}),version:3,labelAssociations:model.labelAssociations||[],bankIdentities:model.bankIdentities||[],notes:model.notes||{},references:model.references||{},rules:model.rules||{},accounts:model.accounts||[],excludedAccounts:model.excludedAccounts||[],tagCategories:model.tagCategories||[],donutCategory:model.donutCategory||'',sunburstDepth:model.sunburstDepth||2,hierarchyView:model.hierarchyView||'sunburst',excludeTransfersFromCharts:model.excludeTransfersFromCharts!==false,tagDefaultsVersion:model.tagDefaultsVersion||2,manualRows:(model.rows||[]).filter(r=>r.manual)};
   // Snapshot independant : manipuler la representation exportee ne modifie pas l'application.
   return JSON.parse(JSON.stringify(obj));
  }
@@ -24,6 +24,8 @@
  }
  function importInto(model,input,tagsApi=root.QBudgetTags,resolve){
   const o=validateInput(input);
+  const engine=root.QBudgetEngine||(typeof require==='function'?require('./engine.js'):null);
+  const labelAssociations=engine.validateLabelAssociations(o.labelAssociations===undefined?[]:o.labelAssociations);
   const categories=tagsApi.validate(o.tagCategories===undefined?tagsApi.defaults():o.tagCategories);
   const validCategories=o.tagDefaultsVersion?categories:tagsApi.upgradeDefaultTreatment(categories);
   const manualRows=o.manualRows||[];
@@ -36,8 +38,7 @@
   const bankIds=new Set(oldBankRows.map(r=>r.id));
   if(manualRows.some(r=>bankIds.has(r.id)))throw Error('Identifiant manuel en conflit avec un relevé bancaire');
   const extras=Object.fromEntries(Object.entries(o).filter(([k])=>!fields.includes(k)));
-  const imported={...model,bankIdentities:o.bankIdentities??model.bankIdentities??[],notes:o.notes,references:o.references,rules:o.rules||{},accounts:o.accounts||[],excludedAccounts:o.excludedAccounts||[],tagCategories:validCategories,tagDefaultsVersion:2,donutCategory:o.donutCategory||'',excludeTransfersFromCharts:o.excludeTransfersFromCharts!==false,sunburstDepth:Math.max(2,Math.min(8,Number(o.sunburstDepth)||2)),hierarchyView:o.hierarchyView==='treemap'?'treemap':'sunburst',rows:[...oldBankRows,...manualRows.map(r=>({...r}))],annotationExtras:extras};
-  const engine=root.QBudgetEngine||(typeof require==='function'?require('./engine.js'):null);
+  const imported={...model,labelAssociations,bankIdentities:o.bankIdentities??model.bankIdentities??[],notes:o.notes,references:o.references,rules:o.rules||{},accounts:o.accounts||[],excludedAccounts:o.excludedAccounts||[],tagCategories:validCategories,tagDefaultsVersion:2,donutCategory:o.donutCategory||'',excludeTransfersFromCharts:o.excludeTransfersFromCharts!==false,sunburstDepth:Math.max(2,Math.min(8,Number(o.sunburstDepth)||2)),hierarchyView:o.hierarchyView==='treemap'?'treemap':'sunburst',rows:[...oldBankRows,...manualRows.map(r=>({...r}))],annotationExtras:extras};
   return engine.reimportBankRows(imported,imported.rows,resolve);
  }
  function exportJson(model){return JSON.stringify(exportObject(model),null,2)}

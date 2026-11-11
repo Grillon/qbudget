@@ -1,3 +1,13 @@
+# qbudget V0.19.4 — Réimports fiables et associations de libellés
+
+- Identités bancaires stables et rapprochement au réimport, avec migration compatible des annotations et résolution explicite des ambiguïtés. Opérations manuelles et flottantes préservées.
+- Associations de mots ou expressions littérales vers un tag existant, avec conditions OU, aperçu avant enregistrement et modification/suppression dans l’éditeur.
+- Classement recalculé sur les opérations existantes et les futurs imports, sans copier les tags automatiques dans les annotations manuelles ni modifier les libellés originaux.
+- Associations persistantes dans le navigateur et dans les annotations JSON ; même comportement dans le moteur Node et le navigateur. Anciens fichiers acceptés.
+- Version produit, interface, éditeur, annotations et moteur en 0.19.4 sur dev. Aucune modification des calculs financiers ou création automatique de récurrences.
+
+---
+
 # qbudget V0.19.3 — Éditeur compact, sélection multiple et filtres montant/période
 
 - **Tableau compact pleine largeur** dans l'onglet Éditeur ; aucune liste latérale étroite, pas de défilement horizontal au format bureau. Détail modifiable dans une fenêtre à la demande, non ouvert par le simple fait de sélectionner une ligne.

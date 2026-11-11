@@ -1,4 +1,6 @@
-# qbudget V0.19.3 — Éditeur compact et filtres pour le taggage
+# qbudget V0.19.4 — Associations de libellés et réimports fiables
+
+**Nouveau :** dans l’éditeur, associer des motifs de libellés à un tag existant (`NETFLIX` OU `NFLX` → `Netflix`). Aperçu avant enregistrement, application aux imports futurs, tags manuels préservés et sauvegarde dans les annotations JSON. [Mode d’emploi et essai rapide](docs/associations-libelles.md).
 
 **Réimports et conservation des annotations :** les opérations bancaires utilisent désormais une identité `SHA256-SUFFIXE` indépendante de la position CSV et du nom de fichier. Le compte bancaire source, le libellé normalisé, la date, le montant et la devise déterminent l’empreinte (avec la banque). Le libellé original et les calculs financiers restent conservés. Les opérations manuelles et flottantes gardent leurs identifiants, même après datation.
 

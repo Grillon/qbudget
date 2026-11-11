@@ -15,10 +15,10 @@ function mergeAnnotations(rows,annotations={},resolve){
  if(!annotations||typeof annotations!=='object'||Array.isArray(annotations))throw Error('Annotations JSON invalides');
  const manual=annotations.manualRows||[];
  for(const r of manual)if(rows.some(old=>!old.manual&&old.bank!==undefined&&old.desc!==undefined&&old.id===r.id))throw Error('Collision entre opération bancaire et manuelle');
- const result={rows:[...rows.filter(r=>r.manual),...manual.filter(r=>!rows.some(old=>old.id===r.id)).map(r=>({...r}))],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[],excludedAccounts:annotations.excludedAccounts||[],tagCategories:Array.isArray(annotations.tagCategories)?annotations.tagCategories:[],...(annotations.bankIdentities!==undefined?{bankIdentities:annotations.bankIdentities}:{})};
+ const result={rows:[...rows.filter(r=>r.manual),...manual.filter(r=>!rows.some(old=>old.id===r.id)).map(r=>({...r}))],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[],excludedAccounts:annotations.excludedAccounts||[],tagCategories:Array.isArray(annotations.tagCategories)?annotations.tagCategories:[],labelAssociations:validateLabelAssociations(annotations.labelAssociations===undefined?[]:annotations.labelAssociations),...(annotations.bankIdentities!==undefined?{bankIdentities:annotations.bankIdentities}:{})};
  return identity.reconcile(result,rows,resolve);
 }
-function reimportBankRows(model,rows,resolve){return identity.reconcile(model,rows,resolve)}
+function reimportBankRows(model,rows,resolve){return identity.reconcile({...model,labelAssociations:validateLabelAssociations(model.labelAssociations===undefined?[]:model.labelAssociations)},rows,resolve)}
 function reassignAnnotation(model,from,to){
  if(!model.rows.some(r=>r.id===to))throw Error('Opération cible introuvable');
  if(from===to||!Object.hasOwn(model.notes||{},from))throw Error('Annotation source introuvable');
@@ -35,10 +35,51 @@ function cashAccountNames(model){return [...new Set([...(model.accounts||[]),...
 // Only implicit global calculations omit it. Audit exports remain exhaustive.
 function includedAccountNames(model){const excluded=new Set(model.excludedAccounts||[]);return cashAccountNames(model).filter(name=>!excluded.has(name))}
 function excludedAccountNames(model){const excluded=new Set(model.excludedAccounts||[]);return cashAccountNames(model).filter(name=>excluded.has(name))}
-function tagsFor(model,row){const note=model.notes?.[row.id]||{};return [...new Set([...(Array.isArray(note.tags)?note.tags:[]),...(typeof note.tag==='string'?note.tag.split(','):[])].map(t=>String(t).trim()).filter(Boolean))]}
+function manualTagsFor(model,row){const note=model.notes?.[row.id]||{};return [...new Set([...(Array.isArray(note.tags)?note.tags:[]),...(typeof note.tag==='string'?note.tag.split(','):[])].map(t=>String(t).trim()).filter(Boolean))]}
+function uniqueTags(values){const seen=new Set();return values.filter(tag=>{const key=fold(tag);if(seen.has(key))return false;seen.add(key);return true})}
+function tagsFor(model,row){return uniqueTags([...manualTagsFor(model,row),...automaticTagsFor(model,row)])}
 // Le dictionnaire de tags est une lecture sémantique : il ne modifie jamais les écritures.
 // Une catégorie peut afficher le champ de périodicité déjà existant (source='type').
 const fold = x => String(x||'').trim().toLocaleLowerCase('fr');
+const normalizeLabel = x => String(x??'').normalize('NFC').trim().replace(/\s+/gu,' ').toLocaleLowerCase('fr');
+function validateLabelAssociations(input){
+ if(!Array.isArray(input))throw Error('Liste d’associations de libellés invalide');
+ const seen=new Set();
+ return input.map(item=>{
+  if(typeof item?.tag!=='string'||!item.tag.trim()||item.tag.includes(','))throw Error('Un tag est requis pour chaque association, sans virgule');
+  const tag=item.tag.trim();
+  if(seen.has(fold(tag)))throw Error('Une association existe déjà pour le tag « '+tag+' »');
+  seen.add(fold(tag));
+  if(!Array.isArray(item.patterns)||!item.patterns.length||item.patterns.some(p=>typeof p!=='string'||!p.trim()))throw Error('Au moins un motif de libellé est requis');
+  const patterns=[],patternKeys=new Set();
+  for(const pattern of item.patterns){const key=normalizeLabel(pattern);if(!patternKeys.has(key)){patternKeys.add(key);patterns.push(pattern.trim().replace(/\s+/gu,' '))}}
+  return {tag,patterns};
+ });
+}
+function compileLabelAssociation(association){
+ const word=/[\p{L}\p{M}\p{N}_]/u;
+ return {tag:association.tag,patterns:association.patterns.map(value=>{
+  const text=normalizeLabel(value),chars=[...text],escaped=text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return new RegExp((word.test(chars[0])?'(?:^|[^\\p{L}\\p{M}\\p{N}_])':'')+escaped+(word.test(chars.at(-1))?'(?=$|[^\\p{L}\\p{M}\\p{N}_])':''),'u');
+ })};
+}
+const labelAssociationCache=new WeakMap();
+function automaticTagsFor(model,row){
+ const input=model.labelAssociations;
+ if(!input?.length)return [];
+ const signature=JSON.stringify(input);let cached=labelAssociationCache.get(input);
+ if(!cached||cached.signature!==signature){cached={signature,compiled:validateLabelAssociations(input).map(compileLabelAssociation)};labelAssociationCache.set(input,cached)}
+ const text=normalizeLabel(row.desc);
+ return cached.compiled.filter(a=>a.patterns.some(pattern=>pattern.test(text))).map(a=>a.tag);
+}
+function labelAssociationPreview(model,association){
+ const compiled=compileLabelAssociation(validateLabelAssociations([association])[0]);
+ return (model.rows||[]).filter(row=>!row.forecast&&compiled.patterns.some(pattern=>pattern.test(normalizeLabel(row.desc))));
+}
+function knownTags(model){
+ const values=[...(model.tagCategories||[]).flatMap(c=>c.tags||[]),...Object.keys(model.notes||{}).flatMap(id=>manualTagsFor(model,{id})),...(model.labelAssociations||[]).map(a=>a.tag)];
+ return [...new Map(values.map(t=>[fold(t),t])).values()].sort((a,b)=>a.localeCompare(b,'fr'));
+}
 function tagCategories(model){return Array.isArray(model.tagCategories)?model.tagCategories:[]}
 function rowTags(model,row){return row.forecast?(row.tags||[]):tagsFor(model,row)}
 function operationType(model,row){return row.forecast?'recurrent':(model.notes?.[row.id]?.type||'')}
@@ -266,7 +307,8 @@ function recurrencePreview(model,at,until,account=''){
   .filter(row=>row.origine==='recurrence')
   .map(row=>({id:row.identifiant,bank:row.compte,account:row.compte,
    date:row.date,amount:row.montant,desc:row.libelle,ruleId:row.recurrence_id,
-   tags:tagsByRule.get(row.recurrence_id)?.tags||[],forecast:true}));
+   tags:tagsByRule.get(row.recurrence_id)?.tags||[],forecast:true}))
+  .map(row=>({...row,tags:uniqueTags([...row.tags,...automaticTagsFor(model,row)])}));
 }
 function auditCsv(records){
  const quote=v=>{const text=String(v??'');return /[;"\r\n]/.test(text)?'"'+text.replace(/"/g,'""')+'"':text};
@@ -289,5 +331,5 @@ function check(model){const errors=[],warnings=[];
  if(orphanCount)warnings.push(orphanCount+' annotation(s) sans opération chargée : conservées, rattachement possible dans l’éditeur');
  return {ok:errors.length===0,errors,warnings};
 }
-return {version:'0.19.2',compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {version:'0.19.4',compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,validateLabelAssociations,automaticTagsFor,manualTagsFor,labelAssociationPreview,knownTags,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });
