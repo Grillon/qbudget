@@ -1,3 +1,12 @@
+# qbudget V0.19.9 — Repérage et suggestion de tags dans l’éditeur
+
+- Cases Sans tags et Libellés partiellement tagués, combinables avec la recherche et les filtres existants. Les résultats sont les correspondances du tableau, taguables par sélection ou en totalité sans mot-clé.
+- Comparaison du même libellé normalisé sur le même compte source, dans tout l’historique chargé ; tags manuels et automatiques pris en compte.
+- Préremplissage modifiable avec les tags communs aux opérations similaires taguées. Aucun choix arbitraire en cas de contradiction, aucune application automatique et aucune saisie manuelle écrasée.
+- Repérage sans modification des opérations, annotations, règles, montants ou calculs. Les corrections utilisent le format JSON existant.
+
+---
+
 # qbudget V0.19.8 — Ajout groupé de plusieurs tags
 
 - Ajout de plusieurs tags séparés par des virgules, sur la sélection ou sur tous les résultats filtrés, dans le tableau de bord et l’éditeur.

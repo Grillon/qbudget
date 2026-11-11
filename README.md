@@ -1,6 +1,8 @@
-# qbudget V0.19.8 — Ajout groupé de plusieurs tags
+# qbudget V0.19.9 — Repérage des opérations sans tags
 
-**Nouveau :** saisir `SASU, IK, mission` pour ajouter plusieurs tags en une fois à une sélection ou aux résultats filtrés, dans les deux vues. Les tags existants restent conservés, sans doublons. Le retrait reste limité à un tag à la fois. [Mode d’emploi](docs/retrait-tags.md).
+**Nouveau :** dans l’éditeur, cocher **Sans tags** ou **Libellés partiellement tagués**. Les résultats restent dans le tableau et deviennent des correspondances taguables. Une suggestion commune est préremplie lorsque les opérations similaires le permettent, sans modifier votre saisie ni appliquer de tags automatiquement. [Mode d’emploi](docs/reperage-tags.md).
+
+**Ajout groupé de tags :** saisir `SASU, IK, mission` pour ajouter plusieurs tags en une fois à une sélection ou aux résultats filtrés, dans les deux vues. Les tags existants restent conservés, sans doublons. Le retrait reste limité à un tag à la fois. [Mode d’emploi](docs/retrait-tags.md).
 
 **Récurrences potentielles :** lancer la détection, puis examiner les propositions dans un backlog sauvegardé. Ajuster et confirmer la création d’une règle, ou ignorer la proposition. Aucun effet sur les calculs avant validation. [Mode d’emploi et essai rapide](docs/detection-recurrences.md).
 

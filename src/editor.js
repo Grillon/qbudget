@@ -5,7 +5,7 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.8';
+ const version='0.19.9';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
@@ -55,6 +55,37 @@
   return true;
  }
 
+ // Repérage sur tout l'historique chargé, avant les filtres de la vue.
+ function tagReview(model){
+  const groups=new Map(),untagged=new Set(),partiallyTagged=new Set(),suggestions=new Map();
+  for(const row of model.rows||[]){
+   if(row.forecast)continue;
+   const tags=root.QBudgetEngine.tagsFor(model,row),tagged=tags.length>0;
+   if(!tagged)untagged.add(row.id);
+   const label=lower(String(row.desc??'').normalize('NFC').trim().replace(/\s+/gu,' '));
+   if(!label)continue;
+   const key=JSON.stringify([row.bank||'',row.sourceAccount||'',label]);
+   if(!groups.has(key))groups.set(key,{ids:[],tagged:false,untagged:false,tags:null});
+   const group=groups.get(key);group.ids.push(row.id);group[tagged?'tagged':'untagged']=true;
+   if(tagged){const keys=new Set(tags.map(lower));group.tags=group.tags===null?tags:group.tags.filter(tag=>keys.has(lower(tag)))}
+  }
+  for(const group of groups.values())for(const id of group.ids){
+   if(group.tagged&&group.untagged)partiallyTagged.add(id);
+   if(group.tags?.length)suggestions.set(id,group.tags);
+  }
+  return {untagged,partiallyTagged,suggestions};
+ }
+ function matchesTagReview(row,review,{withoutTags=false,partialTags=false}={}){
+  if(!withoutTags&&!partialTags)return true;
+  return !!row&&!row.forecast&&(!withoutTags||review.untagged.has(row.id))&&(!partialTags||review.partiallyTagged.has(row.id));
+ }
+ function tagSuggestions(review,ids){
+  if(!review||!ids.length)return [];
+  let common=review.suggestions.get(ids[0])||[];
+  for(const id of ids.slice(1)){const keys=new Set((review.suggestions.get(id)||[]).map(lower));common=common.filter(tag=>keys.has(lower(tag)));if(!common.length)break}
+  return [...common];
+ }
+
  function itemList(model){
   const list=[];
   const rowIds=new Set();
@@ -77,6 +108,7 @@
   const byId=id=>doc.getElementById(id),getModel=options.getModel;
   let selectedKey='',selectedTag='',categoryOverviewOpen=false,visibleLimit=120;
   let matchingEditableIds=[],matchingEditableKeys=[],visibleItems=[];
+  let currentTagReview=null,automaticTagValue=null;
   let selectedKeys=new Set(),selectionAnchor='';
   const elt=(tag,text,cls)=>{const e=doc.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e};
   function field(parent,label,value,type='text',opts={}){
@@ -214,13 +246,18 @@
   byId('editorClose').onclick=closeDetail;
   byId('editorDetailBackdrop').addEventListener('click',event=>{if(event.target===byId('editorDetailBackdrop'))closeDetail()});
   doc.addEventListener('keydown',event=>{if(event.key==='Escape'&&detailOpen())closeDetail()});
-  function updateSelection(){
+  function updateSelection(allowSuggestion=true){
    const matching=new Set(matchingEditableKeys);
    selectedKeys=new Set([...selectedKeys].filter(k=>matching.has(k)));
-   const count=selectedKeys.size,tag=byId('editorBulkTag').value.trim(),term=byId('editorSearch').value.trim();
+   const count=selectedKeys.size,input=byId('editorBulkTag');
+   const selectedIds=visibleItems.filter(i=>selectedKeys.has(i.key)&&(i.kind==='bank'||i.kind==='manual')).map(i=>i.id);
+   const proposed=tagSuggestions(currentTagReview,selectedIds.length?selectedIds:matchingEditableIds),suggestion=proposed.join(', ');
+   if(allowSuggestion&&(!input.value.trim()||automaticTagValue!==null&&input.value===automaticTagValue)){input.value=suggestion;automaticTagValue=suggestion}
+   byId('editorTagSuggestion').textContent=suggestion?`Suggestion ${selectedIds.length?'pour la sélection':'pour toutes les correspondances'} : ${suggestion} · tags communs aux opérations similaires déjà taguées. À vérifier avant application.`:currentTagReview&&matchingEditableIds.length?'Aucune suggestion commune pour ces correspondances. La saisie reste libre.':'';
+   const tag=input.value.trim(),term=byId('editorSearch').value.trim();
    byId('editorSelectedCount').textContent=`${count} opération(s) sélectionnée(s)`;
    byId('editorApplySelectedTag').disabled=!count||!tag||!!byId('editorSearchError').textContent;
-   byId('editorApplyTag').disabled=!matchingEditableIds.length||!(term||['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))||!!byId('editorSearchError').textContent||!tag;
+   byId('editorApplyTag').disabled=!matchingEditableIds.length||!(term||tagFilterActive()||['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))||!!byId('editorSearchError').textContent||!tag;
    byId('editorRemoveSelectedTag').disabled=byId('editorRemoveTag').disabled=true;
    if(tag.includes(','))byId('editorRemovePreview').textContent='Ajout : plusieurs tags séparés par des virgules. Pour un retrait, saisis un seul tag.';
    else if(tag&&!byId('editorSearchError').textContent){
@@ -243,6 +280,7 @@
    const result=selectKeys(selectedKeys,matchingEditableKeys,selectionAnchor,key,modifiers);
    selectedKeys=result.keys;selectionAnchor=result.anchor;updateSelection();
   }
+  function tagFilterActive(){return byId('editorWithoutTags').checked||byId('editorPartialTags').checked}
   function render(){
    const model=getModel(),scope=byId('editorScope').value||'all',term=byId('editorSearch').value.trim(),mode=byId('editorSearchMode').value;
    const rawBounds={min:byId('editorAmountMin').value,max:byId('editorAmountMax').value,from:byId('editorDateFrom').value,to:byId('editorDateTo').value};
@@ -251,9 +289,13 @@
    try{bounds=parseEditorFilters(rawBounds)}catch(e){searchError=[searchError,e.message].filter(Boolean).join(' · ')}
    byId('editorSearchError').textContent=searchError;
    const all=itemList(model),rowById=new Map((model.rows||[]).map(r=>[r.id,r]));
+   const tagFilters={withoutTags:byId('editorWithoutTags').checked,partialTags:byId('editorPartialTags').checked},hasTagFilter=tagFilterActive(),review=hasTagFilter?tagReview(model):null;
+   currentTagReview=review;
    const visible=all.filter(i=>{
     if(scope!=='all'&&i.kind!==scope)return false;
     if(searchError)return false;
+    if(hasTagFilter&&i.kind!=='bank'&&i.kind!=='manual')return false;
+    if(!matchesTagReview(rowById.get(i.id),review,tagFilters))return false;
     if(bounds.active&&!matchesEditorFilters(rowById.get(i.id),bounds))return false;
     if(term){const content=[i.label,i.detail,i.search].join(' ');if(mode==='regex'?!regex.test(content):!lower(content).includes(lower(term)))return false}
     if(!selectedTag)return true;
@@ -266,7 +308,7 @@
    const editable=visible.filter(i=>i.kind==='manual'||i.kind==='bank');
    matchingEditableIds=editable.map(i=>i.id);
    matchingEditableKeys=editable.map(i=>i.key);
-   byId('editorCount').textContent=`${visible.length} / ${all.length} élément(s)`+(selectedTag?' · tag '+selectedTag:'')+(bounds.active?' · filtre montant/période':'')+(visible.length>visibleLimit?` · ${visibleLimit} affichés`:'')+` · ${matchingEditableIds.length} opération(s) taguables`;
+   byId('editorCount').textContent=`${visible.length} / ${all.length} élément(s)`+(selectedTag?' · tag '+selectedTag:'')+(bounds.active?' · filtre montant/période':'')+(tagFilters.withoutTags?' · sans tags':'')+(tagFilters.partialTags?' · libellés partiellement tagués':'')+(visible.length>visibleLimit?` · ${visibleLimit} affichés`:'')+` · ${matchingEditableIds.length} opération(s) taguables`;
    renderCategoryOverview(model);
    const host=byId('editorItems');host.replaceChildren();
    const fragment=doc.createDocumentFragment();
@@ -308,7 +350,7 @@
   byId('editorMore').onclick=()=>{visibleLimit+=120;render()};
   byId('editorSelectMatching').onclick=()=>{selectedKeys=new Set(matchingEditableKeys);selectionAnchor=matchingEditableKeys[0]||'';updateSelection()};
   byId('editorClearSelection').onclick=()=>{selectedKeys.clear();selectionAnchor='';updateSelection()};
-  byId('editorBulkTag').addEventListener('input',updateSelection);
+  byId('editorBulkTag').addEventListener('input',()=>{automaticTagValue=null;updateSelection(false)});
   function bulkTag(ids,kind){
    const tag=byId('editorBulkTag').value.trim();
    if(!ids.length||!tag||byId('editorSearchError').textContent)return;
@@ -338,7 +380,7 @@
   };
   byId('editorApplyTag').onclick=()=>{
    const ids=[...matchingEditableIds];
-   if(!byId('editorSearch').value.trim()&&!['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))return;
+   if(!byId('editorSearch').value.trim()&&!tagFilterActive()&&!['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))return;
    bulkTag(ids,'trouvée(s)');
   };
   byId('editorRemoveSelectedTag').onclick=()=>{
@@ -350,6 +392,7 @@
   byId('editorScope').onchange=resetFilter;
   byId('editorSearchMode').onchange=resetFilter;
   byId('editorSearch').oninput=resetFilter;
+  byId('editorWithoutTags').onchange=byId('editorPartialTags').onchange=resetFilter;
   for(const id of ['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'])byId(id).addEventListener('input',resetFilter);
   byId('editorClearRange').onclick=()=>{
    for(const id of ['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'])byId(id).value='';
@@ -361,5 +404,5 @@
   byId('editorImportCategories').onclick=()=>options.importCategories();
   return Object.freeze({render});
  }
- return Object.freeze({version,mount,itemList,commaTags,selectKeys,parseEditorFilters,matchesEditorFilters});
+ return Object.freeze({version,mount,itemList,commaTags,selectKeys,parseEditorFilters,matchesEditorFilters,tagReview,matchesTagReview,tagSuggestions});
 });
