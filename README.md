@@ -1,6 +1,10 @@
-# qbudget V0.19.10 — Tri et affichage du tableau de l’éditeur
+# qbudget V0.19.11 — Détection des transferts intercomptes
 
-**Nouveau :** cliquer sur Date, Compte, Élément, Montant ou Catégories · tags pour alterner le tri croissant/décroissant. Choisir 120, 250, 500 ou 1 000 lignes par affichage ; le bouton d’affichage supplémentaire suit ce choix. Tri et sélection portent sur toutes les correspondances filtrées. [Mode d’emploi](docs/tri-editeur.md).
+**Nouveau :** détecter les paires débit/crédit du même montant, à la même date et dans la même devise, entre deux comptes distincts. Le backlog permet d’ajouter `transfert_intercomptes` aux deux opérations : ce tag constitue la validation, même ajouté depuis l’éditeur. Les ambiguïtés et doubles débits ne sont pas rapprochés automatiquement. [Mode d’emploi et essai fictif](docs/detection-transferts.md).
+
+**Catégories pour l’exploration :** une [proposition de six axes](docs/categories-exploration.md) et un JSON facultatif sont disponibles. Aucune modification du catalogue actuel ni des catégories personnelles n’est appliquée.
+
+**Tri et affichage :** cliquer sur Date, Compte, Élément, Montant ou Catégories · tags pour alterner le tri croissant/décroissant. Choisir 120, 250, 500 ou 1 000 lignes par affichage ; le bouton d’affichage supplémentaire suit ce choix. [Mode d’emploi](docs/tri-editeur.md).
 
 **Repérage des tags :** dans l’éditeur, cocher **Sans tags** ou **Libellés partiellement tagués**. Les résultats restent dans le tableau et deviennent des correspondances taguables. Une suggestion commune est préremplie lorsque les opérations similaires le permettent, sans modifier votre saisie ni appliquer de tags automatiquement. [Mode d’emploi](docs/reperage-tags.md).
 

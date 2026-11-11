@@ -1,14 +1,14 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.8';
+const UI_VERSION='0.19.11';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
 const readCsv=QBudgetEngine.readCsv;
 let labelAssociationEditIndex=-1,labelAssociationPreviewLimit=100;
-function initModel(){model.recurrenceBacklog??=[];model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.labelAssociations??=[];model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
+function initModel(){model.transferBacklog??=[];model.recurrenceBacklog??=[];model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.labelAssociations??=[];model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
 function load(){try{const s=localStorage.getItem(KEY);if(s)model=JSON.parse(s);initModel();for(const r of model.rows){r.account=r.bank;r.balance=null}const refs={};for(const [k,v] of Object.entries(model.references)){const bank=k.split(' · ')[0];if(!(bank in refs))refs[bank]=v}model.references=refs;for(const rule of Object.values(model.rules))rule.account=(rule.account||'').split(' · ')[0];model=QBudgetEngine.reimportBankRows(model,model.rows,resolveBankIdentity);showOrphanAnnotations()}catch(error){$('importStatus').textContent='Chargement : '+error.message}finally{initModel()}}function accounts(){return QBudgetEngine.accountNames(model)};function key(r){return r.bank}function inAccount(){return model.rows.filter(r=>!selected||key(r)===selected)}function aggregateRows(){const allowed=new Set(selected?[selected]:QBudgetEngine.includedAccountNames(model));return model.rows.filter(r=>allowed.has(key(r)))}function notes(r){return model.notes[r.id]||{}}
-function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Courbes historiques',QBudgetHistoryPlot.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Détection de récurrences',QBudgetRecurrences.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
+function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Courbes historiques',QBudgetHistoryPlot.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Détection de récurrences',QBudgetRecurrences.version],['Détection de transferts',QBudgetTransfers.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
 function renderAccounts(){const list=accounts();$('account').replaceChildren(new Option('Tous les comptes',''),...list.map(a=>new Option(a,a)));if(selected&&!list.includes(selected))selected='';$('account').value=selected;const ref=model.references[selected];$('refBalance').value=ref?.balance??'';$('refDate').value=ref?.date??'';$('saveRef').disabled=!selected;const ma=$('manualAccount'),previous=ma.value;ma.replaceChildren(new Option('À attribuer (file d’attente)',''),...list.map(a=>new Option(a,a)));ma.value=list.includes(previous)?previous:(selected||list[0]||'');
  const toggles=$('accountToggles');toggles.replaceChildren();const excluded=new Set(model.excludedAccounts);
  for(const name of list){const label=document.createElement('label');label.className='account-toggle'+(excluded.has(name)?' excluded':'');label.title='Activé : inclus dans le cumul global. Désactivé : visible séparément sur le graphique.';
@@ -520,7 +520,7 @@ function renderPending(){
 }
 // Ne jamais recalculer Plotly ni reconstruire les milliers de lignes d'une vue cachée.
 function render(){
- renderBankMatches();renderRecurrenceBacklog();
+ renderBankMatches();renderRecurrenceBacklog();renderTransferBacklog();
  if(!$('editorScreen').hidden){renderTagCategories();editorApi?.render()}
  else{renderAccounts();renderSummary();renderRows();renderPending();renderRules()}
  $('importStatus').textContent=`${model.rows.length} opérations chargées · ${accounts().length} compte(s) · stockage local au navigateur`;
@@ -654,6 +654,59 @@ function renderRecurrenceBacklog(){
 $('openRecurrenceBacklog').onclick=$('editorOpenRecurrences').onclick=openRecurrenceBacklog;
 $('detectRecurrences').onclick=$('editorDetectRecurrences').onclick=detectRecurrences;
 $('recurrenceBacklogDetails').addEventListener('toggle',()=>{if($('recurrenceBacklogDetails').open)renderRecurrenceBacklog()});
+function openTransferBacklog(){
+ showView('editor');$('transferBacklogDetails').open=true;renderTransferBacklog();$('transferBacklogCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function detectTransfers(){
+ try{
+  model=QBudgetTransfers.scan(model);save();openTransferBacklog();
+  const pending=model.transferBacklog.filter(c=>QBudgetTransfers.status(model,c)==='pending');
+  $('transferBacklogStatus').textContent=`Détection terminée : ${pending.length} proposition(s) à examiner. Aucun tag ajouté. La validation consiste à taguer les deux lignes ; ces décisions sont incluses dans les annotations JSON.`;
+ }catch(error){$('transferBacklogStatus').textContent=error.message}
+}
+function tagTransfers(ids){
+ if(!ids.length)return;
+ if(!confirm(`Ajouter le tag transfert_intercomptes aux deux lignes de ${ids.length} transfert(s) proposé(s) ?\nLes autres tags et annotations sont conservés. Les montants, soldes et calculs de trésorerie restent inchangés.\nLes graphiques qui excluent les transferts utiliseront ce classement.`))return;
+ try{model=QBudgetTransfers.acceptMany(model,ids);clearChartSelection();clearBulkSelection();save();render();$('transferBacklogStatus').textContent=`${ids.length} transfert(s) tagué(s). Retirer le tag d’une ligne rouvre la proposition. Les tags ajoutés depuis le tableau sont aussi reconnus.`}
+ catch(error){$('transferBacklogStatus').textContent=error.message}
+}
+function renderTransferBacklog(){
+ const backlog=model.transferBacklog||[],pending=backlog.filter(c=>QBudgetTransfers.status(model,c)==='pending'),reviewed=backlog.filter(c=>QBudgetTransfers.status(model,c)!=='pending');
+ $('transferBacklogCount').textContent=pending.length;$('editorOpenTransfers').textContent=`Transferts intercomptes · ${pending.length}`;$('transferReviewedCount').textContent=reviewed.length;
+ if(!$('transferBacklogDetails').open||$('editorScreen').hidden)return;
+ const analysis=QBudgetTransfers.analyze(model),fresh=new Map(analysis.candidates.map(c=>[c.id,c]));
+ const ready=c=>fresh.has(c.id)&&JSON.stringify(fresh.get(c.id).evidence)===JSON.stringify(c.evidence);
+ const readyIds=pending.filter(ready).map(c=>c.id);
+ $('acceptAllTransfers').disabled=!readyIds.length;$('acceptAllTransfers').textContent=`Taguer les ${readyIds.length} transfert(s) proposé(s)`;$('acceptAllTransfers').onclick=()=>tagTransfers(readyIds);
+ const node=(tag,text,cls='')=>{const n=document.createElement(tag);n.textContent=text;n.className=cls;return n};
+ const describe=c=>`${c.evidence[0].date} · ${Math.abs(c.evidence[0].amount).toLocaleString('fr-FR')} ${c.evidence[0].currency}`;
+ const evidenceTable=rows=>{
+  const wrap=node('div','','table-wrap');wrap.style.maxHeight='300px';wrap.style.overflow='auto';
+  const table=document.createElement('table'),head=document.createElement('thead'),tr=document.createElement('tr');
+  for(const caption of ['Date','Banque / compte source','Libellé','Montant','Tags actuels'])tr.append(node('th',caption));head.append(tr);table.append(head);
+  const body=document.createElement('tbody');
+  for(const e of rows){const r=document.createElement('tr');for(const value of [e.date,e.bank+(e.sourceAccount?' / '+e.sourceAccount:''),e.desc,Number(e.amount).toLocaleString('fr-FR')+' '+e.currency,QBudgetEngine.tagsFor(model,e).join(', ')])r.append(node('td',value));body.append(r)}
+  table.append(body);wrap.append(table);return wrap;
+ };
+ const host=$('transferBacklogList');host.replaceChildren();
+ if(!pending.length)host.textContent='Aucune proposition à traiter. Les transferts déjà tagués restent consultables ci-dessous.';
+ for(const c of pending){
+  const card=node('div','','bank-match-item transfer-candidate');card.dataset.candidate=c.id;card.append(node('strong',describe(c)),evidenceTable(c.evidence));
+  if(!ready(c))card.append(node('p','Paire absente, modifiée ou devenue ambiguë dans les données actuelles. Réimporte l’historique utile et relance la détection, ou ignore la proposition.','filter-error'));
+  const controls=node('div','','toolbar'),accept=node('button','Ajouter transfert_intercomptes'),ignore=node('button','Ignorer','secondary');accept.type=ignore.type='button';accept.disabled=!ready(c);accept.onclick=()=>tagTransfers([c.id]);
+  ignore.onclick=()=>{try{model=QBudgetTransfers.ignore(model,c.id);save();render();$('transferBacklogStatus').textContent='Proposition ignorée. Elle reste réexaminable dans les décisions.'}catch(error){$('transferBacklogStatus').textContent=error.message}};
+  controls.append(accept,ignore);card.append(controls);host.append(card);
+ }
+ $('transferAmbiguousCount').textContent=analysis.ambiguous.length;$('transferAmbiguousList').replaceChildren(evidenceTable(analysis.ambiguous));
+ const history=$('transferReviewedList');history.replaceChildren();
+ for(const c of reviewed){
+  const validated=QBudgetTransfers.status(model,c)==='validated',card=node('details','','bank-match-item');card.append(node('summary',describe(c)+' · '+(validated?'Tag présent sur les deux lignes':'Ignorée')),evidenceTable(c.evidence));
+  if(!validated){const reopen=node('button','Réexaminer','secondary');reopen.type='button';reopen.onclick=()=>{try{model=QBudgetTransfers.reopen(model,c.id);save();render()}catch(error){$('transferBacklogStatus').textContent=error.message}};card.append(reopen)}history.append(card);
+ }
+}
+$('detectTransfers').onclick=$('editorDetectTransfers').onclick=detectTransfers;
+$('editorOpenTransfers').onclick=openTransferBacklog;
+$('transferBacklogDetails').addEventListener('toggle',()=>{if($('transferBacklogDetails').open)renderTransferBacklog()});
 function showOrphanAnnotations(){
  const ids=new Set(model.rows.map(r=>r.id));
  const waiting=new Set(QBudgetEngine.pendingBankMatches(model).flatMap(p=>[p.id,...p.candidates.map(c=>c.id)]));

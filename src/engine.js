@@ -5,6 +5,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
 'use strict';
 const identity=root.QBudgetIdentity||(typeof require==='function'?require('./identity.js'):null);
+const transfers=()=>root.QBudgetTransfers||(typeof require==='function'?require('./transfers.js'):null);
 const recurrences=()=>root.QBudgetRecurrences||(typeof require==='function'?require('./recurrences.js'):null);
 const validDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+'T12:00:00'));
 function dateStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
@@ -16,7 +17,7 @@ function mergeAnnotations(rows,annotations={},resolve){
  if(!annotations||typeof annotations!=='object'||Array.isArray(annotations))throw Error('Annotations JSON invalides');
  const manual=annotations.manualRows||[];
  for(const r of manual)if(rows.some(old=>!old.manual&&old.bank!==undefined&&old.desc!==undefined&&old.id===r.id))throw Error('Collision entre opération bancaire et manuelle');
- const result={rows:[...rows.filter(r=>r.manual),...manual.filter(r=>!rows.some(old=>old.id===r.id)).map(r=>({...r}))],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[],excludedAccounts:annotations.excludedAccounts||[],tagCategories:Array.isArray(annotations.tagCategories)?annotations.tagCategories:[],labelAssociations:validateLabelAssociations(annotations.labelAssociations===undefined?[]:annotations.labelAssociations),...(annotations.recurrenceBacklog!==undefined?{recurrenceBacklog:recurrences().validate(annotations.recurrenceBacklog)}:{}),...(annotations.bankIdentities!==undefined?{bankIdentities:annotations.bankIdentities}:{})};
+ const result={rows:[...rows.filter(r=>r.manual),...manual.filter(r=>!rows.some(old=>old.id===r.id)).map(r=>({...r}))],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[],excludedAccounts:annotations.excludedAccounts||[],tagCategories:Array.isArray(annotations.tagCategories)?annotations.tagCategories:[],labelAssociations:validateLabelAssociations(annotations.labelAssociations===undefined?[]:annotations.labelAssociations),...(annotations.transferBacklog!==undefined?{transferBacklog:transfers().validate(annotations.transferBacklog)}:{}),...(annotations.recurrenceBacklog!==undefined?{recurrenceBacklog:recurrences().validate(annotations.recurrenceBacklog)}:{}),...(annotations.bankIdentities!==undefined?{bankIdentities:annotations.bankIdentities}:{})};
  return identity.reconcile(result,rows,resolve);
 }
 function reimportBankRows(model,rows,resolve){return identity.reconcile({...model,labelAssociations:validateLabelAssociations(model.labelAssociations===undefined?[]:model.labelAssociations)},rows,resolve)}
@@ -336,5 +337,5 @@ function check(model){const errors=[],warnings=[];
  if(orphanCount)warnings.push(orphanCount+' annotation(s) sans opération chargée : conservées, rattachement possible dans l’éditeur');
  return {ok:errors.length===0,errors,warnings};
 }
-return {version:'0.19.7',compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,pendingBankMatches,resolveBankMatch,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,validateLabelAssociations,automaticTagsFor,manualTagsFor,labelAssociationPreview,knownTags,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {version:'0.19.11',compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,pendingBankMatches,resolveBankMatch,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,validateLabelAssociations,automaticTagsFor,manualTagsFor,labelAssociationPreview,knownTags,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });

@@ -112,7 +112,7 @@ test('backlog : compatibilité ancienne sauvegarde, import partiel et validation
 });
 test('détection : même résultat et restauration dans Node et un navigateur sans require',()=>{
  const context={TextEncoder};vm.createContext(context);
- for(const file of ['normalize','identity','engine','recurrences','tags','annotations'])vm.runInContext(fs.readFileSync(`src/${file}.js`,'utf8'),context);
+ for(const file of ['normalize','identity','engine','recurrences','transfers','tags','annotations'])vm.runInContext(fs.readFileSync(`src/${file}.js`,'utf8'),context);
  const csv=fs.readFileSync('examples/recurrences-potentielles.csv','utf8');
  const node=detect(engine.mergeAnnotations(engine.readCsv(csv),{}));assert.equal(pending(node).length,2);
  const browser=context.QBudgetRecurrences.scan(context.QBudgetEngine.mergeAnnotations(context.QBudgetEngine.readCsv(csv),{}));

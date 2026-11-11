@@ -48,6 +48,8 @@ grep -q 'src/bank-config.js' index.html
 grep -q 'src/tags.js' index.html
 grep -q 'src/ui.js' index.html
 test -s src/identity.js
+test -s src/transfers.js
+grep -q 'src/transfers.js' index.html
 test -s src/recurrences.js
 grep -q 'src/recurrences.js' index.html
 test -s src/tags.js

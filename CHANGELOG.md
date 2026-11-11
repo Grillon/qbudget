@@ -1,3 +1,13 @@
+# qbudget V0.19.11 — Transferts intercomptes potentiels
+
+- Détection manuelle des paires lisibles : même date, même devise, montants exactement opposés et comptes distincts, y compris deux comptes sources d’une même banque.
+- Backlog sauvegardé avec preuves et décisions d’ignorer ; ambiguïtés signalées sans choix arbitraire. Les doubles débits restent manuels.
+- Valider ajoute uniquement `transfert_intercomptes` aux deux lignes. Les tags présents déterminent le traitement, y compris après une édition manuelle ; aucun état de validation indépendant.
+- Validation groupée revérifiée et atomique ; imports partiels, réordonnancement et anciennes sauvegardes compatibles. Aucun changement aux montants, soldes ou exports d’audit.
+- Proposition de catégories d’exploration documentée et JSON facultatif, sans modification du catalogue par défaut ou des données personnelles.
+
+---
+
 # qbudget V0.19.10 — Tri et nombre de lignes dans l’éditeur
 
 - En-têtes de données cliquables au clavier comme à la souris : date, compte, élément, montant signé et tags. Alternance croissant/décroissant avec flèche et indication accessible du sens.
