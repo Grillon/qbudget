@@ -5,7 +5,7 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.6';
+ const version='0.19.8';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
@@ -222,7 +222,8 @@
    byId('editorApplySelectedTag').disabled=!count||!tag||!!byId('editorSearchError').textContent;
    byId('editorApplyTag').disabled=!matchingEditableIds.length||!(term||['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))||!!byId('editorSearchError').textContent||!tag;
    byId('editorRemoveSelectedTag').disabled=byId('editorRemoveTag').disabled=true;
-   if(tag&&!byId('editorSearchError').textContent){
+   if(tag.includes(','))byId('editorRemovePreview').textContent='Ajout : plusieurs tags séparés par des virgules. Pour un retrait, saisis un seul tag.';
+   else if(tag&&!byId('editorSearchError').textContent){
     try{
      const ids=visibleItems.filter(i=>selectedKeys.has(i.key)&&(i.kind==='bank'||i.kind==='manual')).map(i=>i.id);
      const selected=root.QBudgetTags.removeTagPreview(getModel(),ids,tag),all=root.QBudgetTags.removeTagPreview(getModel(),matchingEditableIds,tag);
@@ -311,8 +312,12 @@
   function bulkTag(ids,kind){
    const tag=byId('editorBulkTag').value.trim();
    if(!ids.length||!tag||byId('editorSearchError').textContent)return;
-   if(!root.confirm(`Ajouter « ${tag} » aux ${ids.length} opération(s) ${kind} ?\nAucune prévision FORECAST ne sera modifiée.`))return;
-   try{const result=root.QBudgetTags.addTag(getModel(),ids,tag);options.onChange();byId('editorBulkStatus').textContent=`${result.changed} opération(s) modifiée(s) · ${result.alreadyPresent} déjà taguée(s).`}
+   try{
+    const values=root.QBudgetTags.parseTagList(tag);
+    if(!root.confirm(`Ajouter les tags « ${values.join(', ')} » aux ${ids.length} opération(s) ${kind} ?\nLes tags existants sont conservés. Aucune prévision FORECAST ne sera modifiée.`))return;
+    const result=root.QBudgetTags.addTags(getModel(),ids,tag);options.onChange();
+    byId('editorBulkStatus').textContent=`Tags « ${values.join(', ')} » : ${result.changed} opération(s) modifiée(s) · ${result.alreadyPresent} avec tous ces tags déjà présents.`;
+   }
    catch(e){byId('editorBulkStatus').textContent=e.message}
   }
   function bulkRemoveTag(ids,kind){

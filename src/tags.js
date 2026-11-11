@@ -5,7 +5,7 @@
  root.QBudgetTags=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.6';
+ const version='0.19.8';
  // Catégories de départ éditables et supprimables, jamais imposées aux opérations.
  const defaultData=[
   {name:'Nature',tags:['alimentation','courses','repas','restaurant','essence','peage','transport','telecom','logement','streaming','energie','eau','assurance','sante','loisirs','sport','IK','noteDeFrais','copro','impots','vetements','cadeaux','revenu'],source:'tags'},
@@ -72,11 +72,22 @@
   const [moved]=list.splice(from,1);list.splice(to,0,moved);
   return list;
  }
- // Mutation limitée aux annotations de tags ; identifiants inexistants ignorés, aucun ajout en double.
- // Retourne le nombre réellement modifié, distinct du nombre sélectionné.
+ function parseTagList(text){
+  const values=String(text??'').split(',').map(t=>t.trim()).filter(Boolean),seen=new Set();
+  const tags=values.filter(t=>{const key=t.toLocaleLowerCase('fr');if(seen.has(key))return false;seen.add(key);return true});
+  if(!tags.length)throw Error('Saisis au moins un tag, séparé des suivants par une virgule.');
+  return tags;
+ }
+ // API historique : conserve la validation d'un seul tag.
  function addTag(model,ids,tag){
   const value=String(tag??'').trim();
   if(!value||value.includes(','))throw Error('Saisis un seul tag, sans virgule.');
+  return addTags(model,ids,value);
+ }
+ // Mutation limitée aux annotations de tags ; identifiants inexistants ignorés, aucun ajout en double.
+ // Retourne le nombre réellement modifié, distinct du nombre sélectionné.
+ function addTags(model,ids,text){
+  const values=parseTagList(text);
   if(!Array.isArray(ids))throw Error('Sélection invalide');
   const index=new Map((model.rows||[]).filter(r=>!r.forecast).map(r=>[r.id,r]));
   const valid=[...new Set(ids)].filter(id=>index.has(id));
@@ -85,11 +96,12 @@
    const old=updatedNotes[id]||{};
    const existing=[...(Array.isArray(old.tags)?old.tags:[]),...(typeof old.tag==='string'?old.tag.split(','):[])].map(t=>String(t).trim()).filter(Boolean);
    const seen=new Set(existing.map(t=>t.toLocaleLowerCase('fr')));
-   if(seen.has(value.toLocaleLowerCase('fr')))continue;
-   const tags=[...new Map([...existing,value].map(t=>[t.toLocaleLowerCase('fr'),t])).values()];
+   const missing=values.filter(value=>!seen.has(value.toLocaleLowerCase('fr')));
+   if(!missing.length)continue;
+   const tags=[...new Map([...existing,...missing].map(t=>[t.toLocaleLowerCase('fr'),t])).values()];
    updatedNotes[id]={...old,tags,tag:tags[0]||''};changed++;
   }
-  model.notes=updatedNotes;
+  if(changed)model.notes=updatedNotes;
   return {selected:valid.length,changed,alreadyPresent:valid.length-changed};
  }
  // Plan pur : retrait exact des tags manuels, sans toucher aux autres annotations.
@@ -119,5 +131,5 @@
   if(changes.length){const notes={...model.notes};for(const {id,note} of changes){if(note===null)delete notes[id];else notes[id]=note}model.notes=notes}
   return result;
  }
- return Object.freeze({version,defaults,validate,exportJson,parseJson,moveCategory,addTag,removeTag,removeTagPreview,upgradeDefaultTreatment,withoutTag});
+ return Object.freeze({version,defaults,validate,exportJson,parseJson,moveCategory,parseTagList,addTag,addTags,removeTag,removeTagPreview,upgradeDefaultTreatment,withoutTag});
 });

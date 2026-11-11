@@ -1,6 +1,8 @@
-# qbudget V0.19.7 — Récurrences potentielles
+# qbudget V0.19.8 — Ajout groupé de plusieurs tags
 
-**Nouveau :** lancer la détection de récurrences potentielles, puis examiner les propositions dans un backlog sauvegardé. Ajuster et confirmer la création d’une règle, ou ignorer la proposition. Aucun effet sur les calculs avant validation. [Mode d’emploi et essai rapide](docs/detection-recurrences.md).
+**Nouveau :** saisir `SASU, IK, mission` pour ajouter plusieurs tags en une fois à une sélection ou aux résultats filtrés, dans les deux vues. Les tags existants restent conservés, sans doublons. Le retrait reste limité à un tag à la fois. [Mode d’emploi](docs/retrait-tags.md).
+
+**Récurrences potentielles :** lancer la détection, puis examiner les propositions dans un backlog sauvegardé. Ajuster et confirmer la création d’une règle, ou ignorer la proposition. Aucun effet sur les calculs avant validation. [Mode d’emploi et essai rapide](docs/detection-recurrences.md).
 
 Le module partagé `src/recurrences.js` contient la détection et les décisions ; les règles validées utilisent le moteur financier existant, sans dépendance supplémentaire.
 

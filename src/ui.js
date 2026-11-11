@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.7';
+const UI_VERSION='0.19.8';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
@@ -363,9 +363,10 @@ $('clearSelectedRows').onclick=()=>{clearBulkSelection();renderRows()};
 $('applyBulkTag').onclick=()=>{
  if(!selectedRowIds.size)return;
  try{
-  const result=QBudgetTags.addTag(model,[...selectedRowIds],$('bulkTag').value);
+  const values=QBudgetTags.parseTagList($('bulkTag').value);
+  const result=QBudgetTags.addTags(model,[...selectedRowIds],values.join(', '));
   save();selectedRowIds.clear();render();
-  updateBulkStatus(`Tag ajouté à ${result.changed} opération(s) sur ${result.selected} sélectionnée(s) · ${result.alreadyPresent} déjà taguée(s).`);
+  updateBulkStatus(`Tags « ${values.join(', ')} » : ${result.changed} opération(s) modifiée(s) sur ${result.selected} sélectionnée(s) · ${result.alreadyPresent} avec tous ces tags déjà présents.`);
  }catch(error){updateBulkStatus(error.message)}
 };
 // Taguer les correspondances sans pagination : action explicite après aperçu et confirmation.
@@ -381,17 +382,19 @@ $('applyMatchingTag').onclick=()=>{
  const matches=inAccount().filter(r=>!QBudgetEngine.isFloating(r)&&QBudgetEngine.operationMatchesFilter(model,r,filter)&&(!chartSelection||chartSelection.ids.has(r.id)));
  const tag=$('bulkTag').value.trim();
  if(!matches.length||!tag)return;
- if(!confirm(`Ajouter « ${tag} » aux ${matches.length} opération(s) enregistrée(s) correspondant à la recherche ?\nLes prévisions FORECAST ne seront pas modifiées.`))return;
  try{
-  const result=QBudgetTags.addTag(model,matches.map(r=>r.id),tag);
+  const values=QBudgetTags.parseTagList(tag);
+  if(!confirm(`Ajouter les tags « ${values.join(', ')} » aux ${matches.length} opération(s) enregistrée(s) correspondant à la recherche ?\nLes tags existants sont conservés. Les prévisions FORECAST ne seront pas modifiées.`))return;
+  const result=QBudgetTags.addTags(model,matches.map(r=>r.id),tag);
   save();clearBulkSelection();render();
-  updateBulkStatus(`Tag « ${tag} » ajouté à ${result.changed} opération(s) / ${result.selected} correspondance(s) · ${result.alreadyPresent} déjà taguée(s).`);
+  updateBulkStatus(`Tags « ${values.join(', ')} » : ${result.changed} opération(s) modifiée(s) / ${result.selected} correspondance(s) · ${result.alreadyPresent} avec tous ces tags déjà présents.`);
  }catch(e){updateBulkStatus(e.message)}
 };
 function updateTagRemovalPreview(){
  const tag=$('bulkTag').value.trim(),error=!!$('searchError').textContent;
  $('removeBulkTag').disabled=$('removeMatchingTag').disabled=true;
  if(!tag){$('bulkRemovePreview').textContent='Saisis le tag à retirer pour voir le nombre d’opérations concernées.';return}
+ if(tag.includes(',')){$('bulkRemovePreview').textContent='Ajout : plusieurs tags séparés par des virgules. Pour un retrait, saisis un seul tag.';return}
  try{
   const selected=QBudgetTags.removeTagPreview(model,[...selectedRowIds],tag),all=QBudgetTags.removeTagPreview(model,matchingSavedRows.map(r=>r.id),tag);
   $('removeBulkTag').disabled=error||!selected.changed;$('removeMatchingTag').disabled=error||!all.changed;

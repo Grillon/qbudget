@@ -1,3 +1,11 @@
+# qbudget V0.19.8 — Ajout groupé de plusieurs tags
+
+- Ajout de plusieurs tags séparés par des virgules, sur la sélection ou sur tous les résultats filtrés, dans le tableau de bord et l’éditeur.
+- Seuls les tags manquants sont ajoutés, sans doublons de casse ; les tags existants, annotations et calculs sont préservés. Les compteurs portent sur les opérations modifiées.
+- Le retrait reste limité à un seul tag, avec une aide explicite lorsque plusieurs sont saisis. Le format JSON ne change pas.
+
+---
+
 # qbudget V0.19.7 — Backlog des récurrences potentielles
 
 - Détection déclenchée manuellement sur les opérations réalisées : compte source, libellé normalisé ou alias explicites, au moins trois occurrences régulières.

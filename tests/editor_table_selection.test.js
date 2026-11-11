@@ -34,5 +34,5 @@ test('interface : tableau plein largeur, détail séparé, actions par sélectio
  assert.match(src,/root\.QBudgetEngine\.compileSearch\(term,mode\)/);
  assert.match(src,/byId\('editorApplySelectedTag'\)\.onclick/);
  assert.match(src,/byId\('editorApplyTag'\)\.onclick/);
- assert.match(src,/root\.QBudgetTags\.addTag\(getModel\(\),ids,tag\)/);
+ assert.match(src,/root\.QBudgetTags\.addTags\(getModel\(\),ids,tag\)/);
 });
