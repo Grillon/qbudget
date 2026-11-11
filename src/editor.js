@@ -115,6 +115,13 @@
     const choices=[['','Aucune règle'],...Object.entries(model.rules||{}).map(([id,r])=>[id,(r.desc||id)+' · '+r.account+' ('+r.frequency+')'])];
     if(n.ruleId&&!model.rules?.[n.ruleId])choices.push([n.ruleId,'Règle introuvable : '+n.ruleId]);
     const rule=field(form,'Récurrence liée',n.ruleId||'','select',{items:choices});
+    if(item.kind==='orphan'){
+     const target=field(form,'Rattacher cette annotation à une opération','', 'select',{items:[['','Choisir une opération'],...(model.rows||[]).map(r=>[r.id,`${r.date||'En attente'} · ${r.bank||'Sans compte'} · ${r.desc||''} · ${r.amount}`])]});
+     const attach=elt('button','Rattacher l’annotation');attach.type='button';attach.onclick=()=>commit(m=>{
+      const updated=root.QBudgetEngine.reassignAnnotation(m,item.id,target.value);
+      m.notes=updated.notes;m.bankIdentities=updated.bankIdentities;selectedKey='row:'+target.value;
+     });form.append(attach);
+    }
     if(n.ruleId&&model.rules?.[n.ruleId])link(form,'Voir la règle « '+model.rules[n.ruleId].desc+' »','rule:'+n.ruleId);
     const save=elt('button','Enregistrer','');save.type='button';save.onclick=()=>commit(m=>{
      const old=m.notes[item.id]||{};const next={...old,tags:commaTags(tags.value)};next.tag=next.tags[0]||'';

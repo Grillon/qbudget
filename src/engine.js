@@ -1,16 +1,31 @@
 (function(root,factory){
-  const api=factory();
+  const api=factory(root);
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.QBudgetEngine=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(root){
 'use strict';
+const identity=root.QBudgetIdentity||(typeof require==='function'?require('./identity.js'):null);
 const validDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+'T12:00:00'));
 function dateStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function asDate(s){return new Date(s+'T12:00:00')}
 
 function parseCsv(src,sep){let rows=[],row=[],field='',quoted=false;for(let i=0;i<src.length;i++){const c=src[i];if(quoted){if(c==='"'&&src[i+1]==='"'){field+='"';i++}else if(c==='"')quoted=false;else field+=c}else if(c==='"')quoted=true;else if(c===sep){row.push(field);field=''}else if(c==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field=''}else field+=c}if(field||row.length){row.push(field.replace(/\r$/,''));rows.push(row)}return rows}
-function readCsv(raw){raw=raw.replace(/^\ufeff/,'');const first=raw.split(/\r?\n/,1)[0],sep=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';const cells=parseCsv(raw,sep);if(cells.length<2)throw Error('Fichier vide');const heads=cells.shift().map(x=>x.trim().toLowerCase());const get=(r,n)=>r[heads.indexOf(n)]||'';for(const col of ['date','banque','libellé','montant'])if(!heads.includes(col))throw Error('Colonne absente : '+col);return cells.filter(r=>r.some(x=>x.trim())).map((r,i)=>{const date=get(r,'date'),rawAmount=get(r,'montant').replace(/\s/g,'').replace(',','.'),montant=Number(rawAmount);if(!validDate(date)||rawAmount===''||!Number.isFinite(montant))throw Error('Date ou montant invalide, ligne '+(i+2));const bank=get(r,'banque').trim(),account=bank,desc=get(r,'libellé');const signature=get(r,'identifiant')||`${bank}|${account}|${date}|${desc}|${montant}|${i}`;return {id:`${signature}|${i}`,bank,account,date,desc,currency:get(r,'devise')||'EUR',amount:montant,balance:null,category:get(r,'catégorie'),duplicate:get(r,'doublon potentiel')}})}
-function mergeAnnotations(rows,annotations={}){if(!annotations||typeof annotations!=='object'||Array.isArray(annotations))throw Error('Annotations JSON invalides');const result={rows:[...rows],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[],excludedAccounts:annotations.excludedAccounts||[],tagCategories:Array.isArray(annotations.tagCategories)?annotations.tagCategories:[]};for(const row of annotations.manualRows||[]){if(!result.rows.some(r=>r.id===row.id))result.rows.push({...row})}return result}
+function readCsv(raw){raw=raw.replace(/^\ufeff/,'');const first=raw.split(/\r?\n/,1)[0],sep=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';const cells=parseCsv(raw,sep);if(cells.length<2)throw Error('Fichier vide');const heads=cells.shift().map(x=>x.trim().toLowerCase());const get=(r,n)=>r[heads.indexOf(n)]||'';for(const col of ['date','banque','libellé','montant'])if(!heads.includes(col))throw Error('Colonne absente : '+col);return identity.prepare(cells.filter(r=>r.some(x=>x.trim())).map((r,i)=>{const date=get(r,'date'),rawAmount=get(r,'montant').replace(/\s/g,'').replace(',','.'),montant=Number(rawAmount);if(!validDate(date)||rawAmount===''||!Number.isFinite(montant))throw Error('Date ou montant invalide, ligne '+(i+2));const bank=get(r,'banque').trim(),account=bank,desc=get(r,'libellé');const signature=get(r,'identifiant')||`${bank}|${account}|${date}|${desc}|${montant}|${i}`;return {id:`${signature}|${i}`,legacyId:`${signature}|${i}`,sourceId:get(r,'identifiant'),sourceAccount:get(r,'compte').trim()||undefined,identityAmount:identity.canonicalAmount(rawAmount),bankReference:get(r,'référence bancaire').trim(),bank,account,date,desc,currency:get(r,'devise')||'EUR',amount:montant,balance:null,category:get(r,'catégorie'),duplicate:get(r,'doublon potentiel')}}))}
+function mergeAnnotations(rows,annotations={},resolve){
+ if(!annotations||typeof annotations!=='object'||Array.isArray(annotations))throw Error('Annotations JSON invalides');
+ const manual=annotations.manualRows||[];
+ for(const r of manual)if(rows.some(old=>!old.manual&&old.bank!==undefined&&old.desc!==undefined&&old.id===r.id))throw Error('Collision entre opération bancaire et manuelle');
+ const result={rows:[...rows.filter(r=>r.manual),...manual.filter(r=>!rows.some(old=>old.id===r.id)).map(r=>({...r}))],notes:annotations.notes||{},references:annotations.references||{},rules:annotations.rules||{},accounts:annotations.accounts||[],excludedAccounts:annotations.excludedAccounts||[],tagCategories:Array.isArray(annotations.tagCategories)?annotations.tagCategories:[],...(annotations.bankIdentities!==undefined?{bankIdentities:annotations.bankIdentities}:{})};
+ return identity.reconcile(result,rows,resolve);
+}
+function reimportBankRows(model,rows,resolve){return identity.reconcile(model,rows,resolve)}
+function reassignAnnotation(model,from,to){
+ if(!model.rows.some(r=>r.id===to))throw Error('Opération cible introuvable');
+ if(from===to||!Object.hasOwn(model.notes||{},from))throw Error('Annotation source introuvable');
+ const notes={...model.notes};identity.moveNote(notes,from,to);
+ const bankIdentities=(model.bankIdentities||[]).map(e=>e.id===to?{...e,aliases:[...new Set([...e.aliases,from])]}:e);
+ return {...model,notes,bankIdentities};
+}
 
 // A pending operation is intentionally without date; it is never a cash movement.
 function isFloating(row){return row.date===null||row.date===undefined||row.date===''}
@@ -269,7 +284,10 @@ function check(model){const errors=[],warnings=[];
  }
  for(const [id,rule] of Object.entries(model.rules||{})){if(!validDate(rule.anchor||rule.start)||!Number.isFinite(Number(rule.amount)))errors.push('Invalid rule '+id);if(rule.end&&rule.end<(rule.anchor||rule.start))warnings.push('End before anchor: '+id);}
  for(const bank of cashAccountNames(model))if(!model.references?.[bank])warnings.push('Missing reference: '+bank);
+ const ids=new Set((model.rows||[]).map(r=>r.id));
+ const orphanCount=Object.keys(model.notes||{}).filter(id=>!ids.has(id)).length;
+ if(orphanCount)warnings.push(orphanCount+' annotation(s) sans opération chargée : conservées, rattachement possible dans l’éditeur');
  return {ok:errors.length===0,errors,warnings};
 }
-return {version:'0.19.2',compileSearch,readCsv,mergeAnnotations,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {version:'0.19.2',compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });
