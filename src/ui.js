@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.4';
+const UI_VERSION='0.19.5';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
@@ -492,6 +492,7 @@ function renderPending(){
 }
 // Ne jamais recalculer Plotly ni reconstruire les milliers de lignes d'une vue cachée.
 function render(){
+ renderBankMatches();
  if(!$('editorScreen').hidden){renderTagCategories();editorApi?.render()}
  else{renderAccounts();renderSummary();renderRows();renderPending();renderRules()}
  $('importStatus').textContent=`${model.rows.length} opérations chargées · ${accounts().length} compte(s) · stockage local au navigateur`;
@@ -524,19 +525,47 @@ $('normalizeRaw').onclick=async()=>{
   $('normalizationPreview').classList.remove('hidden');$('importRaw').disabled=false;$('downloadNormalized').disabled=false;
  }catch(e){const details=e.details?.slice(0,20).join(' | ');clearNormalization(e.message+(details?' — '+details:''))}finally{$('normalizeRaw').disabled=false}
 };
-function resolveBankIdentity(issue){
- const r=issue.row;
- const describe=n=>`Tags : ${[...(n.tags||[]),...(n.tag?String(n.tag).split(','):[])].filter((v,i,all)=>all.indexOf(v)===i).join(', ')||'aucun'}${n.type?' · '+n.type:''}${n.ruleId?' · récurrence liée':''}`;
- const choices=issue.candidates.map((c,i)=>`${i+1}. ${c.reference||'Opération '+c.id.slice(-4)} · ${describe(c.note)}`).join('\n');
- const answer=prompt(`${issue.message}\n${r.date||'Sans date'} · ${r.amount} ${r.currency||'EUR'} · ${r.sourceAccount||r.bank}\n${describe(issue.note||{})}\n\n${choices}\n\nChoisis un numéro pour conserver cette identité et ses annotations, ou N pour une opération distincte. Annuler abandonne l’import.`, '');
- if(answer===null)return null;
- if(answer.trim().toLowerCase()==='n')return 'new';
- const index=Number(answer.trim())-1;
- return Number.isInteger(index)&&index>=0&&index<issue.candidates.length?issue.candidates[index].id:'';
+// Les ambiguïtés sont conservées dans le registre ; aucune question pendant l’import.
+function resolveBankIdentity(){return 'defer'}
+function openBankMatches(){
+ showView('editor');$('bankMatchesDetails').open=true;renderBankMatches();$('bankMatchesCard').scrollIntoView({behavior:'smooth',block:'start'});
 }
+function renderBankMatches(){
+ const pending=(model.bankIdentities||[]).filter(e=>e.pendingMatch),ids=new Set(model.rows.map(r=>r.id));
+ const present=pending.filter(e=>ids.has(e.id)).length;
+ $('bankMatchesCount').textContent=pending.length;
+ $('bankMatchesNotice').hidden=pending.length===0;
+ $('bankMatchesNoticeText').textContent=`${pending.length} rapprochement(s) à traiter · ${present} dans l’import actuel${pending.length>present?' · '+(pending.length-present)+' hors du dernier import':''}`;
+ const host=$('bankMatchesList');host.replaceChildren();
+ if(!$('bankMatchesDetails').open)return;
+ if(!pending.length){host.textContent='Aucun rapprochement en attente.';return}
+ const describe=n=>[...(n.tags||[]),...(n.tag?String(n.tag).split(','):[])].filter((v,i,all)=>all.indexOf(v)===i).join(', ')||'aucun tag manuel';
+ for(const issue of QBudgetEngine.pendingBankMatches(model)){
+  const row=issue.row,card=document.createElement('div');card.className='bank-match-item';
+  const account=row.sourceAccount&&row.sourceAccount!==row.bank?row.bank+' · '+row.sourceAccount:row.bank;
+  const title=document.createElement('strong');title.textContent=`${row.date} · ${account} · ${row.desc} · ${Number(row.amount).toLocaleString('fr-FR')} ${row.currency||'EUR'}`;card.append(title);
+  const info=document.createElement('p');info.className='mutednote';info.textContent=(issue.present?'Ligne présente dans l’import actuel.':'Opération absente du dernier import ; annotations conservées.')+' Tags actuels : '+describe(model.notes[issue.id]||{});card.append(info);
+  const controls=document.createElement('div');controls.className='toolbar';
+  const label=document.createElement('label');label.className='field';label.textContent='Opération connue dont reprendre les annotations';
+  const select=document.createElement('select');select.setAttribute('aria-label','Rattacher '+row.desc);select.add(new Option('Choisir une correspondance',''));
+  for(const candidate of issue.candidates){const n=candidate.note;select.add(new Option(`${candidate.reference||'Opération '+candidate.id.slice(-4)} · ${describe(n)}${n.ruleId?' · récurrence liée':''}`,candidate.id))}
+  if(!issue.candidates.length){const empty=document.createElement('p');empty.className='mutednote';empty.textContent='Aucune identité historique disponible : cette ligne peut être confirmée comme distincte.';card.append(empty)}
+  const attach=document.createElement('button'),distinct=document.createElement('button');attach.type=distinct.type='button';attach.textContent='Reprendre cette identité';attach.disabled=true;distinct.className='secondary';distinct.textContent='Confirmer comme opération distincte';
+  select.onchange=()=>{attach.disabled=!select.value};
+  const decide=choice=>{
+   try{model=QBudgetEngine.resolveBankMatch(model,issue.id,choice);clearChartSelection();clearBulkSelection();save();render();showOrphanAnnotations();$('bankMatchesStatus').textContent='Rapprochement traité et sauvegardé. Les montants restent inchangés.'}
+   catch(error){$('bankMatchesStatus').textContent=error.message.startsWith('Conflit d’annotations')?'Les deux opérations portent des annotations différentes. Rien n’a été écrasé : corrige-les dans l’éditeur ou conserve l’opération distincte.':error.message}
+  };
+  attach.onclick=()=>decide(select.value);distinct.onclick=()=>decide('new');
+  label.append(select);controls.append(label,attach,distinct);card.append(controls);host.append(card);
+ }
+}
+$('openBankMatches').onclick=$('editorOpenBankMatches').onclick=openBankMatches;
+$('bankMatchesDetails').addEventListener('toggle',()=>{if($('bankMatchesDetails').open)renderBankMatches()});
 function showOrphanAnnotations(){
  const ids=new Set(model.rows.map(r=>r.id));
- const count=Object.keys(model.notes).filter(id=>!ids.has(id)).length;
+ const waiting=new Set(QBudgetEngine.pendingBankMatches(model).flatMap(p=>[p.id,...p.candidates.map(c=>c.id)]));
+ const count=Object.keys(model.notes).filter(id=>!ids.has(id)&&!waiting.has(id)).length;
  if(count)$('importStatus').textContent=`${count} annotation(s) sans opération dans cet import, conservées. L’éditeur permet de les consulter et de les rattacher.`;
 }
 function applyBankRows(items){

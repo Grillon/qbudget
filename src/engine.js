@@ -19,6 +19,8 @@ function mergeAnnotations(rows,annotations={},resolve){
  return identity.reconcile(result,rows,resolve);
 }
 function reimportBankRows(model,rows,resolve){return identity.reconcile({...model,labelAssociations:validateLabelAssociations(model.labelAssociations===undefined?[]:model.labelAssociations)},rows,resolve)}
+function pendingBankMatches(model){return identity.pendingMatches(model)}
+function resolveBankMatch(model,id,choice){return identity.resolvePending(model,id,choice)}
 function reassignAnnotation(model,from,to){
  if(!model.rows.some(r=>r.id===to))throw Error('Opération cible introuvable');
  if(from===to||!Object.hasOwn(model.notes||{},from))throw Error('Annotation source introuvable');
@@ -327,9 +329,11 @@ function check(model){const errors=[],warnings=[];
  for(const [id,rule] of Object.entries(model.rules||{})){if(!validDate(rule.anchor||rule.start)||!Number.isFinite(Number(rule.amount)))errors.push('Invalid rule '+id);if(rule.end&&rule.end<(rule.anchor||rule.start))warnings.push('End before anchor: '+id);}
  for(const bank of cashAccountNames(model))if(!model.references?.[bank])warnings.push('Missing reference: '+bank);
  const ids=new Set((model.rows||[]).map(r=>r.id));
- const orphanCount=Object.keys(model.notes||{}).filter(id=>!ids.has(id)).length;
+ const pending=pendingBankMatches(model),waiting=new Set(pending.flatMap(p=>[p.id,...p.candidates.map(c=>c.id)]));
+ if(pending.length)warnings.push(pending.length+' rapprochement(s) en attente dans l’éditeur ; les lignes importées restent comptées');
+ const orphanCount=Object.keys(model.notes||{}).filter(id=>!ids.has(id)&&!waiting.has(id)).length;
  if(orphanCount)warnings.push(orphanCount+' annotation(s) sans opération chargée : conservées, rattachement possible dans l’éditeur');
  return {ok:errors.length===0,errors,warnings};
 }
-return {version:'0.19.4',compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,validateLabelAssociations,automaticTagsFor,manualTagsFor,labelAssociationPreview,knownTags,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {version:'0.19.5',compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,pendingBankMatches,resolveBankMatch,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,validateLabelAssociations,automaticTagsFor,manualTagsFor,labelAssociationPreview,knownTags,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });

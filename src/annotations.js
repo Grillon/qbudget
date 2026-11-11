@@ -6,7 +6,7 @@
  root.QBudgetAnnotations=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.4';
+ const version='0.19.5';
  const fields=['labelAssociations','bankIdentities','version','notes','references','rules','accounts','excludedAccounts','tagCategories','donutCategory','sunburstDepth','hierarchyView','excludeTransfersFromCharts','tagDefaultsVersion','manualRows'];
  const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
  function exportObject(model){

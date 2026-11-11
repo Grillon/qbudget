@@ -1,6 +1,8 @@
-# qbudget V0.19.4 — Associations de libellés et réimports fiables
+# qbudget V0.19.5 — Rapprochements après import
 
-**Nouveau :** dans l’éditeur, associer des motifs de libellés à un tag existant (`NETFLIX` OU `NFLX` → `Netflix`). Aperçu avant enregistrement, application aux imports futurs, tags manuels préservés et sauvegarde dans les annotations JSON. [Mode d’emploi et essai rapide](docs/associations-libelles.md).
+**Nouveau :** les imports se terminent sans demander de résoudre chaque ambiguïté. Une liste **Rapprochements à traiter** permet de reprendre les annotations ensuite, sans écrasement ni fusion de lignes. Elle est incluse dans la sauvegarde JSON. [Mode d’emploi et essai rapide](docs/rapprochements.md).
+
+**Associations de libellés :** dans l’éditeur, associer des motifs de libellés à un tag existant (`NETFLIX` OU `NFLX` → `Netflix`). Aperçu avant enregistrement, application aux imports futurs, tags manuels préservés et sauvegarde dans les annotations JSON. [Mode d’emploi et essai rapide](docs/associations-libelles.md).
 
 **Réimports et conservation des annotations :** les opérations bancaires utilisent désormais une identité `SHA256-SUFFIXE` indépendante de la position CSV et du nom de fichier. Le compte bancaire source, le libellé normalisé, la date, le montant et la devise déterminent l’empreinte (avec la banque). Le libellé original et les calculs financiers restent conservés. Les opérations manuelles et flottantes gardent leurs identifiants, même après datation.
 

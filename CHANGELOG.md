@@ -1,3 +1,12 @@
+# qbudget V0.19.5 — Rapprochements à traiter après import
+
+- Les ambiguïtés d’identité sont reportées dans une liste persistante : plus de questions de rapprochement pendant l’import navigateur.
+- Toutes les lignes sont conservées et comptées ; les annotations incertaines ne sont pas attribuées automatiquement. Le bandeau indique que les statistiques par tags peuvent évoluer après traitement.
+- Rattachement à une identité historique ou confirmation d’une opération distincte après import, sans fusion de lignes ni écrasement d’annotations différentes.
+- Liste sauvegardée dans le registre d’identités du JSON existant. Imports partiels, opérations flottantes et associations de libellés préservés ; mode CLI strict inchangé.
+
+---
+
 # qbudget V0.19.4 — Réimports fiables et associations de libellés
 
 - Identités bancaires stables et rapprochement au réimport, avec migration compatible des annotations et résolution explicite des ambiguïtés. Opérations manuelles et flottantes préservées.

@@ -23,6 +23,46 @@
  }
  const groups=rows=>{const map=new Map();for(const r of rows){const k=key(r);if(!map.has(k))map.set(k,[]);map.get(k).push(r)}return map};
  const makeId=(k,n)=>hash(k)+'-'+String(n).padStart(4,'0');
+ const withoutAccount=k=>{const values=JSON.parse(k);values.splice(1,1);return JSON.stringify(values)};
+ function copyEntries(model){
+  if(model.bankIdentities!==undefined&&!Array.isArray(model.bankIdentities))throw Error('Registre d’identités bancaires invalide');
+  return (model.bankIdentities||[]).map(e=>{
+   if(!e||!Array.isArray(e.aliases))throw Error('Registre d’identités bancaires invalide');
+   const pending=e.pendingMatch;
+   if(pending&&(!Array.isArray(pending.candidates)||pending.candidates.some(id=>typeof id!=='string')||typeof pending.reason!=='string'))throw Error('Rapprochement en attente invalide');
+   return {...e,aliases:[...e.aliases],...(pending?{pendingMatch:{...pending,candidates:[...pending.candidates]}}:{})};
+  });
+ }
+ function findEntry(entries,id){
+  const direct=entries.find(e=>e.id===id);if(direct)return direct;
+  const owners=entries.filter(e=>e.aliases.includes(id));
+  return owners.length===1?owners[0]:null;
+ }
+ function pendingMatches(model){
+  const entries=model.bankIdentities||[],rows=new Map((model.rows||[]).map(r=>[r.id,r]));
+  return entries.filter(e=>e.pendingMatch).map(entry=>{
+   const [bank,sourceAccount,desc,date,amount,currency]=JSON.parse(entry.key);
+   const candidates=[...new Set(entry.pendingMatch.candidates.map(id=>findEntry(entries,id)?.id).filter(Boolean))]
+    .filter(id=>id!==entry.id&&!rows.has(id))
+    .map(id=>{const e=entries.find(e=>e.id===id);return {id,reference:e.reference||'',note:model.notes?.[id]||{}}});
+   return {id:entry.id,present:rows.has(entry.id),row:rows.get(entry.id)||{id:entry.id,bank,sourceAccount,desc,date,amount:Number(amount),currency},reason:entry.pendingMatch.reason,candidates};
+  });
+ }
+ function resolvePending(model,id,choice){
+  const entries=copyEntries(model),source=entries.find(e=>e.id===id&&e.pendingMatch);
+  if(!source)throw Error('Rapprochement en attente introuvable');
+  if(choice==='new'){delete source.pendingMatch;return {...model,bankIdentities:entries}}
+  const issue=pendingMatches(model).find(p=>p.id===id);
+  if(!issue.candidates.some(c=>c.id===choice))throw Error('Identité indisponible ou déjà utilisée dans cet import');
+  const target=entries.find(e=>e.id===choice),notes={...(model.notes||{})};
+  if(target.key!==source.key&&(!target.accountUnknown||withoutAccount(target.key)!==withoutAccount(source.key)))throw Error('Identité incompatible avec cette opération');
+  const winner=target.key===source.key?target:source,retired=winner===target?source:target;
+  moveNote(notes,retired.id,winner.id);
+  winner.aliases=[...new Set([...winner.aliases,...retired.aliases,retired.id])];
+  winner.reference=winner.reference||retired.reference;delete winner.pendingMatch;
+  const rows=(model.rows||[]).map(r=>r.id===retired.id?{...r,id:winner.id,identityConfirmed:true}:r);
+  return {...model,rows,notes,bankIdentities:entries.filter(e=>e!==retired)};
+ }
  function prepare(rows){
   const result=new Map();
   for(const [k,list] of groups(rows)){
@@ -45,22 +85,23 @@
   Object.defineProperty(notes,to,{value:notes[from],enumerable:true,writable:true,configurable:true});delete notes[from];
  }
  function reconcile(model,incoming,resolve){
-  if(model.bankIdentities!==undefined&&!Array.isArray(model.bankIdentities))throw Error('Registre d’identités bancaires invalide');
-  const entries=(model.bankIdentities||[]).map(e=>{
-   if(!e||!Array.isArray(e.aliases))throw Error('Registre d’identités bancaires invalide');
-   return {...e,aliases:[...e.aliases]};
-  });
-  const notes={...(model.notes||{})},usedIds=new Set(),byId=new Map();
+  let entries=copyEntries(model);
+  const notes={...(model.notes||{})},usedIds=new Set(),byId=new Map(),hashes=new Map();
   const manual=(model.rows||[]).filter(r=>r.manual),manualIds=new Set(manual.map(r=>r.id));
+  const occupied=id=>byId.has(id)||entries.some(e=>e.aliases.includes(id));
+  const annotated=e=>[e.id,...e.aliases].some(id=>Object.hasOwn(notes,id));
+  const register=e=>{
+   const prefix=e.id.slice(0,64);
+   if(hashes.has(prefix)&&hashes.get(prefix)!==e.key)throw Error('Collision d’empreinte bancaire');
+   hashes.set(prefix,e.key);byId.set(e.id,e);
+  };
   for(const e of entries){
    if(!format.test(e.id)||typeof e.key!=='string'||!e.id.startsWith(hash(e.key)+'-')||byId.has(e.id)||!e.aliases.every(x=>typeof x==='string'))throw Error('Collision ou registre d’identités bancaires invalide');
    if(manualIds.has(e.id))throw Error('Collision avec une opération manuelle');
-   if(entries.some(other=>other.key!==e.key&&other.id.split('-')[0]===e.id.split('-')[0]))throw Error('Collision d’empreinte bancaire');
-   byId.set(e.id,e);
+   register(e);
   }
   // Un ancien modèle ne conservait pas le compte CSV. Compléter ce renseignement
   // uniquement si les caractéristiques restantes désignent un compte sans ambiguïté.
-  const withoutAccount=k=>{const values=JSON.parse(k);values.splice(1,1);return JSON.stringify(values)};
   const incomingKeys=[...new Set(incoming.filter(bankRow).map(key))];
   for(const entry of [...entries]){
    if(!entry.accountUnknown)continue;
@@ -69,10 +110,10 @@
    if(matches.length!==1||matches[0]===entry.key)continue;
    const targetKey=matches[0];
    if(entries.some(e=>e!==entry&&e.key===targetKey))continue;
-   let n=0;while(byId.has(makeId(targetKey,n)))n++;
+   let n=0;while(occupied(makeId(targetKey,n)))n++;
    const oldId=entry.id,newId=makeId(targetKey,n);
    moveNote(notes,oldId,newId);entry.aliases.push(oldId);
-   byId.delete(oldId);entry.id=newId;entry.key=targetKey;entry.accountUnknown=false;byId.set(newId,entry);
+   byId.delete(oldId);entry.id=newId;entry.key=targetKey;entry.accountUnknown=false;register(entry);
   }
   for(const entry of entries)for(const alias of entry.aliases){
    if(manualIds.has(alias))throw Error('Conflit entre annotation bancaire historique et opération manuelle');
@@ -83,19 +124,20 @@
   function assign(rows,stage){
    const assigned=new Map();
    for(const [k,list] of groups(rows)){
-    const candidates=entries.filter(e=>e.key===k||(e.accountUnknown&&withoutAccount(e.key)===withoutAccount(k)));
+    const candidates=entries.filter(e=>(!e.pendingMatch||annotated(e))&&(e.key===k||(e.accountUnknown&&withoutAccount(e.key)===withoutAccount(k))));
     const references=list.map(r=>r.bankReference).filter(Boolean);
     const distinctReferences=references.length===list.length&&new Set(references).size===list.length;
     const ordered=distinctReferences?[...list].sort((a,b)=>a.bankReference<b.bankReference?-1:1):list;
     const taken=new Set();
     for(const r of ordered){
+     let deferred=null;
      const ref=r.bankReference||'';
      const explicit=r.identityConfirmed&&format.test(r.id)?r.id:format.test(r.sourceId||'')?r.sourceId:null;
-     let entry=explicit?byId.get(explicit):null;
+     let entry=explicit?(byId.get(explicit)||findEntry(entries,explicit)):null;
      if(explicit&&(!explicit.startsWith(hash(k)+'-')||(entry&&entry.key!==k)))throw Error('Collision d’identité bancaire : '+explicit);
      if(explicit&&!entry){
       if(!explicit.startsWith(hash(k)+'-')||byId.has(explicit))throw Error('Collision d’identité bancaire : '+explicit);
-      entry={id:explicit,key:k,reference:ref,aliases:[],ambiguous:!distinctReferences&&list.length>1,accountUnknown:r.sourceAccount===undefined};entries.push(entry);byId.set(entry.id,entry);
+      entry={id:explicit,key:k,reference:ref,aliases:[],ambiguous:!distinctReferences&&list.length>1,accountUnknown:r.sourceAccount===undefined};entries.push(entry);register(entry);
      }
      if(!entry&&distinctReferences)entry=candidates.find(e=>e.reference===ref);
      const knownNewReference=distinctReferences&&candidates.every(e=>e.reference&&e.reference!==ref);
@@ -104,33 +146,34 @@
      let create=!entry&&!candidates.length&&(list.length===1||distinctReferences);
      if(!entry&&knownNewReference)create=true;
      if((!entry&&!create)||(entry&&taken.has(entry.id))){
-      const choices=candidates.filter(e=>!taken.has(e.id)).map(e=>({id:e.id,reference:e.reference,note:notes[e.id]||{},aliases:e.aliases}));
+      const choices=candidates.filter(e=>!taken.has(e.id)&&(!ref||!e.reference||ref===e.reference)).map(e=>({id:e.id,reference:e.reference,note:notes[e.id]||{},aliases:e.aliases}));
       const issue={stage,row:{...r},note:notes[r.legacyId||r.id]||{},candidates:choices,message:'Correspondance bancaire ambiguë : '+r.desc+' ('+r.date+', '+r.amount+')'};
       if(typeof resolve!=='function'){const error=Error(issue.message+' — résoudre dans l’interface.');error.code='BANK_IDENTITY_AMBIGUOUS';error.issue=issue;throw error}
       const choice=resolve(issue);
       if(choice===null||choice===undefined)throw Error('Import annulé : rapprochement non résolu');
       entry=choices.some(e=>e.id===choice)?byId.get(choice):null;
-      create=choice==='new';
+      create=choice==='new'||choice==='defer';
+      if(choice==='defer')deferred={candidates:choices.map(c=>c.id),reason:issue.message};
       if(!entry&&!create)throw Error('Choix de rapprochement invalide');
      }
      if(create){
-      let n=0;while(byId.has(makeId(k,n)))n++;
+      let n=0;while(occupied(makeId(k,n)))n++;
       const id=makeId(k,n);
-      if(entries.some(e=>e.id.split('-')[0]===id.split('-')[0]&&e.key!==k))throw Error('Collision d’empreinte bancaire');
-      entry={id,key:k,reference:ref,aliases:[],ambiguous:!distinctReferences&&list.length>1,accountUnknown:r.sourceAccount===undefined};
-      entries.push(entry);byId.set(id,entry);
+      entry={id,key:k,reference:ref,aliases:[],ambiguous:!!deferred||!distinctReferences&&list.length>1,accountUnknown:r.sourceAccount===undefined,...(deferred?{pendingMatch:deferred}:{})};
+      entries.push(entry);register(entry);
      }
      if(entry.key!==k){
       if(!entry.accountUnknown)throw Error('Conflit de compte source');
-      let n=0;while(byId.has(makeId(k,n)))n++;
+      let n=0;while(occupied(makeId(k,n)))n++;
       const oldId=entry.id,newId=makeId(k,n);
       moveNote(notes,oldId,newId);entry.aliases.push(oldId);
-      byId.delete(oldId);entry.id=newId;entry.key=k;entry.accountUnknown=false;byId.set(newId,entry);
+      byId.delete(oldId);entry.id=newId;entry.key=k;entry.accountUnknown=false;register(entry);
      }
      if(taken.has(entry.id)||manualIds.has(entry.id))throw Error('Collision avec une opération existante ou manuelle');
      taken.add(entry.id);
      // Les anciens identifiants servent à migrer les notes, jamais à prouver un rapprochement.
      for(const alias of [r.legacyId,!format.test(r.id)&&!r.id.startsWith('pending:')?r.id:null].filter(Boolean)){
+      if(deferred&&stage==='import')continue;
       // Un ancien JSON seul ne prouve pas que le numéro de ligne désigne encore
       // la même opération. Sans photographie locale, référence ou décision connue,
       // laisser cette note orpheline pour un rattachement manuel explicite.
@@ -159,7 +202,7 @@
     if(typeof resolve!=='function'){const error=Error(issue.message+' — résoudre dans l’interface.');error.code='BANK_IDENTITY_AMBIGUOUS';throw error}
     sourceAccount=resolve(issue);
     if(sourceAccount==null)throw Error('Import annulé : compte source non résolu');
-    if(sourceAccount==='new')return r;
+    if(sourceAccount==='new'||sourceAccount==='defer')return r;
     if(!accounts.has(sourceAccount))throw Error('Choix de compte source invalide');
    }else if(accounts.size===1)sourceAccount=[...accounts][0];
    else return r;
@@ -176,8 +219,12 @@
   // Le même tableau est utilisé lors de la migration au chargement du navigateur.
   const bank=incoming===model.rows?migrated:assign(incoming.filter(bankRow),'import');
   const other=incoming.filter(r=>!r.manual&&!bankRow(r));
+  if(incoming!==model.rows&&incoming.some(bankRow)){
+   const present=new Set(bank.map(r=>r.id));
+   entries=entries.filter(e=>!e.pendingMatch||present.has(e.id)||annotated(e));
+  }
   for(const r of [...bank,...other,...manual]){if(usedIds.has(r.id))throw Error('Collision d’identifiants dans le modèle');usedIds.add(r.id)}
   return {...model,rows:[...bank,...other,...manual],notes,bankIdentities:entries};
  }
- return Object.freeze({key,prepare,reconcile,moveNote,canonicalAmount});
+ return Object.freeze({key,prepare,reconcile,moveNote,canonicalAmount,pendingMatches,resolvePending});
 });
