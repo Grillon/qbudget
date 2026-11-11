@@ -1,6 +1,6 @@
-# qbudget V0.19.11 — Détection des transferts intercomptes
+# qbudget V0.19.12 — Transferts validés en un clic
 
-**Nouveau :** détecter les paires débit/crédit du même montant, à la même date et dans la même devise, entre deux comptes distincts. Le backlog permet d’ajouter `transfert_intercomptes` aux deux opérations : ce tag constitue la validation, même ajouté depuis l’éditeur. Les ambiguïtés et doubles débits ne sont pas rapprochés automatiquement. [Mode d’emploi et essai fictif](docs/detection-transferts.md).
+**Nouveau :** dans le backlog des transferts, un clic ajoute `transfert_intercomptes` aux deux lignes, individuellement ou en groupe, sans fenêtre « OK » supplémentaire. Les données restent revérifiées avant l’ajout. [Mode d’emploi et essai fictif](docs/detection-transferts.md).
 
 **Catégories pour l’exploration :** une [proposition de six axes](docs/categories-exploration.md) et un JSON facultatif sont disponibles. Aucune modification du catalogue actuel ni des catégories personnelles n’est appliquée.
 

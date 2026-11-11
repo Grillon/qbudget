@@ -1,3 +1,10 @@
+# qbudget V0.19.12 — Validation des transferts en un clic
+
+- Suppression de la confirmation supplémentaire pour ajouter `transfert_intercomptes` depuis le backlog, sur une paire ou en groupe. Le clic sur le bouton constitue la validation.
+- Vérification des correspondances au moment de l’ajout et refus atomique des données devenues ambiguës conservés.
+
+---
+
 # qbudget V0.19.11 — Transferts intercomptes potentiels
 
 - Détection manuelle des paires lisibles : même date, même devise, montants exactement opposés et comptes distincts, y compris deux comptes sources d’une même banque.

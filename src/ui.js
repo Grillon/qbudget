@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.11';
+const UI_VERSION='0.19.12';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
@@ -666,7 +666,6 @@ function detectTransfers(){
 }
 function tagTransfers(ids){
  if(!ids.length)return;
- if(!confirm(`Ajouter le tag transfert_intercomptes aux deux lignes de ${ids.length} transfert(s) proposé(s) ?\nLes autres tags et annotations sont conservés. Les montants, soldes et calculs de trésorerie restent inchangés.\nLes graphiques qui excluent les transferts utiliseront ce classement.`))return;
  try{model=QBudgetTransfers.acceptMany(model,ids);clearChartSelection();clearBulkSelection();save();render();$('transferBacklogStatus').textContent=`${ids.length} transfert(s) tagué(s). Retirer le tag d’une ligne rouvre la proposition. Les tags ajoutés depuis le tableau sont aussi reconnus.`}
  catch(error){$('transferBacklogStatus').textContent=error.message}
 }

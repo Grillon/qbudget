@@ -8,7 +8,7 @@ Chaque opération doit avoir une seule contrepartie possible, et réciproquement
 
 ## Valider signifie taguer
 
-**Ajouter transfert_intercomptes** ajoute ce tag aux deux lignes, en conservant tous les autres tags et annotations. Le bouton groupé traite les propositions actuellement disponibles après une confirmation. Une seconde vérification des données est effectuée au moment de l’ajout ; si une paire a changé ou est devenue ambiguë, l’action groupée entière est refusée, sans ajout partiel.
+**Ajouter transfert_intercomptes** ajoute ce tag aux deux lignes, en conservant tous les autres tags et annotations. Depuis la version 0.19.12, le clic suffit : aucune fenêtre « OK » supplémentaire, ni pour une paire ni pour le bouton groupé. Les données sont revérifiées au moment de l’ajout ; si une paire a changé ou est devenue ambiguë, l’action groupée entière est refusée, sans ajout partiel. Le tag peut être retiré depuis l’éditeur pour corriger un classement.
 
 Il n’existe aucun état « validé » indépendant des tags :
 
