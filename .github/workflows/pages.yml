@@ -1,7 +1,7 @@
 name: Deploy qbudget (static)
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,33 +16,29 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name == 'main' && github.sha || 'main' }}
+          path: versions/main
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name == 'dev' && github.sha || 'dev' }}
+          path: versions/dev
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Vérifier cohérence et tests avant publication
+      - name: Vérifier la version principale
+        working-directory: versions/main
         run: ./run-tests.sh
-      - name: Verify static files
-        run: |
-          test -s index.html
-          test -s plotly.min.js
-          test -s src/engine.js
-          test -s src/version.js
-          test -s src/demo.js
-          test -s src/normalize.js
-          test -s src/bank-config.js
-          test -s src/tags.js
-          test -s src/visual-select.js
-          test -s src/annotations.js
-          test -s src/editor.js
-          test -s src/history-plot.js
-          test -s src/ui.js
-      - name: Prepare sanitized site
-        run: |
-          mkdir -p public-site/src
-          cp index.html plotly.min.js public-site/
-          cp src/engine.js src/version.js src/demo.js src/normalize.js src/bank-config.js src/tags.js src/visual-select.js src/annotations.js src/editor.js src/history-plot.js src/ui.js public-site/src/
+      - name: Vérifier la version de développement
+        working-directory: versions/dev
+        run: ./run-tests.sh
+      - name: Préparer la racine et le sous-dossier dev
+        run: node versions/dev/scripts/build-pages.js versions/main versions/dev public-site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
