@@ -1,374 +1,133 @@
-# qbudget V0.19.12 — Transferts validés en un clic
+# qbudget V0.20.0 — Pilotage financier local
 
-**Nouveau :** dans le backlog des transferts, un clic ajoute `transfert_intercomptes` aux deux lignes, individuellement ou en groupe, sans fenêtre « OK » supplémentaire. Les données restent revérifiées avant l’ajout. [Mode d’emploi et essai fictif](docs/detection-transferts.md).
+qbudget aide à explorer ses finances par les tags, suivre ses soldes, anticiper sa trésorerie et comparer des scénarios. Les opérations flottantes, prévisions et classifications restent souples. Les données sont locales ; aucun service ne reçoit les relevés.
 
-**Catégories pour l’exploration :** une [proposition de six axes](docs/categories-exploration.md) et un JSON facultatif sont disponibles. Aucune modification du catalogue actuel ni des catégories personnelles n’est appliquée.
+**0.20.0 :** correction des rattachements d’annotations, de l’export CLI et des échecs de sauvegarde masqués ; calendrier partagé sans troncature des récurrences ; protection des cumuls de devises ; rendu optimisé. Importateur, générateurs et tests utilisent désormais **Node.js**, avec un seul moteur de normalisation.
 
-**Tri et affichage :** cliquer sur Date, Compte, Élément, Montant ou Catégories · tags pour alterner le tri croissant/décroissant. Choisir 120, 250, 500 ou 1 000 lignes par affichage ; le bouton d’affichage supplémentaire suit ce choix. [Mode d’emploi](docs/tri-editeur.md).
+## Démarrer
 
-**Repérage des tags :** dans l’éditeur, cocher **Sans tags** ou **Libellés partiellement tagués**. Les résultats restent dans le tableau et deviennent des correspondances taguables. Une suggestion commune est préremplie lorsque les opérations similaires le permettent, sans modifier votre saisie ni appliquer de tags automatiquement. [Mode d’emploi](docs/reperage-tags.md).
+Node.js **22 ou plus récent** suffit aux outils du projet. Aucune installation de dépendances n’est nécessaire.
 
-**Ajout groupé de tags :** saisir `SASU, IK, mission` pour ajouter plusieurs tags en une fois à une sélection ou aux résultats filtrés, dans les deux vues. Les tags existants restent conservés, sans doublons. Le retrait reste limité à un tag à la fois. [Mode d’emploi](docs/retrait-tags.md).
-
-**Récurrences potentielles :** lancer la détection, puis examiner les propositions dans un backlog sauvegardé. Ajuster et confirmer la création d’une règle, ou ignorer la proposition. Aucun effet sur les calculs avant validation. [Mode d’emploi et essai rapide](docs/detection-recurrences.md).
-
-Le module partagé `src/recurrences.js` contient la détection et les décisions ; les règles validées utilisent le moteur financier existant, sans dépendance supplémentaire.
-
-**Retrait groupé des tags :** retirer un tag manuel de la sélection ou de toutes les opérations filtrées, dans le tableau de bord et l’éditeur. Aperçu du nombre de retraits, confirmation, autres annotations préservées. [Mode d’emploi](docs/retrait-tags.md).
-
-**Rapprochements après import :** les imports se terminent sans demander de résoudre chaque ambiguïté. Une liste **Rapprochements à traiter** permet de reprendre les annotations ensuite, sans écrasement ni fusion de lignes. Elle est incluse dans la sauvegarde JSON. [Mode d’emploi et essai rapide](docs/rapprochements.md).
-
-**Associations de libellés :** dans l’éditeur, associer des motifs de libellés à un tag existant (`NETFLIX` OU `NFLX` → `Netflix`). Aperçu avant enregistrement, application aux imports futurs, tags manuels préservés et sauvegarde dans les annotations JSON. [Mode d’emploi et essai rapide](docs/associations-libelles.md).
-
-**Réimports et conservation des annotations :** les opérations bancaires utilisent désormais une identité `SHA256-SUFFIXE` indépendante de la position CSV et du nom de fichier. Le compte bancaire source, le libellé normalisé, la date, le montant et la devise déterminent l’empreinte (avec la banque). Le libellé original et les calculs financiers restent conservés. Les opérations manuelles et flottantes gardent leurs identifiants, même après datation.
-
-- Les imports ordinaires retrouvent automatiquement les annotations. Un import partiel remplace toujours les lignes bancaires affichées ; les identités et annotations des lignes absentes restent sauvegardées.
-- Des opérations identiques restent distinctes. Une colonne optionnelle `Référence bancaire` peut les distinguer si elle contient une véritable référence stable. La colonne historique `Identifiant` des normaliseurs n’est pas considérée comme une telle preuve.
-- En cas d’ambiguïté, l’interface demande quelle identité et quelles annotations conserver, ou permet de créer une opération distincte (`N`). Annuler abandonne tout l’import. Le CLI refuse les ambiguïtés plutôt que choisir ; elles peuvent être résolues dans l’interface. Des doublons totalement indiscernables peuvent nécessiter un nouveau choix lors d’un autre import : une décision passée ne fournit pas une information absente du relevé.
-- Le JSON d’annotations conserve le registre `bankIdentities`, les suffixes réservés et les correspondances historiques. Il faut exporter ce JSON pour transporter les décisions vers une autre installation. Les anciens fichiers restent acceptés ; les annotations impossibles à rapprocher restent visibles dans l’éditeur comme annotations sans opération chargée. Le détail permet de les rattacher explicitement à une opération, sans écraser une annotation différente.
-- Les identifiants des exports d’audit changent lors de la migration ; les montants, soldes et hypothèses de prévision ne changent pas. Les fixtures de démonstration possèdent des références bancaires fictives explicites, notamment pour les deux tickets métro distincts.
-
-**Une grille pleine largeur à la place de la liste étroite**, avec une ligne par opération : date, compte, libellé, montant et tags visibles sans défilement horizontal à largeur de bureau. Un bouton **Modifier** ouvre le détail seulement à la demande. La liste est limitée à 120 éléments rendus au départ pour rester fluide ; les filtres et actions groupées portent sur **toutes** les correspondances, pas seulement les lignes visibles.
-
-La sélection conserve **Texte / Regex** et s'enrichit du clic, `Ctrl/Cmd + clic` (ajout/retrait) et `Shift + clic` (plage). Deux actions indépendantes : **Taguer la sélection** ou **Taguer toutes les correspondances du filtre**. Pour protéger les données, la confirmation indique combien de lignes vont recevoir le tag ; les annotations existantes ne sont jamais effacées.
-
-**Filtres supplémentaires dans l'éditeur :**
-
-- **Montant minimal / maximal** en valeur absolue (la même recherche trouve un débit de −1 000 € ou un crédit de +1 000 €). Les montants décimaux acceptent `1 200,50` ou `1200.50` ; bornes incluses.
-- **Période du / au** : dates incluses ; les opérations flottantes sans date ne correspondent pas à un filtre de période. Sans période, elles restent recherchables par montant.
-- Les quatre champs se combinent avec Texte/Regex ; **un filtre de montant ou de période suffit** pour activer « Taguer toutes les correspondances », sans mot-clé obligatoire. Les bornes incohérentes affichent une erreur et bloquent le taggage.
-- « Effacer ces filtres » remet à zéro uniquement les montants et dates, **sans perdre la recherche Texte/Regex**. Les contraintes de montant/période concernent les opérations enregistrées, pas les comptes ou règles.
-
-**Techniquement :** seul l'éditeur `src/editor.js` et sa présentation changent. Aucun changement du moteur financier, des soldes, des prévisions, des formats d'import/export ou du dictionnaire des tags. Pas de bibliothèque nouvelle. Les valeurs filtrées sont préparées en mémoire, sans suppression ni transformation des opérations. Tests unitaires, tests de non-régression et contrôle Chromium sur démo fictive.
-
----
-
-# qbudget V0.19.2 — Recherche Regex et taggage des correspondances
-
-**Sélectionner → vérifier → taguer, sans règle implicite.** La recherche existante du tableau de bord et celle de l'éditeur acceptent désormais un mode **Texte** (comportement historique) ou **Regex** (expressions régulières natives JavaScript, insensibles à la casse).
-
-Exemples :
-
-- `CARREFOUR|AUCHAN|LECLERC` : plusieurs commerçants en une recherche.
-- `^VIR|VIREMENT` : libellés qui commencent par VIR ou comportent VIREMENT.
-- `ESSENCE|CARBURANT|PÉAGE` : regrouper les frais de déplacement pour inspection.
-
-La recherche s'applique comme avant aux **libellés, comptes et tags** (ainsi qu'à la devise côté tableau de bord). Les filtres Compte, Type et Tags ET/OU restent combinables. **Le tableau lui-même constitue l'aperçu** ; une ligne indique combien d'opérations enregistrées correspondent et combien d'échéances `FORECAST` ne sont pas modifiables. Dans l'éditeur, le compteur donne aussi le nombre d'opérations taguables dans les résultats.
-
-**Deux actions différentes :**
-
-1. « Ajouter le tag aux lignes sélectionnées » reste disponible et ne touche que les cases cochées.
-2. « Taguer toutes les correspondances » ajoute le tag à **toutes les opérations enregistrées** répondant à la recherche, y compris au-delà des 150 premières affichées. L'éditeur propose la même action sur les opérations de ses résultats. L'action exige un motif non vide, un tag et une confirmation explicite. Les tags existants sont conservés, et les tags déjà présents ne sont pas dupliqués.
-
-Une Regex invalide affiche un message et **bloque le taggage groupé** au lieu d'élargir les résultats. Limite de 250 caractères par motif. Les expressions utilisent la syntaxe JavaScript (`RegExp`), sans notation `/.../`. Aucun pattern n'est enregistré comme règle ni appliqué automatiquement aux imports : cette automatisation pourra être envisagée plus tard si elle devient utile.
-
-**Architecture :** aucune dépendance ajoutée, aucun nouveau format, aucun calcul financier changé. Le module Moteur passe en 0.19.2 parce que son **filtre partagé** sait interpréter Regex ; les calculs de soldes et prévisions ne changent pas. Interface et Éditeur passent en 0.19.2 ; les autres modules gardent leur version. Les imports/exports natifs `operations.csv`, `qbudget-annotations.json` et `qbudget-categories.json` ne changent pas. Pense à exporter tes annotations avant mise à jour.
-
-**Tests :** tests Node pour les Regex, les motifs invalides, les tags ET/OU, la prévision, l'absence de doublon, les soldes et l'audit. Vérification interactive dans Chromium avec Plotly réel, en chargeant les scripts par injection (le navigateur de cet environnement bloque l'ouverture directe des fichiers locaux). Le déploiement GitHub Pages n'a pas été testé.
-
----
-
-# qbudget — V0.19.1 · Interface accélérée
-
-**Correction de performance, sans changement du moteur financier ni des formats CSV/JSON.**
-
-- **Deux vues réellement indépendantes à l'affichage :** l'éditeur ne provoque plus de redessin des graphiques Plotly, et le tableau de bord ne reconstruit plus l'éditeur caché. Les modifications restent communes et apparaissent lors du retour dans l'autre vue.
-- **L'éditeur affiche les 120 premiers éléments** puis « Afficher 120 éléments supplémentaires ». La recherche et le filtre portent toujours sur **tous** les éléments, pas seulement ceux affichés. Les liens et l'édition restent disponibles.
-- **Le tableau affiche les 150 premières lignes** puis « Afficher 150 opérations supplémentaires », sans changer les résultats des filtres ou graphiques. « Sélectionner les résultats affichés » sélectionne uniquement les lignes effectivement visibles, jamais les occurrences `FORECAST`.
-- **Courbe historique plus rapide :** un passage chronologique inverse remplace le recalcul du solde à chaque date. Chaque point est comparé dans les tests au moteur financier inchangé.
-- **Recherche fluide :** l'éditeur ne reconstruit plus systématiquement tous les boutons de catégories ; ils sont calculés à l'ouverture de la rubrique correspondante. Les graphiques réagissent après une courte pause (220 ms) lors de la saisie dans les filtres, tandis que le tableau reste immédiat. Le redimensionnement de fenêtre ne déclenche plus tous les calculs.
-
-**Mesures Chromium headless, avec 500 opérations fictives supplémentaires** (mêmes données et environnement, valeurs indicatives) : ouverture de l'éditeur ~258 ms → ~5 ms ; filtrage/recherche dans l'éditeur ~275 ms → ~4 ms ; rendu complet du tableau de bord initial ~501 ms → ~123 ms (hors cas de courbes historiques à dates nombreuses). Un essai avec 3 000 écritures supplémentaires donne une recherche dans l'éditeur ~13 ms. Les performances réelles varient selon ton navigateur et les données ; Plotly reste la dépendance graphique la plus lourde au premier chargement.
-
-**Installation :** décompresser l'archive complète. Le nouveau module `src/history-plot.js` est requis ; le workflow GitHub Pages le publie. Les annotations en stockage local restent au format précédent, aucune migration ni réimport nécessaire. Exporter ses annotations avant de remplacer une version reste conseillé.
-
-Modules modifiés : `Interface` et `Éditeur` **0.19.1**, nouveau module `Courbes historiques` **0.19.1**. Le moteur financier demeure en 0.16.0, les autres modules inchangés.
-
----
-
-# qbudget — V0.19.0 · Tableau de bord + éditeur de données
-
-**Deux vues, un seul produit et un seul modèle de données.** Dans `index.html`, sélectionne **Tableau de bord** ou **Éditeur de données**. Les modifications de l'éditeur se répercutent directement dans le tableau de bord et sont sauvegardées dans le stockage local du navigateur, comme auparavant.
-
-L'éditeur affiche les **libellés lisibles** à la place des identifiants techniques : comptes et soldes de référence, règles de récurrence et leurs opérations liées, écritures bancaires et leurs annotations, saisies manuelles (datées ou flottantes). Il permet de rechercher, filtrer les types d'éléments, modifier les champs applicables et suivre les relations en cliquant sur les liens. Une rubrique relie **catégories → tags → opérations**. Les annotations sans opération correspondante (CSV non chargé, par exemple) restent visibles sous « Références non résolues » avec leur ID intact.
-
-**Un seul éditeur de catégories** : celui de la version précédente est déplacé dans la vue Éditeur ; il conserve l'import/export `qbudget-categories.json`. Les onglets de réordonnancement à côté du Sunburst restent dans le tableau de bord.
-
-**Aucun nouveau format de données.** Les boutons Importer/Exporter utilisent directement `qbudget-annotations.json` (même structure native `version:3` que précédemment), tandis que les relevés bancaires restent des `operations.csv` normalisés. Les lignes bancaires sont en lecture seule dans l'éditeur (seuls leurs tags, type et liens aux règles sont modifiables), alors que les opérations manuelles sont modifiables dans `manualRows`. Les identifiants de référence et les champs inconnus sont conservés. L'import remplace les annotations locales après confirmation, **jamais** le fichier original sur disque. Il faut exporter de nouveau pour récupérer les modifications en fichier ; penser à sauvegarder l'ancien JSON avant import.
-
-**Installation :** décompresser l'archive complète avec `index.html`, `plotly.min.js` et le répertoire `src/`. Les modules ajoutés sont `src/editor.js` (interface d'édition) et `src/annotations.js` (lecture/écriture native partagée) ; aucune dépendance ni installation modulaire. GitHub Pages publie aussi ces deux fichiers.
-
-**Versions des modules :** interface/éditeur/annotations `0.19.0` ; moteur financier `0.16.0`, tags `0.18.3`, normalisation `0.15.0`, sélection graphique `0.18.5`. Les calculs et exports d'audit n'ont pas été modifiés. 110 tests automatisés et un parcours Chromium **avec Plotly réel**, scripts injectés sans navigation réseau (18 contrôles d'interaction) ; publication GitHub Pages non testée en ligne.
-
----
-
-### V0.18.5 — Répartitions avec saisies manuelles et prévisions
-
-Les graphiques **camembert**, **Sunburst** et **Treemap** incluent désormais : les dépenses réalisées (importées ou manuelles), les opérations **manuelles prévues ayant une date**, et les échéances `FORECAST` produites par les règles de récurrence entre la date de consultation et la **fin de prévision** choisie. La période passée est conservée dans la répartition. Les opérations flottantes **sans date** n’y entrent pas.
-
-Les graphiques indiquent le nombre d’opérations réalisées, prévues et récurrentes calculées. Leurs montants sont des **dépenses brutes** : les recettes ne viennent pas les annuler. La case d’exclusion des transferts fonctionne toujours. Un clic sur un secteur/rectangle retrouve dans le tableau les écritures enregistrées **et** les occurrences `FORECAST`, qui restent consultables mais non modifiables.
-
-Il n’y a **pas de déduplication automatique** entre une saisie manuelle et une récurrence générée : si les deux décrivent la même dépense, elles apparaissent séparément dans les répartitions. Cela préserve la traçabilité des hypothèses.
-
-Aucun changement du moteur des soldes, des exports d’audit, du calendrier de récurrences ni du graphique d’évolution des soldes. Les **flux mensuels** conservent pour l’instant leur affichage historique.
-
-# qbudget — V0.18.4
-
-Outil **local** de visualisation et simulation financière. Pas de compte bancaire connecté, pas de serveur de données, pas de base distante. Projet en développement : les projections sont des hypothèses, **pas** un outil comptable ou fiscal.
-
-
-
-## V0.18.4 — Treemap et navigation graphique vers les écritures
-
-La répartition hiérarchique Plotly propose désormais deux représentations du **même arbre de données** : **Sunburst** (anneaux) et **Treemap** (rectangles imbriqués). Choisis la vue avec les deux boutons radio directement au-dessus du graphique. L’ordre des catégories par onglets et la profondeur de 2 à 8 s’appliquent aux deux vues. Le choix est conservé dans les annotations JSON et le stockage du navigateur.
-
-**Cliquer pour auditer une dépense :** clique sur une part du camembert ou un secteur du Sunburst/Treemap. qbudget filtre **uniquement le tableau** sur les écritures réelles composant exactement ce montant, et affiche une bannière avec leur nombre et leur total. Tu peux les consulter et leur ajouter un tag en lot. **« Voir toutes les opérations »** quitte ce détail. Modifier un filtre, une date ou le compte sélectionné abandonne également cette navigation ponctuelle.
-
-Les transferts portant `transfert_intercomptes` restent exclus des deux répartitions si l’option est active ; ils ne sont pas automatiquement supprimés des écritures. Les recettes, opérations flottantes et prévisions ne sont pas comptées comme dépenses des graphiques. Les comptes, soldes, prévisions, exports d’audit, flux mensuels et courbe d’impact ne sont **jamais modifiés par un clic**. Le total du détail est calculé sur les opérations sources **une seule fois**, pas en additionnant les niveaux du graphique.
-
-Le petit module `src/visual-select.js` fait cette correspondance lecture seule ; Plotly reste l’unique dépendance graphique. Versions affichées : interface et sélection graphique `0.18.4`, moteur financier `0.16.0`, tags `0.18.3`, normalisation `0.15.0`. La suite compte 99 tests. Les clics réels ont été contrôlés dans Chromium avec Plotly (scripts injectés ; déploiement Pages non vérifié).
-
-## V0.18.2 — Tableau sur deux lignes
-
-Dans le tableau des opérations datées, la première ligne montre la sélection, la date, le compte, le libellé, le montant et l'origine. Une seconde ligne regroupe les tags par catégorie, suivant l’ordre choisi sur les onglets du Sunburst, puis les tags libres. Pour les écritures enregistrées, elle conserve les contrôles d'édition des tags, de périodicité et de récurrence, ainsi que le signalement des doublons. Les occurrences FORECAST restent en lecture seule. Cette présentation ne change ni les exports, ni la sélection par lot, ni les calculs.
-
-## V0.18.0 — Onglets glissables et Sunburst stabilisé
-
-- **Réorganiser les dimensions :** dans « Tags · catégories et dimensions du tableau », fais glisser les onglets `⠿ Nature`, `⠿ Périodicité`, etc., vers leur nouvelle place. Les lignes d'édition, les colonnes du tableau et la hiérarchie du Sunburst se réorganisent ensemble. Pour une alternative clavier, focalise un onglet et utilise **Alt + ←/→**.
-- **Profondeur :** le curseur Sunburst de 2 à 8 reste à la même place, même quand la liste descriptive des catégories à sa droite s'allonge. Sur petit écran, les contrôles passent à la ligne sans pousser le curseur.
-- **Persistance :** le nouvel ordre reste une simple propriété du dictionnaire de catégories, conservée dans le stockage local et dans les exports JSON. Pas de migration à effectuer. Les opérations et soldes restent inchangés.
-- **Modules :** Interface et Tags passent à 0.18.0 ; Moteur et Normalisation gardent leurs versions précédentes. 86 tests automatisés, parcours Chromium/Plotly du drag & drop, de l'alternative clavier et du curseur stable.
-
-## V0.17.0 — Catégories prêtes à l’emploi, JSON indépendant, tags par lots, modules versionnés
-
-**Catégories prêtes à l’emploi.** Un nouveau profil de qbudget démarre avec six dimensions éditables (Nature, Périodicité, Contexte, Entité, Traitement, Variabilité) et leurs tags usuels. Ces catégories n'imposent aucune règle aux opérations, et un tag inconnu reste utilisable. Un profil existant qui possédait déjà sa propre taxonomie est **conservé tel quel**, y compris un dictionnaire volontairement vide : utilise **« Catégories par défaut »** pour remplacer le dictionnaire manuellement.
-
-**Exporter/importer uniquement les catégories.** Dans « Tags · catégories et dimensions du tableau » : **Exporter catégories JSON** télécharge `qbudget-categories.json` ; **Importer catégories JSON** remplace uniquement le dictionnaire après validation stricte (format `qbudget-tag-categories`, `schemaVersion: 1`, noms uniques et tags non ambigus). Les opérations, comptes, annotations, tags existants, soldes et règles ne changent pas. Les fichiers incomplets ou invalides sont refusés sans import partiel. **Catégories par défaut** restaure le dictionnaire de départ après confirmation. Un exemple prêt à importer est fourni dans `examples/categories-par-defaut.json`. L'export/import JSON général des annotations reste disponible et distinct.
-
-**Ajouter un tag à un ensemble de lignes.** Dans « 8 · Opérations datées », commence par filtrer (mot-clé, compte, type, tags ET/OU). Coche individuellement des lignes ou clique **Sélectionner les résultats affichés** (au maximum les 1 000 lignes effectivement affichées), saisis **un tag**, puis **Ajouter le tag aux lignes sélectionnées**. Les tags existants sont conservés ; une seconde application n’ajoute pas de doublon. Le compteur indique combien de lignes ont réellement changé. La sélection est vidée quand les filtres changent, pour éviter de modifier par erreur des lignes masquées. Les occurrences `FORECAST · calculé` sont exclues, non sélectionnables. Les opérations flottantes restent modifiables individuellement dans leur file d’attente ; le bouton de lot concerne **le tableau des opérations datées** uniquement. Les montants, dates et prévisions ne sont jamais altérés par cette action.
-
-**Organisation plus modulaire.** L'ancien gros JavaScript embarqué dans `index.html` se trouve désormais dans `src/ui.js`. Le dictionnaire, sa sérialisation JSON et l'opération de taggage par lot sont dans `src/tags.js`. Le moteur (`src/engine.js`) et l'importeur (`src/normalize.js`) restent des modules indépendants. La section **« Versions des modules »** en haut de l’interface affiche leurs versions spécifiques : une évolution du seul module de tags n'implique pas un changement de version du moteur. La version globale suit `package.json` et `src/version.js`. Le CLI, les générateurs de configuration/démo, les tests et la feuille CSS intégrée ne sont pas tous découpés en modules supplémentaires : nous évitons une refonte artificielle.
-
-**Pour mise à jour :** exporte d'abord tes annotations JSON. Décompresse **toute** l'archive en conservant le dossier `src/` à côté de `index.html`. Ne copie pas `index.html` seul : il référence désormais explicitement `src/ui.js` et `src/tags.js`. Le site GitHub Pages publie ces nouveaux fichiers. `./run-tests.sh` vérifie 84 tests Node et la cohérence de version ; un parcours Chromium/Plotly a vérifié la recherche, la sélection de 24 lignes, le taggage groupé, les soldes et l'import/export JSON. Le test navigateur utilise une injection des scripts à cause des restrictions d'accès aux fichiers locaux de l'environnement ; ce n'est pas une certification du déploiement Pages.
-
-## V0.16.0 — Dictionnaire de tags, tableau et Sunburst (2 à 8 niveaux)
-
-**L’idée de Wallex : un tag saisi librement devient une dimension, sans compréhension métier codée en dur.**
-
-1. Dans **« Tags · catégories et dimensions du tableau »**, cliquer sur **+ Catégorie**, donner un nom (ex. `Nature`) et saisir ses tags séparés par des virgules (`transport, repas, logement`). Les **onglets ⠿ glissables** déterminent l’ordre des colonnes de dimensions et de la hiérarchie du Sunburst. Supprimer une catégorie ne supprime aucun tag des opérations.
-2. Dans **« 8 · Opérations datées et annotations »**, renseigner les tags librement, comme précédemment. Une colonne est automatiquement créée pour chaque catégorie ; **« Tags (saisie libre) »** conserve la liste complète, y compris les tags non classés. Un tag est affecté à une seule catégorie pour éviter les ambiguïtés. Si plusieurs tags appartiennent à une même catégorie, la colonne affiche tous les tags ; le graphique choisit le premier **uniquement pour éviter de compter deux fois le montant**. La règle est explicite et ne modifie ni la dépense ni sa liste de tags.
-3. Déplacer le curseur **Sunburst · profondeur** de **2 à 8**. Les niveaux suivent l’ordre des catégories configurées. Si tu n’as que 3 catégories, monter à 8 conserve 3 niveaux : il ne crée pas de dimension fictive. Sans catégories, le Sunburst historique *premier tag → libellé* fonctionne toujours.
-4. Les **boutons radio du camembert** choisissent une dimension pour le camembert **seulement**. Ils n’ont aucun effet sur les colonnes du tableau, le Sunburst ou les soldes. Recherche et filtres ET/OU restent communs au tableau et aux graphiques d’analyse.
-
-**Périodicité :** créer une catégorie `Périodicité` avec les tags `Récurrent, Ponctuel`. La source « Tags libres » n’utilise que la classification explicite. La source facultative « Type existant » utilise le tag explicite s’il existe, puis, faute de tag, le champ `type` historique (dont les prévisions récurrentes). Cela **ne crée aucune règle de récurrence**. L’état d’une écriture (`RÉEL`, `PRÉVU`, `FORECAST`, `flottant`) reste entièrement distinct. Une écriture importée n’est pas déclarée ponctuelle par défaut.
-
-**Exemple :** la démo fictive initialise six catégories (Nature, Périodicité, Contexte, Entité, Traitement, Variabilité), basées sur les tags des fixtures ; tu peux en ajouter deux de plus pour explorer huit niveaux. Les choix sont conservés dans le stockage local et dans l'export/import d'annotations JSON. **Sauvegarder les annotations avant une mise à jour** ; les anciens exports restent acceptés et démarrent avec un dictionnaire vide.
-
-**Validations :** tests Node (`npm test`, dont `tests/tag_categories.test.js`) et vérification manuelle Chromium avec le vrai Plotly, sans erreurs JavaScript. Le moteur des soldes, l'audit complet et les règles de projection sont inchangés.
-
-## V0.15.0 — Normalisation locale des relevés dans l’interface
-
-Importer directement les CSV bruts BoursoBank, BPS ou Revolut depuis le navigateur, vérifier l'aperçu, puis confirmer l'import. La normalisation est locale ; le téléchargement du CSV normalisé et l'import historique sont conservés. Le script Python est facultatif pour l'utilisateur et reste utile pour tests/CLI. Aucun doublon n'est supprimé automatiquement.
-
-## V0.14.0 — Filtres partagés et courbe d’impact, sans altérer les soldes
-
-Dans **« 8 · Opérations datées et annotations »**, les filtres **Recherche**, **Type** et **Tags multiples (ET/OU)** pilotent ensemble le tableau ainsi que les graphiques **Flux mensuels**, **Donut** et **Sunburst**. Les répartitions présentent toujours les opérations **réalisées en EUR jusqu’à la date de consultation** ; elles n’incluent ni les opérations flottantes ni les échéances futures. Un montant portant plusieurs tags n’est compté **qu’une seule fois** ; le donut et le sunburst répartissent les dépenses suivant le premier tag, les autres servant au filtrage.
-
-Le graphique **« Évolution et forecast »** reste le **solde bancaire intégral**, totalement indépendant des filtres de recherche/type/tags. Dès qu’au moins un de ces filtres est actif, une **courbe turquoise supplémentaire** représente le **cumul signé des opérations sélectionnées, partant de 0 €**, sur **un axe vertical droit distinct**. Elle n’est **ni un solde bancaire ni un solde hypothétique** : elle mesure l’impact des mouvements correspondant aux filtres. La partie réalisée est en trait plein et les mouvements futurs en tirets. Le solde historique reste bleu, sa prévision orange et chaque compte exclu garde sa courbe spécifique.
-
-- La courbe turquoise inclut les opérations réalisées correspondant aux filtres dans l’historique visible et les opérations datées futures jusqu’à l’horizon. Si **« Afficher les récurrences futures »** est coché, elle inclut aussi leurs échéances calculées, sans jamais les enregistrer comme écritures.
-- Les opérations flottantes restent **hors de tous les calculs**, même si elles correspondent aux tags recherchés.
-- En vue **Tous les comptes**, l'impact filtré concerne les comptes **inclus dans le cumul** ; les autres courbes hors cumul sont inchangées. En sélectionnant un compte individuel, son impact filtré fonctionne même si ce compte est exclu du global.
-- Lorsque les filtres sont effacés, la courbe d'impact disparaît. Le choix de tri des lignes ne modifie jamais les graphiques.
-- Pour examiner les chiffres sans altérer les données : **`qbudget.impact()`** dans la console navigateur. Cette méthode reprend la période de la courbe affichée et renvoie les points réalisés et projetés.
-
-**Tests :** 61 tests Node (dont 6 nouveaux sur filtres ET/OU, projeté/réalisé, conservation des soldes, comptes exclus et non-multiplication par les tags), ainsi qu'un parcours Chromium/Plotly réel par chargement de la démo et filtrage d'une dépense « Essence » de −68,40 € : aucune modification des soldes constatée.
-
-## V0.13.0 — Comptes hors cumul et disposition libre du tableau de bord
-
-**1. Inclure ou exclure un compte du cumul global.** Dans **« Compte et période »**, chaque compte a une case cochée par défaut. Décocher, par exemple, **BPS** ou **Qonto** :
-
-- Le solde et la projection de **« Tous les comptes »** n'additionnent plus ce compte. Les graphiques de flux et de dépenses agrégées portent également sur les comptes inclus seulement.
-- Le graphique de trésorerie montre le **cumul actif** (historique bleu et forecast orange) et **une courbe supplémentaire par compte exclu**, avec une légende « hors cumul ». Les courbes séparées ne sont pas réintroduites dans le total.
-- Le compte exclu reste **entièrement consultable** via la liste « Compte », y compris son solde, ses opérations, ses prévisions et ses règles. En vue « Tous les comptes », ses opérations restent visibles dans le tableau et portent le statut « HORS CUMUL ».
-- **Toutes les opérations restent présentes dans l'export d'audit**, indépendamment des cases. Cette sélection ne supprime rien, ne désactive aucune règle et ne modifie aucun mouvement bancaire.
-
-L'option `excludedAccounts` est conservée dans la sauvegarde locale et dans l'**export/import des annotations JSON**. Les anciens fichiers restent compatibles : si ce champ manque, tous les comptes sont inclus, comme précédemment. Le moteur CLI et le navigateur partagent la même règle pour les calculs globaux, mais un audit CSV complet ne dépend pas de cette sélection.
-
-**2. Réorganiser les sections.** Toutes les cartes du tableau de bord, y compris les trois indicateurs et les graphiques secondaires, possèdent une poignée **« ⠿ Déplacer »**. Glisser la poignée sur une autre section pour changer l'ordre ; les boutons **↑ / ↓** offrent une alternative. La disposition est mémorisée localement dans **ce navigateur et à cette URL** (clé dédiée `qbudget-layout-v1`) et restaurée à la prochaine visite. **« Disposition d'origine »** rétablit l'ordre initial. Les largeurs restent adaptées aux écrans (cartes principales pleine largeur, deux graphiques côte à côte sur grand écran, indicateurs sur trois colonnes).
-
-La disposition est purement visuelle et n'est pas incluse dans l'export d'annotations ; elle ne touche pas aux comptes ni aux transactions. L'import de données ou le changement de scénario ne modifie pas l'ordre des cartes.
-
-**Tests :** 55 tests automatisés, dont 6 nouveaux sur les exclusions et leur sérialisation, plus un parcours Chromium avec Plotly réel pour le changement de compte, les courbes « hors cumul », le glisser-déposer, les flèches, la réinitialisation de l'ordre et `qbudget.test()`.
-
-Dans la console : `qbudget.comptes()` donne l'état d'inclusion de chaque compte. `qbudget.test()` vérifie aussi que le cumul correspond à la somme des comptes actifs.
-
-## V0.12.0 — Démo Qonto, remboursements et prévisions dans le tableau
-
-La **démo fictive** dispose de quatre comptes (BoursoBank, BPS, Revolut, **Qonto**) et combine maintenant :
-
-| Opération fictive | Compte | Montant | Situation au 25/10/2026 |
-|---|---|---:|---|
-| Essence déplacement client | BPS personnel | −68,40 € | Payée, 21/10 |
-| Péage déplacement client | BPS personnel | −28,10 € | Payé, 21/10 |
-| Restaurant client | Revolut personnel | −42,50 € | Payé, 22/10 |
-| Indemnités kilométriques | Qonto SASU | −350,00 € | Flottante (sans date) |
-| Indemnités kilométriques | BoursoBank personnel | +350,00 € | Flottante (sans date) |
-| Note de frais restaurant | Qonto SASU | −42,50 € | Flottante (sans date) |
-| Note de frais restaurant | Revolut personnel | +42,50 € | Flottante (sans date) |
-
-Les **trois dépenses personnelles déjà payées sont incluses dans les soldes de référence fictifs du 25/10** ; elles ne sont donc pas déduites une seconde fois du solde à cette date. Les deux paires de remboursements restent hors soldes tant qu'elles sont sans date. Les tags `IK`, `noteDeFrais`, `SASU`, `personnel` et un identifiant de contexte permettent de les retrouver, sans automatisme métier.
-
-Dans **« 8 · Opérations datées et annotations »**, la case **« Afficher les récurrences futures »** ajoute au tableau les lignes calculées entre la date de consultation et la fin de prévision. Elles portent le statut **`FORECAST · calculé`**, ont un fond distinct et **aucun contrôle d'édition**. Les opérations réalisées et prévues manuellement ont leur propre statut ; les lignes de forecast ne sont jamais ajoutées aux transactions stockées. La case permet de masquer uniquement leur affichage. Les exports CSV d'audit « all » conservent les prévisions comme auparavant ; l'export « actual » ne les inclut pas.
-
-### Exemples à exécuter dans la console du navigateur (F12)
-
-Après avoir cliqué sur **Charger une démo fictive**, saisir :
-
-```javascript
-qbudget.help()                    // Liste des commandes disponibles
-qbudget.test()                    // Vérification des invariants sur les données affichées
-qbudget.demo()                    // Contrôle Qonto, dépenses payées et paires flottantes
-qbudget.pending(['SASU', 'IK'])   // Filtre ET sur les opérations en attente
-qbudget.forecast('Qonto')        // Prévision de trésorerie pro
-qbudget.recurrences()             // Prévisions récurrentes calculées pour la période
-const copie = qbudget.snapshot()  // Copie indépendante pour explorer sans toucher aux données
+```sh
+node scripts/serve.js
 ```
 
-Ces méthodes n'enregistrent aucune modification ; les tests échouent explicitement en cas d'invariant violé. `qbudget.demo()` n'est pertinent que lorsque la **démo** est effectivement chargée. Elles ne remplacent pas les tests automatisés `./run-tests.sh`.
+Ouvrir <http://127.0.0.1:8000/>. Le serveur n’expose que les fichiers de l’application, de documentation et d’exemples, et écoute uniquement sur la machine locale. On peut également ouvrir `index.html` directement dans un navigateur récent. Conserver ensemble `index.html`, `plotly.min.js` et le dossier `src/`.
 
-## V0.11.0 — Qonto et opérations flottantes
+Versions en ligne : [principale](https://grillon.github.io/qbudget/) et [développement](https://grillon.github.io/qbudget/dev/). Les données navigateur des deux versions sont séparées. [Publication Pages](docs/pages.md).
 
-- Dans « Ajouter un compte », le nom **Qonto** est prérempli (modifiable). Saisir le solde initial, initialement `0`, puis cliquer sur « Créer le compte » : cette action explicite enregistre un solde de référence daté et permet d'utiliser Qonto même sans aucune transaction. L'import d'un nouveau relevé ne supprime plus ces comptes ni les opérations manuelles.
-- Dans « Ajouter un montant », **laisser la date vide** pour placer l'opération en file d'attente ; elle ne change aucun solde, aucune projection et n'apparaît pas dans l'export CSV d'audit. La nature doit rester « Prévu ». Le compte est facultatif tant que l'opération est flottante. Les tags sont séparés par des virgules (`SASU, IK, enCoursDeCreation`).
-- La « File d'attente » dispose d'une recherche, d'un filtre de tags **ET/OU** (noms exacts, sans distinction de casse), d'une édition de compte/libellé/montant/tags, ainsi que d'une date à choisir dans le calendrier et du bouton « Dater ». Les opérations prévues doivent être datées après la date de consultation ; on peut aussi choisir « Réalisé » pour une opération passée. Une date retirée dans le tableau des opérations replace l'opération manuelle en attente.
-- La sauvegarde « Exporter mes annotations » comprend `accounts` et `manualRows` (y compris les dates absentes), puis « Importer mes annotations » reconstitue la file. Le CLI relit la même structure via `--annotations`. Un export d'audit CSV représente **uniquement des écritures datées** : ce n'est donc pas une sauvegarde des opérations flottantes.
-- Les tags ne déclenchent aucun calcul : `IK` ne crée pas automatiquement une contrepartie. On pourra définir cette règle nous-mêmes plus tard.
+## Importer et sauvegarder
 
-**Pour démarrer sans risque :** exporter d'abord ses annotations, créer Qonto, puis créer une opération en laissant la date vide. Si le solde Qonto n'est pas 0, renseigner son véritable solde dans « Solde de référence ».
+Le navigateur accepte les CSV bruts BoursoBank, BPS et Revolut, ou un CSV qbudget déjà normalisé. La configuration des banques vient de `banques.json` ; le module navigateur correspondant est généré depuis ce fichier. La prévisualisation précède l’import des CSV bruts. Une erreur de normalisation interrompt tout le lot.
 
-## Composants et version
+Un import CSV remplace les opérations bancaires affichées. Il conserve les opérations manuelles, les annotations et les décisions utiles des lignes absentes. Aucune opération distincte n’est fusionnée automatiquement.
 
-| Composant | Rôle |
-|---|---|
-| `index.html` | Interface navigateur (version affichée dans le titre) |
-| `src/engine.js` | Moteur JavaScript commun (normalisation CSV, soldes, récurrences, audit) |
-| `src/visual-select.js` | Relie les secteurs Plotly aux écritures du tableau, sans modifier les opérations |
-| `src/cli.js` | CLI Node.js pour les commandes ponctuelles et les scripts (`qbudget --version`) |
-| `src/repl.js` | REPL pour explorer les données et simuler plusieurs scénarios en mémoire |
-| `src/version.js` | Version du navigateur, générée depuis `package.json` |
-| `src/demo.js` | **Démo fictive** générée depuis les fixtures des tests |
-| `import_releves.py`, `banques.json` | Normalisation Python conservée pour CLI/tests et configuration des banques |
-| `src/normalize.js`, `src/bank-config.js` | Normalisation JavaScript native dans le navigateur, profils générés depuis `banques.json` |
-| `tests/` | Fixtures et tests sans données privées |
-| `run-tests.sh` | Test local et GitHub Actions |
+**Exporter mes annotations** sauvegarde les notes, tags, règles, soldes de référence, catégories, associations, opérations manuelles et flottantes, ainsi que les backlogs et décisions. **Exporter les données CLI** utilise ce même format natif afin de conserver aussi les manuelles. Les opérations bancaires restent dans le CSV : garder les deux fichiers.
 
-`package.json` est la source de vérité du numéro de version. Exécuter `python3 scripts/sync-version.py` après l'avoir changé : le test vérifiera la synchronisation.
+Le JSON conserve le schéma natif `version:3`. Les anciens fichiers sont acceptés, y compris les anciens exports CLI qui plaçaient les manuelles dans `rows` ; seuls les champs manuels y sont repris, sans remplacer le CSV bancaire. Les champs supplémentaires sont reconnus ou conservés. Un import d’annotations remplace les annotations et manuelles locales après confirmation ; le fichier original sur disque n’est pas réécrit.
 
-## Navigateur
+Les modifications sont sauvegardées dans le navigateur. Si ce stockage échoue, une alerte persistante l’indique : les modifications restent en mémoire et peuvent être exportées avant de fermer la page. Un message de succès n’est pas affiché pour une sauvegarde échouée.
 
-Garder `index.html`, `plotly.min.js`, `src/engine.js`, `src/normalize.js`, `src/bank-config.js`, `src/version.js` et `src/demo.js` aux mêmes emplacements. Ouvrir `index.html` ou, en cas de limitation de `file://`, démarrer :
+### Identifiants et réimports
 
-```bash
-python3 -m http.server 8000
-# http://localhost:8000
+Une opération bancaire porte une identité `SHA256-SUFFIXE` fondée sur la banque, le compte source, le libellé normalisé, la date, le montant exact et la devise. Le nom du fichier et l’ordre des lignes n’interviennent pas. Le libellé bancaire original reste conservé.
+
+Les suffixes distinguent les véritables opérations identiques. Une référence bancaire stable peut aider à les reconnaître ; la colonne historique `Identifiant` du normaliseur ne constitue pas cette preuve.
+
+Les identités et annotations anciennes sont conservées dans `bankIdentities`. Les ambiguïtés arrivent dans **Rapprochements à traiter**, après la fin de l’import. Choisir une identité connue ou confirmer une opération distincte ; aucun tag incertain n’est déplacé automatiquement. Le CLI refuse les ambiguïtés non résolues. [Rapprochements](docs/rapprochements.md).
+
+Un rattachement manuel d’annotation ne fusionne pas deux identités bancaires : une nouvelle annotation sur l’opération source reste attachée à cette source lors des imports suivants. Les anciens alias concurrents sont nettoyés sans déplacer les notes ; une annotation déjà mal attribuée avant ce correctif reste à vérifier manuellement. Les opérations manuelles conservent leur UUID lorsqu’elles changent de date.
+
+## Explorer et classer
+
+Le tableau de bord et l’éditeur partagent les mêmes données et calculs.
+
+- **Tags multiples** : `SASU, IK, mission` ajoute les tags manquants à une sélection ou aux résultats filtrés, sans doublons. Le retrait groupé porte sur un tag à la fois. [Guide](docs/retrait-tags.md).
+- **Associations de libellés** : motifs littéraux avec condition OU, insensibles à la casse et par mots entiers, vers un tag existant. Les tags manuels restent distincts des tags déduits. [Guide](docs/associations-libelles.md).
+- **Sans tags / Libellés partiellement tagués** : filtres combinables avec la recherche et les bornes de date/montant. Une suggestion commune peut préremplir le champ ; votre saisie reste prioritaire. [Guide](docs/reperage-tags.md).
+- **Tri et affichage** : en-têtes Date, Compte, Élément, Montant et Tags, croissants ou décroissants, sur tous les résultats. Choix de 120, 250, 500 ou 1 000 lignes ; sélection conservée après tri. [Guide](docs/tri-editeur.md).
+- **Catégories** : dimensions modifiables et réordonnables. Tous les tags restent visibles ; un graphique retient le premier tag de chaque catégorie pour ventiler un montant. Une [proposition de catégories d’exploration](docs/categories-exploration.md) est disponible, sans migration imposée.
+
+Les graphiques de répartition incluent les dépenses réalisées, les manuelles prévues datées et les occurrences récurrentes calculées jusqu’à l’horizon choisi. Cliquer sur une part retrouve les opérations correspondantes. Les flottantes restent hors calcul. Les transferts tagués peuvent être exclus des répartitions sans modifier les soldes ou l’audit.
+
+Les recettes et dépenses du graphique mensuel gardent leur périmètre historique, jusqu’à la date de consultation. Les transferts restent présents dans ces flux et dans l’impact filtré : ces vues montrent les mouvements, tandis que l’exclusion concerne les répartitions de dépenses.
+
+## Prévoir et vérifier
+
+Une opération manuelle peut être **réalisée**, **prévue** ou sans date (**flottante**). Une prévue ne doit pas être déplacée dans le passé sans passer en réalisé ; une flottante n’a jamais d’effet sur le solde ou les prévisions.
+
+- **Récurrences potentielles** : détection sur au moins trois occurrences régulières, puis backlog modifiable. Seule la création explicite d’une règle modifie les prévisions. Les brouillons restent présents lors des changements de filtre ou de vue. [Guide](docs/detection-recurrences.md).
+- **Transferts potentiels** : même date, devise et montant opposé, entre comptes distincts. Un clic appose `transfert_intercomptes` aux deux lignes ; les tags constituent la validation, même ajoutés depuis le tableau. Doubles débits et ambiguïtés restent manuels. [Guide](docs/detection-transferts.md).
+
+Un solde de référence est un solde de **fin de journée**. Les calculs historiques partent de cette référence dans les deux sens. Les prévisions et exports utilisent le même calendrier ancré, y compris les fins de mois et années bissextiles. Une règle ancienne ne cesse plus après 600 occurrences.
+
+Les soldes et projections sont exprimés en EUR. Si des mouvements d’une autre devise interviennent dans le périmètre calculé, le résultat est **indisponible avec diagnostic** : aucune conversion implicite ni addition EUR/USD. Les lignes originales restent stockées et présentes dans l’audit exhaustif.
+
+Il n’existe pas de déduplication automatique entre une opération saisie et une occurrence récurrente : elles peuvent représenter deux hypothèses et sont comptées séparément. Leur rapprochement reste une décision utilisateur. Les comptes exclus restent consultables individuellement et figurent dans l’audit, même si le cumul global les omet.
+
+**Exporter CSV d’audit** détaille les opérations datées et, selon le périmètre, les échéances prévisionnelles. Cet export permet de retrouver dates, comptes, montants, origines et règles ; il ne remplace pas une sauvegarde d’annotations et n’inclut pas les flottantes.
+
+## Outils Node
+
+### Normalisation des relevés bruts
+
+```sh
+node import_releves.js bourso.csv bps.csv revolut.csv -o data/operations.csv
+node import_releves.js -c banques.json -o operations_normalisees.csv releve.csv
+node import_releves.js --help
+node import_releves.js --version
 ```
 
-**Charger une démo fictive** charge les **92 opérations bancaires du 01/09 au 25/10/2026**, **7 opérations manuelles supplémentaires (dont 4 flottantes), quatre comptes, 12 récurrences** mensuelles, trimestrielles ou annuelles, et des soldes de référence datés du 25/10. Ces données proviennent exactement des fixtures des tests. Le chargement de la démo demande confirmation si des opérations sont déjà présentes : exporter préalablement les annotations JSON si nécessaire.
+L’importateur appelle le même `src/normalize.js` que le navigateur : séparateurs, encodages UTF-8/Windows-1252, montants décimaux, champs multilignes, doublons potentiels et sortie personnalisée. Il n’écrit aucune sortie partielle en cas d’erreur. Par défaut, le CSV qbudget utilise `;` et la virgule décimale.
 
-L'interface garde les opérations et annotations dans le **stockage local du navigateur**, et permet de télécharger les annotations avec **Exporter mes annotations**. Une origine `file://` et une origine GitHub Pages ne partagent pas leur stockage. **Sauvegarder régulièrement les annotations**, surtout avant réimport.
+Les formats de date numériques configurables acceptent `%Y`, `%y`, `%m` et `%d`, dans l’ordre et avec les séparateurs voulus. Les années à deux chiffres suivent le pivot 68/69. Le format ISO `%Y-%m-%d` accepte les horodatages dont il extrait la date. Les directives non prises en charge sont refusées explicitement ; les mois textuels et formats de semaines ne sont pas interprétés.
 
-Les opérations bancaires doivent venir d'un CSV normalisé :
+### CLI et REPL
 
-```bash
-python3 import_releves.py bourso.csv bps.csv revolut.csv -o data/operations.csv
-python3 import_releves.py --version
+Copier `.env.example` vers `.env`, adapter les chemins du CSV normalisé et du JSON exporté, puis :
+
+```sh
+node src/cli.js forecast --csv data/operations.csv --annotations data/annotations.json --at 2026-10-25 --months 2 --json
+node src/cli.js balance --at 2026-10-25 --account BPS
+node src/cli.js check --json
+node src/cli.js export --scope all --at 2026-10-25 --until 2026-11-30 -o audit.csv
+node src/cli.js repl
 ```
 
-Les formats d'entrée propres à chaque banque sont décrits dans `banques.json`. L'importateur conserve les doublons potentiels et les signale sans les supprimer. La sortie normalisée est configurable dans `banques.json` (**`;` et décimales `,` par défaut**, comme l’export d’audit).
+Les arguments priment sur `.env`. Le CLI et le REPL valident les dates calendaires réelles et utilisent le même ajout de mois borné : 31 janvier + un mois = 28 ou 29 février. Le navigateur conserve son horizon par défaut en fin du mois cible.
 
-## CLI + REPL — Node.js 22+
+Le REPL permet `accounts`, `rules`, `forecast`, `balance`, `set`, `set-rule`, `compare`, `reset`, `reload`, `export`, `help` et `quit`. Ses scénarios restent en mémoire ; seule la commande `export` écrit un fichier. Les comptes sans transaction mais possédant un solde de référence sont disponibles.
 
-**Deux modes avec le même moteur :** `qbudget` ouvre un REPL lorsque lancé dans un terminal interactif ; `qbudget forecast` / `balance` / `check` / `export` restent des commandes CLI ponctuelles pour les scripts. Quand son entrée n'est pas interactive (`cron`, pipes, CI), `qbudget` sans argument conserve le forecast pour compatibilité. On peut demander explicitement `qbudget repl` dans tous les cas.
+## Développement et vérifications
 
-Un REPL garde en mémoire le CSV normalisé, les annotations et les hypothèses pendant toute la session ; il n'écrit **rien** à moins de demander explicitement `export`. `reset` annule les ajustements temporaires, sans altérer le JSON d'annotations.
-
-```bash
-qbudget            # REPL depuis le terminal
-# ou : qbudget repl
-# puis, dans qbudget> :
-status
-rules
-balance 2026-10-25
-set at 2026-10-25
-set until 2027-12-31
-forecast
-compare r_netflix -16 -20 -25
-set-rule r_netflix:amount=-25
-forecast
-reset
-forecast
-export all simulation.csv 2027-12-31
-quit
-```
-
-La comparaison `compare` recalcule temporairement une règle pour chaque montant, affiche le solde final et minimum, puis restaure implicitement le scénario courant. `set-rule` conserve une hypothèse **uniquement pour la session**. `reload` relit les deux fichiers et efface ces hypothèses. `set format json` permet d'obtenir les résultats détaillés. `help` affiche les commandes disponibles.
-
-**Limites actuelles :** le REPL explore les calculs déjà présents (soldes et récurrences). Les futures formules, variables SASU et scénarios complexes ne sont pas encore implémentés. Il n'existe aucune sauvegarde automatique des hypothèses.
-
-### Commandes CLI pour automatisation
-
-```bash
-cp .env.example .env
-# Personnaliser QBUDGET_CSV / QBUDGET_ANNOTATIONS / QBUDGET_MONTHS
-npm link
-qbudget --version
-qbudget
-qbudget balance --account BoursoBank --at 2026-10-25
-qbudget check
-qbudget forecast --months 14 --json
-```
-
-Le CLI ponctuel est **sans état** : il lit uniquement le CSV **normalisé** et le JSON d'annotations exporté du navigateur, et ne les modifie pas. Le `.env` est lu depuis le dossier courant. Paramètres : options CLI > `.env` > valeurs par défaut. `--set-rule ID:amount=-25` permet de simuler sans sauvegarder.
-
-## Export CSV d'audit
-
-```bash
-qbudget export --scope actual --until 2026-10-25 -o actual.csv
-qbudget export --scope all --at 2026-10-25 --until 2027-12-31 -o forecast.csv
-vimdiff actual.csv forecast.csv
-```
-
-Le navigateur dispose des mêmes sélecteurs et du bouton **Exporter CSV d'audit**. Convention : **`;` entre colonnes, virgule décimale**, date `AAAA-MM-JJ`, tri déterministe. L'export est indépendant des filtres visuels et conserve les opérations identiques. Le point de référence `--at` correspond à une fin de journée, et `--until` est inclus. Pour comparer les deux interfaces, importer les mêmes données bancaires et annotations, et utiliser les mêmes bornes temporelles. **Attention :** les identifiants d'opérations bancaires dépendent encore de l'ordre du CSV, qui doit rester stable pour la comparaison.
-
-## Tests et régressions
-
-```bash
+```sh
 ./run-tests.sh
+npm run test:browser
 ```
 
-Le script exécute les tests Node, dont les tests REPL, contrôle l'importateur Python, vérifie l'intégrité des assets et les **versions synchronisées**. Les tests de scénario utilisent `tests/fixtures/life_2026_operations.csv` et `tests/fixtures/life_2026_annotations.json` : 92 opérations bancaires fictives (dont deux montants identiques distincts), 7 opérations manuelles supplémentaires, 12 récurrences, soldes au 25/10/2026. La démo est générée automatiquement avec `python3 scripts/build-demo.py` ; le test `--check` empêche toute divergence. GitHub Actions exécute `run-tests.sh` à chaque push et PR. **Le workflow Pages le relance avant toute publication**, pour éviter de publier une interface incohérente.
+La première commande vérifie la syntaxe, les générateurs, les tests métier, l’importateur, le CLI et les assets. La seconde lance de vrais parcours Firefox sur des données fictives : export/relecture des manuelles, sauvegarde indisponible, noms de comptes, brouillons de récurrence, transferts, tri, pagination et taggage groupé. Firefox doit être installé ; `FIREFOX_BIN` permet d’indiquer son chemin. Les profils de test sont indépendants du navigateur personnel et supprimés après exécution.
 
-Les snapshots servent à détecter les changements, pas à prouver la vérité comptable. L'interface n'est pas encore couverte par une batterie E2E navigateur dans la CI ; les tests valident sa structure et le moteur commun.
+Les deux workflows GitHub exécutent les contrôles avant publication. Pages assemble `main` à la racine et `dev` dans `/dev/` sans publier les relevés, annotations ou autres données personnelles.
 
-## Pages et confidentialité
+`package.json` est la source de vérité de la version. Après modification des sources générées :
 
-Le workflow `.github/workflows/pages.yml` publie uniquement `index.html`, Plotly et les modules JS `engine.js`, `version.js`, `demo.js`. Les fichiers **fictifs** de démonstration sont publiés ; **aucun relevé bancaire réel** ne doit être ajouté à Git.
+```sh
+node scripts/sync-version.js
+node scripts/build-bank-config.js
+node scripts/build-demo.js
+```
 
-GitHub > Settings > Pages > Source : **GitHub Actions**. GitHub Pages est potentiellement public même si le dépôt est privé. Les données personnelles restent localement dans le navigateur.
+Leur option `--check` détecte un décalage sans écrire de fichier. `banques.json` fournit la configuration ; les fixtures du scénario fictif fournissent la démonstration.
 
-`.gitignore` exclut `.env`, `data/`, les annotations privées et **tous les CSV à la racine**. Les CSV synthétiques sous `tests/fixtures/` restent suivis. Vérifier `git status` avant de pousser. Si tu souhaites forcer un fichier CSV de test supplémentaire, le placer dans `tests/fixtures/`.
+| Module | Responsabilité |
+|---|---|
+| `src/engine.js` | Dates, soldes, prévisions, audit et lecture des tags |
+| `src/identity.js` | Identités stables, rapprochements et migration des notes |
+| `src/normalize.js` | Normalisation unique des CSV bruts, navigateur et CLI |
+| `src/annotations.js`, `src/tags.js` | Format natif, catégories et actions de tags |
+| `src/recurrences.js`, `src/transfers.js` | Détection et backlogs de propositions |
+| `src/ui.js`, `src/editor.js` | Vues sur le même modèle, sans format de données séparé |
+| `src/cli.js`, `src/repl.js` | Commandes et scénarios locaux |
+| `scripts/` | Génération, publication, serveur local et tests navigateur |
 
-## Périmètre à venir
-
-Multi-tags complets et filtres ET/OU, opérations calculées et scénarios SASU, liens entre transferts, choix explicite de désactiver une opération **sans suppression automatique**. La présente version consolide le socle existant et explicite la règle « aucune suppression automatique », sans constituer une simulation fiscale validée.
-
-### Ergonomie V0.18.1 — onglets et Sunburst
-
-Les **onglets de catégories sont placés directement au-dessus du Sunburst**. Glisse-les pour changer l’ordre des dimensions affichées, sans quitter le graphique ; les colonnes du tableau suivent le même ordre. Au clavier, utilise `Alt + ←/→` lorsque l’onglet est sélectionné. Le panneau « Tags · catégories » reste consacré à l’édition du dictionnaire et aux imports/exports JSON.
-
-### Transferts entre comptes et graphiques de répartition (V0.18.3)
-
-Pour un virement entre tes comptes (par exemple BoursoBank → BPS), ajoute manuellement `transfert_intercomptes` aux **deux** écritures, éventuellement via la sélection multiple des résultats de recherche. Par défaut, le camembert et le Sunburst ignorent les lignes portant ce tag ; une case à cocher dans chacun des deux graphiques permet de réafficher ces mouvements (les deux cases sont synchronisées). Les autres graphiques, le tableau, les soldes et l’audit conservent **tous** les mouvements, sans suppression ni compensation automatique.
-
-Le tag appartient à la catégorie **Traitement** du catalogue par défaut. Lors d’une mise à jour depuis V0.18.2, une catégorie Traitement strictement conforme à l’ancien catalogue reçoit le nouveau tag ; les catégories personnalisées ne sont jamais écrasées (le tag libre reste utilisable et peut être ajouté manuellement au catalogue). La préférence d’exclusion est sauvegardée et exportée avec les annotations. Une fois la mise à jour du catalogue réalisée, retirer volontairement le nouveau tag du dictionnaire ne le réintroduit pas au prochain chargement.
+[Historique des versions](CHANGELOG.md).

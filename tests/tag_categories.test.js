@@ -89,7 +89,7 @@ test('l’interface expose le slider, les radios camembert et le tableau en deux
  const ui=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  for(const id of ['sunburstDepth','sunburstDepthText','donutRadios','tagCategoryList','addTagCategory','rows'])assert.match(ui,new RegExp(`id="${id}"`));
  assert.match(ui,/max="8"/);assert.match(ui,/min="2"/);
- assert.match(ui,/organizedTags\(model,r\)/);assert.match(ui,/renderDonutRadios/);
+ assert.match(ui,/organizedTags\(model,r(?:,context)?\)/);assert.match(ui,/renderDonutRadios/);
 });
 
 test('onglets glissables : changer leur ordre ne modifie que les dimensions, jamais les soldes',()=>{
@@ -149,7 +149,7 @@ test('V0.18.2 : deux lignes visuelles par opération, sans duplication de donné
  assert.match(html,/class="tablewrap"/);
  assert.match(html,/<th title="Sélection individuelle">✓<\/th><th>Date<\/th>/);
  assert.doesNotMatch(html,/id="tagsColumnHeader"|id="typeColumnHeader"/);
- assert.match(js,/const organized=QBudgetEngine\.organizedTags\(model,r\)/);
+ assert.match(js,/const organized=QBudgetEngine\.organizedTags\(model,r(?:,context)?\)/);
  assert.match(js,/detailCell\.colSpan=6/);
  assert.match(js,/body\.append\(tr,detail\)/);
  assert.match(js,/if\(r\.forecast\)\{/);

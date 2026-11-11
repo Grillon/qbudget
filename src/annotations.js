@@ -6,7 +6,7 @@
  root.QBudgetAnnotations=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.11';
+ const version='0.20.0';
  const fields=['transferBacklog','recurrenceBacklog','labelAssociations','bankIdentities','version','notes','references','rules','accounts','excludedAccounts','tagCategories','donutCategory','sunburstDepth','hierarchyView','excludeTransfersFromCharts','tagDefaultsVersion','manualRows'];
  const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
  function exportObject(model){
@@ -32,7 +32,8 @@
   const transferBacklog=transfers.validate(o.transferBacklog);
   const categories=tagsApi.validate(o.tagCategories===undefined?tagsApi.defaults():o.tagCategories);
   const validCategories=o.tagDefaultsVersion?categories:tagsApi.upgradeDefaultTreatment(categories);
-  const manualRows=o.manualRows||[];
+  const legacyRows=o.manualRows===undefined&&Array.isArray(o.rows);
+  const manualRows=legacyRows?o.rows.filter(r=>r?.manual):o.manualRows||[];
   const ids=new Set();
   for(const r of manualRows){
    if(!plain(r)||!r.manual||typeof r.id!=='string'||!r.id||ids.has(r.id)||!Number.isFinite(Number(r.amount)))throw Error('Opération manuelle invalide ou dupliquée');
@@ -41,7 +42,7 @@
   const oldBankRows=(model.rows||[]).filter(r=>!r.manual);
   const bankIds=new Set(oldBankRows.map(r=>r.id));
   if(manualRows.some(r=>bankIds.has(r.id)))throw Error('Identifiant manuel en conflit avec un relevé bancaire');
-  const extras=Object.fromEntries(Object.entries(o).filter(([k])=>!fields.includes(k)));
+  const extras=Object.fromEntries(Object.entries(o).filter(([k])=>!fields.includes(k)&&!(legacyRows&&k==='rows')));
   const imported={...model,labelAssociations,transferBacklog,recurrenceBacklog,bankIdentities:o.bankIdentities??model.bankIdentities??[],notes:o.notes,references:o.references,rules:o.rules||{},accounts:o.accounts||[],excludedAccounts:o.excludedAccounts||[],tagCategories:validCategories,tagDefaultsVersion:2,donutCategory:o.donutCategory||'',excludeTransfersFromCharts:o.excludeTransfersFromCharts!==false,sunburstDepth:Math.max(2,Math.min(8,Number(o.sunburstDepth)||2)),hierarchyView:o.hierarchyView==='treemap'?'treemap':'sunburst',rows:[...oldBankRows,...manualRows.map(r=>({...r}))],annotationExtras:extras};
   return engine.reimportBankRows(imported,imported.rows,resolve);
  }

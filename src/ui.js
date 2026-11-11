@@ -1,13 +1,41 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.19.12';
+const UI_VERSION='0.20.0';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
-$('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const amount=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
+$('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const currencyFormatter=new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}),decimalFormatter=new Intl.NumberFormat('fr-FR');const amount=n=>currencyFormatter.format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
 const readCsv=QBudgetEngine.readCsv;
 let labelAssociationEditIndex=-1,labelAssociationPreviewLimit=100;
-function initModel(){model.transferBacklog??=[];model.recurrenceBacklog??=[];model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.labelAssociations??=[];model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){try{localStorage.setItem(KEY,JSON.stringify(model));return true}catch(e){$('importStatus').textContent='Attention : stockage du navigateur indisponible. Exporte tes annotations en JSON.';return false}}
-function load(){try{const s=localStorage.getItem(KEY);if(s)model=JSON.parse(s);initModel();for(const r of model.rows){r.account=r.bank;r.balance=null}const refs={};for(const [k,v] of Object.entries(model.references)){const bank=k.split(' · ')[0];if(!(bank in refs))refs[bank]=v}model.references=refs;for(const rule of Object.values(model.rules))rule.account=(rule.account||'').split(' · ')[0];model=QBudgetEngine.reimportBankRows(model,model.rows,resolveBankIdentity);showOrphanAnnotations()}catch(error){$('importStatus').textContent='Chargement : '+error.message}finally{initModel()}}function accounts(){return QBudgetEngine.accountNames(model)};function key(r){return r.bank}function inAccount(){return model.rows.filter(r=>!selected||key(r)===selected)}function aggregateRows(){const allowed=new Set(selected?[selected]:QBudgetEngine.includedAccountNames(model));return model.rows.filter(r=>allowed.has(key(r)))}function notes(r){return model.notes[r.id]||{}}
+function initModel(){model.transferBacklog??=[];model.recurrenceBacklog??=[];model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.labelAssociations??=[];model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;if(!model.tagDefaultsVersion){model.tagCategories=QBudgetTags.upgradeDefaultTreatment(model.tagCategories);model.tagDefaultsVersion=2}}function save(){
+ try{localStorage.setItem(KEY,JSON.stringify(model));$('storageWarning').hidden=true;return true}
+ catch(e){$('storageWarning').textContent='Attention : stockage du navigateur indisponible. Les modifications restent en mémoire ; exporte tes annotations en JSON avant de fermer la page.';$('storageWarning').hidden=false;return false}
+}
+// Le séparateur est autorisé dans un nom moderne. Seule une ancienne identité
+// contenant explicitement banque + ancien compte prouve cette correspondance.
+function migrateLegacyAccountNames(){
+ const banks=new Set(model.rows.map(r=>r.bank).filter(Boolean)),aliases=new Map();
+ for(const r of model.rows){
+  const account=r.account,bank=r.bank;
+  if(r.manual||!bank||typeof account!=='string'||!account.startsWith(bank+' · ')||banks.has(account))continue;
+  const prefix=bank+'|'+account+'|'+r.date+'|';
+  if(![r.id,r.legacyId].some(id=>typeof id==='string'&&id.startsWith(prefix)))continue;
+  if(!aliases.has(account))aliases.set(account,new Set());aliases.get(account).add(bank);
+ }
+ const candidates=[...aliases].filter(([,targets])=>targets.size===1).map(([name,targets])=>[name,[...targets][0]]);
+ const referenceTargets=new Map();
+ for(const [name,bank] of candidates)if(Object.hasOwn(model.references,name)){if(!referenceTargets.has(bank))referenceTargets.set(bank,[]);referenceTargets.get(bank).push(name)}
+ for(const [name,bank] of candidates){
+  if(Object.hasOwn(model.references,name)){
+   // Plusieurs références ne donnent aucun choix sûr : toutes sont conservées.
+   if(Object.hasOwn(model.references,bank)||referenceTargets.get(bank).length!==1)continue;
+   model.references[bank]=model.references[name];delete model.references[name];
+  }
+  for(const rule of Object.values(model.rules))if(rule.account===name)rule.account=bank;
+  model.accounts=model.accounts.map(a=>a===name?bank:a);model.excludedAccounts=model.excludedAccounts.map(a=>a===name?bank:a);
+ }
+}
+
+function load(){try{const s=localStorage.getItem(KEY);if(s)model=JSON.parse(s);initModel();migrateLegacyAccountNames();for(const r of model.rows){r.account=r.bank;r.balance=null}model=QBudgetEngine.reimportBankRows(model,model.rows,resolveBankIdentity);showOrphanAnnotations()}catch(error){$('storageWarning').textContent='Chargement : '+error.message+' Les données en mémoire restent exportables.';$('storageWarning').hidden=false}finally{initModel()}}function accounts(){return QBudgetEngine.accountNames(model)};function key(r){return r.bank}function inAccount(){return model.rows.filter(r=>!selected||key(r)===selected)}function aggregateRows(){const allowed=new Set(selected?[selected]:QBudgetEngine.includedAccountNames(model));return model.rows.filter(r=>allowed.has(key(r)))}function notes(r){return model.notes[r.id]||{}}
 function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Courbes historiques',QBudgetHistoryPlot.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Détection de récurrences',QBudgetRecurrences.version],['Détection de transferts',QBudgetTransfers.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
 function renderAccounts(){const list=accounts();$('account').replaceChildren(new Option('Tous les comptes',''),...list.map(a=>new Option(a,a)));if(selected&&!list.includes(selected))selected='';$('account').value=selected;const ref=model.references[selected];$('refBalance').value=ref?.balance??'';$('refDate').value=ref?.date??'';$('saveRef').disabled=!selected;const ma=$('manualAccount'),previous=ma.value;ma.replaceChildren(new Option('À attribuer (file d’attente)',''),...list.map(a=>new Option(a,a)));ma.value=list.includes(previous)?previous:(selected||list[0]||'');
  const toggles=$('accountToggles');toggles.replaceChildren();const excluded=new Set(model.excludedAccounts);
@@ -45,7 +73,8 @@ function connectRule(r){
   dialog.showModal();
 }
 function renderRules(){const tbody=$('rules');tbody.replaceChildren();for(const r of Object.values(model.rules).filter(r=>!selected||r.account===selected)){const tr=document.createElement('tr');const cell=t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);return td};cell(r.account);cell(r.desc);cell(amount(r.amount));const f=document.createElement('select');for(const name of ['quotidien','hebdomadaire','mensuel','trimestriel','annuel'])f.add(new Option(name,name));f.value=r.frequency;f.onchange=()=>{r.frequency=f.value;save();renderSummary()};let td=cell('');td.append(f);const anchor=document.createElement('input');anchor.type='date';anchor.value=r.anchor;anchor.onchange=()=>{if(anchor.value){r.anchor=anchor.value;save();renderSummary()}};td=cell('');td.append(anchor);const fin=document.createElement('input');fin.type='date';fin.value=r.end||'';fin.onchange=()=>{r.end=fin.value;save();renderSummary()};td=cell('');td.append(fin);const del=document.createElement('button');del.className='warn';del.textContent='Supprimer';del.onclick=()=>{if(!confirm('Supprimer cette récurrence (les opérations restent conservées) ?'))return;delete model.rules[r.id];for(const n of Object.values(model.notes))if(n.ruleId===r.id){delete n.ruleId;n.type='ponctuel'}save();render()};td=cell('');td.append(del);tbody.append(tr)}}
-function addMonths(iso,n){const d=asDate(iso),target=new Date(d.getFullYear(),d.getMonth()+Number(n)+1,0,12);return dateStr(target)}
+// L’horizon du tableau de bord finit toujours à la fin du mois cible.
+function addMonths(iso,n){const target=new Date(QBudgetEngine.addMonths(iso,n)+'T12:00:00Z');target.setUTCMonth(target.getUTCMonth()+1,0);return target.toISOString().slice(0,10)}
 function plotLayout(extra={}){return {paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'system-ui, sans-serif',color:'#334155',size:12},margin:{l:65,r:20,t:24,b:46},...extra}}
 function curveFor(account,at,end){
  const rows=model.rows.filter(r=>r.bank===account&&!QBudgetEngine.isFloating(r));
@@ -54,8 +83,8 @@ function curveFor(account,at,end){
  if(reference&&reference<=at)dates.add(reference);
  if(actual.length){const prev=asDate(actual[0].date);prev.setDate(prev.getDate()-1);dates.add(dateStr(prev))}
  dates.add(at);
- const history=QBudgetHistoryPlot.points(actual,[...dates].filter(d=>d<=at),QBudgetEngine.totalBalance(model,at,account));
  const calculated=QBudgetEngine.forecast(model,at,end,account);
+ const history=QBudgetHistoryPlot.points(actual,[...dates].filter(d=>d<=at),calculated.opening);
  const future=calculated.opening===null?[]:[{date:at,v:calculated.opening},...calculated.events.map(ev=>({date:ev.date,v:ev.balance}))];
  if(calculated.closing!==null&&end>=at)future.push({date:end,v:calculated.closing});
  return {history,future};
@@ -314,8 +343,8 @@ $('saveLabelAssociation').onclick=()=>{
   const next=[...(model.labelAssociations||[])];
   if(labelAssociationEditIndex<0)next.push(draft);else next[labelAssociationEditIndex]=draft;
   model.labelAssociations=QBudgetEngine.validateLabelAssociations(next);
-  resetLabelAssociationEditor();clearChartSelection();clearBulkSelection();save();render();
-  $('labelAssociationStatus').textContent='Association enregistrée. Les opérations actuelles et les futurs imports utilisent ces motifs. Exporte les annotations JSON pour la sauvegarder dans un fichier.';
+  resetLabelAssociationEditor();clearChartSelection();clearBulkSelection();const saved=save();render();
+  $('labelAssociationStatus').textContent=(saved?'Association enregistrée.':'Association conservée en mémoire ; stockage indisponible.')+' Les opérations actuelles et les futurs imports utilisent ces motifs. Exporte les annotations JSON pour la sauvegarder dans un fichier.';
  }catch(error){$('labelAssociationStatus').textContent=error.message}
 };
 
@@ -336,7 +365,7 @@ for(const id of ['excludeTransfersDonut','excludeTransfersSunburst'])$(id).oncha
  model.excludeTransfersFromCharts=e.target.checked;save();renderVisuals();
 };
 
-function renderSummary(){const date=$('asof').value||today,rows=aggregateRows().filter(r=>!QBudgetEngine.isFloating(r)),balance=historicBalance(rows,date),end=$('horizon').value||addMonths(date,1);const events=end>=date?recurrenceEvents(rows,date,end):[];const prediction=balance===null?null:balance+events.reduce((s,e)=>s+e.amount,0);$('balance').textContent=balance===null?'Indisponible':amount(balance);$('balanceInfo').textContent=selected?selected:'Comptes actifs · EUR uniquement ('+QBudgetEngine.includedAccountNames(model).length+'/'+QBudgetEngine.cashAccountNames(model).length+')';$('projection').textContent=prediction===null?'Indisponible':amount(prediction);$('forecastInfo').textContent=end<date?'Date de fin antérieure à la consultation':`${events.length} échéance(s) estimée(s) jusqu'au ${end}`;$('count').textContent=rows.length;$('countInfo').textContent=`${Object.values(model.rules).filter(q=>selected?q.account===selected:QBudgetEngine.includedAccountNames(model).includes(q.account)).length} règle(s) de récurrence`;
+function renderSummary(){const date=$('asof').value||today,rows=aggregateRows().filter(r=>!QBudgetEngine.isFloating(r)),end=$('horizon').value||addMonths(date,1),forecast=QBudgetEngine.forecast(model,date,end,selected),balance=forecast.opening,events=forecast.events,prediction=forecast.closing;$('balance').textContent=balance===null?'Indisponible':amount(balance);$('balanceInfo').textContent=selected?selected:'Comptes actifs · EUR uniquement ('+QBudgetEngine.includedAccountNames(model).length+'/'+QBudgetEngine.cashAccountNames(model).length+')';$('projection').textContent=prediction===null?'Indisponible':amount(prediction);$('forecastInfo').textContent=end<date?'Date de fin antérieure à la consultation':`${events.length} échéance(s) estimée(s) jusqu'au ${end}`;$('count').textContent=rows.length;$('countInfo').textContent=`${Object.values(model.rules).filter(q=>selected?q.account===selected:QBudgetEngine.includedAccountNames(model).includes(q.account)).length} règle(s) de récurrence`;
 // Courbe historique : calcul dans les deux sens autour du solde daté.
 // Chaque point représente un solde de FIN de journée (toutes les opérations du jour incluses).
 // On inclut un point juste avant la première opération pour voir son impact.
@@ -347,8 +376,8 @@ for(const d of refDates)if(d&&d<=date)pointDates.add(d);
 if(history.length){const previous=asDate(history[0].date);previous.setDate(previous.getDate()-1);pointDates.add(dateStr(previous))}
 pointDates.add(date);
 const points=QBudgetHistoryPlot.points(history,[...pointDates].filter(d=>d<=date),balance);
-let next=balance;const projected=balance===null?[]:[{date,v:balance}];for(const e of events){next+=e.amount;projected.push({date:e.date,v:next})}if(prediction!==null)projected.push({date:end,v:prediction});drawChart(points,projected,end);renderVisuals();
-const warning=$('warning');if(!selected&&QBudgetEngine.includedAccountNames(model).some(a=>!model.references[a])){$('refInfo').textContent='Sélectionne un compte pour enregistrer un solde de référence. Le total global requiert un solde connu pour chaque compte.'}else $('refInfo').textContent='Le solde saisi est un solde de fin de journée : qbudget soustrait les opérations pour reconstituer le passé et les ajoute pour calculer la suite.';const currencies=new Set(rows.map(r=>r.currency).filter(Boolean));warning.style.display=currencies.size>1?'block':'none';if(currencies.size>1)warning.textContent='Plusieurs devises : le cumul sans conversion n’est pas fiable. Filtre par compte.'}
+const projected=balance===null?[]:[{date,v:balance},...events.map(e=>({date:e.date,v:e.balance}))];if(prediction!==null&&end>=date)projected.push({date:end,v:prediction});drawChart(points,projected,end);renderVisuals();
+const warning=$('warning');if(!selected&&QBudgetEngine.includedAccountNames(model).some(a=>!model.references[a])){$('refInfo').textContent='Sélectionne un compte pour enregistrer un solde de référence. Le total global requiert un solde connu pour chaque compte.'}else $('refInfo').textContent='Le solde saisi est un solde de fin de journée : qbudget soustrait les opérations pour reconstituer le passé et les ajoute pour calculer la suite.';const diagnostics=forecast.diagnostics||[];warning.style.display=diagnostics.length?'block':'none';if(diagnostics.length)warning.textContent=diagnostics.join(' ')}
 function clearBulkSelection(){selectedRowIds.clear();updateBulkStatus()}
 function updateBulkStatus(message=''){
  const count=selectedRowIds.size;
@@ -432,7 +461,7 @@ function renderRows(){
  updateMatchingTagButton();
  const mode=$('sort').value;
  rows.sort((a,b)=>mode==='amount'?a.amount-b.amount:mode==='asc'?a.date.localeCompare(b.date):b.date.localeCompare(a.date));
- const body=$('rows');body.replaceChildren();
+ const context=QBudgetEngine.createReadContext(model),body=$('rows');body.replaceChildren();
  displayedEditableIds=rows.slice(0,tableRowLimit).filter(r=>!r.forecast).map(r=>r.id);
  for(const id of [...selectedRowIds])if(!displayedEditableIds.includes(id))selectedRowIds.delete(id);
  updateBulkStatus();
@@ -451,7 +480,7 @@ function renderRows(){
   }
   if(r.manual){
    const dt=document.createElement('input');dt.type='date';dt.value=r.date;dt.title='Effacer la date pour remettre en attente';
-   dt.addEventListener('change',()=>{r.date=dt.value||null;if(!dt.value)r.nature='planned';save();render()});cell('').append(dt);
+   dt.addEventListener('change',()=>{if(dt.value&&dt.value!==(r.date||'')&&r.nature==='planned'&&dt.value<=($('asof').value||today)){alert('Pour une opération prévue, choisis une date après la consultation ou passe-la en « Réalisé » dans l’éditeur.');dt.value=r.date||'';return}r.date=dt.value||null;if(!dt.value)r.nature='planned';save();render()});cell('').append(dt);
   }else cell(r.date);
   cell(key(r));cell(r.desc);cell(amount(r.amount),'right '+(r.amount<0?'minus':'plus'));
   const origin=cell('');const badge=document.createElement('span');
@@ -463,7 +492,7 @@ function renderRows(){
   const detailCell=document.createElement('td');detailCell.colSpan=6;detail.append(detailCell);
   const content=document.createElement('div');content.className='operation-detail-content';detailCell.append(content);
   const labels=document.createElement('div');labels.className='operation-tag-groups';content.append(labels);
-  const organized=QBudgetEngine.organizedTags(model,r);
+  const organized=QBudgetEngine.organizedTags(model,r,context);
   let visible=0;
   function group(name,values,extraClass=''){
    if(!values.length)return;
@@ -484,7 +513,7 @@ function renderRows(){
    function field(labelText,control){const label=document.createElement('label');label.className='operation-detail-field';const name=document.createElement('span');name.textContent=labelText;label.append(name,control);controls.append(label);return control}
    const tag=document.createElement('input');tag.className='tag';tag.value=QBudgetEngine.manualTagsFor(model,r).join(', ');tag.placeholder=r.category||'Ajouter un tag';
    tag.addEventListener('change',()=>{setTags(r,tag.value);render()});field('Tags manuels',tag);
-   const automatic=QBudgetEngine.automaticTagsFor(model,r);
+   const automatic=QBudgetEngine.automaticTagsFor(model,r,context);
    if(automatic.length){const info=document.createElement('span');info.className='operation-detail-note';info.textContent='Associations : '+automatic.join(', ')+' · modifiables dans l’éditeur';controls.append(info)}
    const typ=document.createElement('select');for(const [value,label] of [['','Non défini'],['ponctuel','Ponctuel'],['recurrent','Récurrent']])typ.add(new Option(label,value));
    typ.value=n.type||'';typ.addEventListener('change',()=>{if(typ.value==='recurrent')connectRule(r);else{update(r,{type:typ.value,ruleId:null});render()}});field('Type',typ);
@@ -505,14 +534,14 @@ function renderPending(){
  const all=QBudgetEngine.pendingOperations(model,{account:selected});
  const rows=QBudgetEngine.pendingOperations(model,{account:selected,tags,mode:$('pendingTagMode').value,search:$('pendingSearch').value});
  $('pendingCount').textContent=all.length;
- const body=$('pendingRows');body.replaceChildren();$('pendingEmpty').style.display=rows.length?'none':'block';
+ const context=QBudgetEngine.createReadContext(model),body=$('pendingRows');body.replaceChildren();$('pendingEmpty').style.display=rows.length?'none':'block';
  $('pendingEmpty').textContent=all.length?'Aucun résultat pour ces filtres.':'Aucune opération en attente.';
  for(const r of rows){
    const tr=document.createElement('tr');const cell=()=>{const td=document.createElement('td');tr.append(td);return td};
    const acct=document.createElement('select');acct.add(new Option('À attribuer',''));for(const name of accounts())acct.add(new Option(name,name));acct.value=r.bank||'';acct.onchange=()=>{r.bank=acct.value;r.account=acct.value;save();render()};cell().append(acct);
    const desc=document.createElement('input');desc.value=r.desc||'';desc.onchange=()=>{if(!desc.value.trim()){alert('Libellé requis');desc.value=r.desc;return}r.desc=desc.value.trim();save();renderPending()};cell().append(desc);
    const val=document.createElement('input');val.type='number';val.step='0.01';val.value=r.amount;val.onchange=()=>{const n=numeric(val.value);if(n===null){alert('Montant invalide');val.value=r.amount;return}r.amount=n;save();renderPending()};cell().append(val);
-   const tag=document.createElement('input');tag.className='tag';tag.value=QBudgetEngine.manualTagsFor(model,r).join(', ');tag.onchange=()=>{setTags(r,tag.value);renderPending()};const tagCell=cell();tagCell.append(tag);const automatic=QBudgetEngine.automaticTagsFor(model,r);if(automatic.length){const info=document.createElement('small');info.textContent='Associations : '+automatic.join(', ');tagCell.append(info)}
+   const tag=document.createElement('input');tag.className='tag';tag.value=QBudgetEngine.manualTagsFor(model,r).join(', ');tag.onchange=()=>{setTags(r,tag.value);renderPending()};const tagCell=cell();tagCell.append(tag);const automatic=QBudgetEngine.automaticTagsFor(model,r,context);if(automatic.length){const info=document.createElement('small');info.textContent='Associations : '+automatic.join(', ');tagCell.append(info)}
    const date=document.createElement('input');date.type='date';cell().append(date);
    const nature=document.createElement('select');nature.add(new Option('Prévu','planned'));nature.add(new Option('Réalisé','actual'));nature.value=r.nature==='actual'?'actual':'planned';cell().append(nature);
    const actions=document.createElement('div');actions.className='queue-actions';const schedule=document.createElement('button');schedule.textContent='Dater';schedule.onclick=()=>{if(!date.value){alert('Choisis une date dans le calendrier.');return}if(!r.bank){alert('Attribue un compte pour dater cette opération.');return}if(nature.value==='planned'&&date.value<=($('asof').value||today)){alert('Pour une opération prévue, choisis une date après la consultation ; sinon sélectionne « Réalisé ».');return}r.date=date.value;r.nature=nature.value;save();render()};const del=document.createElement('button');del.className='warn';del.textContent='Supprimer';del.onclick=()=>{if(!confirm('Supprimer définitivement cette opération manuelle en attente ?'))return;model.rows=model.rows.filter(row=>row!==r);delete model.notes[r.id];save();render()};actions.append(schedule,del);cell().append(actions);body.append(tr);
@@ -523,7 +552,7 @@ function render(){
  renderBankMatches();renderRecurrenceBacklog();renderTransferBacklog();
  if(!$('editorScreen').hidden){renderTagCategories();editorApi?.render()}
  else{renderAccounts();renderSummary();renderRows();renderPending();renderRules()}
- $('importStatus').textContent=`${model.rows.length} opérations chargées · ${accounts().length} compte(s) · stockage local au navigateur`;
+ $('importStatus').textContent=`${model.rows.length} opérations chargées · ${accounts().length} compte(s) · ${$('storageWarning').hidden?'stockage local au navigateur':'modifications en mémoire'}`;
 }
 // Prévisualisation isolée : aucun changement du modèle tant que l'import n'est pas confirmé.
 let normalization=null,bankConfig=QBudgetBankConfig;
@@ -564,14 +593,14 @@ function renderBankMatches(){
  $('bankMatchesCount').textContent=pending.length;
  $('bankMatchesNotice').hidden=pending.length===0;
  $('bankMatchesNoticeText').textContent=`${pending.length} rapprochement(s) à traiter · ${present} dans l’import actuel${pending.length>present?' · '+(pending.length-present)+' hors du dernier import':''}`;
+ if(!$('bankMatchesDetails').open||$('editorScreen').hidden)return;
  const host=$('bankMatchesList');host.replaceChildren();
- if(!$('bankMatchesDetails').open)return;
  if(!pending.length){host.textContent='Aucun rapprochement en attente.';return}
  const describe=n=>[...(n.tags||[]),...(n.tag?String(n.tag).split(','):[])].filter((v,i,all)=>all.indexOf(v)===i).join(', ')||'aucun tag manuel';
  for(const issue of QBudgetEngine.pendingBankMatches(model)){
   const row=issue.row,card=document.createElement('div');card.className='bank-match-item';
   const account=row.sourceAccount&&row.sourceAccount!==row.bank?row.bank+' · '+row.sourceAccount:row.bank;
-  const title=document.createElement('strong');title.textContent=`${row.date} · ${account} · ${row.desc} · ${Number(row.amount).toLocaleString('fr-FR')} ${row.currency||'EUR'}`;card.append(title);
+  const title=document.createElement('strong');title.textContent=`${row.date} · ${account} · ${row.desc} · ${decimalFormatter.format(Number(row.amount))} ${row.currency||'EUR'}`;card.append(title);
   const info=document.createElement('p');info.className='mutednote';info.textContent=(issue.present?'Ligne présente dans l’import actuel.':'Opération absente du dernier import ; annotations conservées.')+' Tags actuels : '+describe(model.notes[issue.id]||{});card.append(info);
   const controls=document.createElement('div');controls.className='toolbar';
   const label=document.createElement('label');label.className='field';label.textContent='Opération connue dont reprendre les annotations';
@@ -581,7 +610,7 @@ function renderBankMatches(){
   const attach=document.createElement('button'),distinct=document.createElement('button');attach.type=distinct.type='button';attach.textContent='Reprendre cette identité';attach.disabled=true;distinct.className='secondary';distinct.textContent='Confirmer comme opération distincte';
   select.onchange=()=>{attach.disabled=!select.value};
   const decide=choice=>{
-   try{model=QBudgetEngine.resolveBankMatch(model,issue.id,choice);clearChartSelection();clearBulkSelection();save();render();showOrphanAnnotations();$('bankMatchesStatus').textContent='Rapprochement traité et sauvegardé. Les montants restent inchangés.'}
+   try{model=QBudgetEngine.resolveBankMatch(model,issue.id,choice);clearChartSelection();clearBulkSelection();const saved=save();render();showOrphanAnnotations();$('bankMatchesStatus').textContent=saved?'Rapprochement traité et sauvegardé. Les montants restent inchangés.':'Rapprochement traité en mémoire. Exporte tes annotations pour le conserver.'}
    catch(error){$('bankMatchesStatus').textContent=error.message.startsWith('Conflit d’annotations')?'Les deux opérations portent des annotations différentes. Rien n’a été écrasé : corrige-les dans l’éditeur ou conserve l’opération distincte.':error.message}
   };
   attach.onclick=()=>decide(select.value);distinct.onclick=()=>decide('new');
@@ -607,30 +636,30 @@ function renderRecurrenceBacklog(){
  $('recurrencePendingCount').textContent=$('recurrenceBacklogCount').textContent=pending.length;
  $('editorOpenRecurrences').textContent=`Récurrences potentielles · ${pending.length}`;
  $('recurrenceReviewedCount').textContent=reviewed.length;
- if(!$('recurrenceBacklogDetails').open)return;
- const host=$('recurrenceBacklogList');host.replaceChildren();
+ if(!$('recurrenceBacklogDetails').open||$('editorScreen').hidden)return;
+ const host=$('recurrenceBacklogList'),drafts=new Map([...host.querySelectorAll('[data-candidate]')].map(card=>[card.dataset.candidate,{open:card.open,details:[...card.querySelectorAll('details')].map(d=>d.open),fields:Object.fromEntries([...card.querySelectorAll('[data-field]')].map(input=>[input.dataset.field,input.value]))}]));host.replaceChildren();
  if(!pending.length)host.textContent='Aucune proposition en attente. Lance la détection après un import pour rechercher de nouvelles récurrences.';
- const rowIds=new Set(model.rows.map(r=>r.id));
+ const context=QBudgetEngine.createReadContext(model),rowIds=context.rowsById;
  const node=(tag,text,cls='')=>{const n=document.createElement(tag);n.textContent=text;n.className=cls;return n};
- const act=fn=>{try{model=fn();clearChartSelection();clearBulkSelection();save();render();return true}catch(error){$('recurrenceBacklogStatus').textContent=error.message;return false}};
+ const act=fn=>{try{model=fn();clearChartSelection();clearBulkSelection();const saved=save();renderRecurrenceBacklog();editorApi?.render();if(!saved)$('recurrenceBacklogStatus').textContent='Décision conservée en mémoire. Exporte tes annotations pour la sauvegarder dans un fichier.';return saved}catch(error){$('recurrenceBacklogStatus').textContent=error.message;return false}};
  for(const c of pending){
-  const card=node('details','','bank-match-item recurrence-candidate');card.dataset.candidate=c.id;
+  const card=node('details','','bank-match-item recurrence-candidate');card.dataset.candidate=c.id;const draft=drafts.get(c.id);card.open=draft?.open||false;
   card.append(node('summary',`${c.desc} · ${c.account}${c.sourceAccount?' / '+c.sourceAccount:''} · ${c.frequency} · ${amount(c.amount)} · ${c.evidence.length} occurrences`));
   const values=c.evidence.map(e=>e.amount),missing=c.evidence.filter(e=>!rowIds.has(e.id)).length;
   card.append(node('p',`Observations du ${c.evidence[0].date} au ${c.anchor} · montants de ${amount(Math.min(...values))} à ${amount(Math.max(...values))}. Le montant proposé est celui de la dernière opération.`,'mutednote'));
   if(missing)card.append(node('p',`${missing} opération(s) absente(s) de l’import actuel. Réimporte cet historique puis relance la détection avant de créer une règle.`,'filter-error'));
   else if(c.stale)card.append(node('p','Cette proposition n’est plus détectée dans les données actuelles. Réimporte l’historique utile ou ignore cette proposition.','filter-error'));
-  const evidence=node('details','');evidence.append(node('summary','Voir les opérations observées'));
+  const evidence=node('details','');evidence.open=draft?.details[0]||false;evidence.append(node('summary','Voir les opérations observées'));
   const wrap=node('div','','table-wrap');wrap.style.maxHeight='300px';wrap.style.overflow='auto';
   const table=document.createElement('table'),head=document.createElement('thead'),tr=document.createElement('tr');
   for(const text of ['Date','Compte','Libellé bancaire original','Montant','Tags actuels'])tr.append(node('th',text));head.append(tr);table.append(head);
   const body=document.createElement('tbody');
-  for(const e of c.evidence){const row=document.createElement('tr');for(const value of [e.date,e.bank+(e.sourceAccount?' / '+e.sourceAccount:''),e.desc,amount(e.amount),QBudgetEngine.tagsFor(model,e).join(', ')])row.append(node('td',value));body.append(row)}
+  for(const e of c.evidence){const row=document.createElement('tr');for(const value of [e.date,e.bank+(e.sourceAccount?' / '+e.sourceAccount:''),e.desc,amount(e.amount),QBudgetEngine.tagsFor(model,context.rowsById.get(e.id)||e,context).join(', ')])row.append(node('td',value));body.append(row)}
   table.append(body);wrap.append(table);evidence.append(wrap);card.append(evidence);
   const form=node('div','','toolbar');form.style.alignItems='end';
   const field=(label,name,value,type='text')=>{const l=node('label',label,'field'),input=document.createElement(type==='select'?'select':'input');input.dataset.field=name;
    if(type==='select')for(const f of ['quotidien','hebdomadaire','mensuel','trimestriel','annuel'])input.add(new Option(f,f));
-   else{input.type=type;if(type==='number')input.step='0.01'}input.value=value;l.append(input);form.append(l);return input};
+   else{input.type=type;if(type==='number')input.step='0.01'}input.value=draft?.fields[name]??value;l.append(input);form.append(l);return input};
   const desc=field('Libellé de la règle','desc',c.desc),value=field('Montant signé (€)','amount',c.amount,'number'),frequency=field('Fréquence','frequency',c.frequency,'select'),anchor=field('Dernière échéance de référence','anchor',c.anchor,'date');
   const next=node('p','','mutednote');
   const preview=()=>{try{next.textContent='Première échéance calculée : '+shiftDate(anchor.value,frequency.value,1)+'. La création sera revérifiée sur les opérations actuelles.'}catch{next.textContent='Choisis une date de référence valide.'}};
@@ -660,7 +689,7 @@ function openTransferBacklog(){
 function detectTransfers(){
  try{
   model=QBudgetTransfers.scan(model);save();openTransferBacklog();
-  const pending=model.transferBacklog.filter(c=>QBudgetTransfers.status(model,c)==='pending');
+  const context=QBudgetEngine.createReadContext(model),pending=model.transferBacklog.filter(c=>QBudgetTransfers.status(model,c,context)==='pending');
   $('transferBacklogStatus').textContent=`Détection terminée : ${pending.length} proposition(s) à examiner. Aucun tag ajouté. La validation consiste à taguer les deux lignes ; ces décisions sont incluses dans les annotations JSON.`;
  }catch(error){$('transferBacklogStatus').textContent=error.message}
 }
@@ -670,21 +699,21 @@ function tagTransfers(ids){
  catch(error){$('transferBacklogStatus').textContent=error.message}
 }
 function renderTransferBacklog(){
- const backlog=model.transferBacklog||[],pending=backlog.filter(c=>QBudgetTransfers.status(model,c)==='pending'),reviewed=backlog.filter(c=>QBudgetTransfers.status(model,c)!=='pending');
+ const context=QBudgetEngine.createReadContext(model),backlog=model.transferBacklog||[],states=new Map(backlog.map(c=>[c.id,QBudgetTransfers.status(model,c,context)])),pending=backlog.filter(c=>states.get(c.id)==='pending'),reviewed=backlog.filter(c=>states.get(c.id)!=='pending');
  $('transferBacklogCount').textContent=pending.length;$('editorOpenTransfers').textContent=`Transferts intercomptes · ${pending.length}`;$('transferReviewedCount').textContent=reviewed.length;
  if(!$('transferBacklogDetails').open||$('editorScreen').hidden)return;
- const analysis=QBudgetTransfers.analyze(model),fresh=new Map(analysis.candidates.map(c=>[c.id,c]));
+ const analysis=QBudgetTransfers.analyze(model,context),fresh=new Map(analysis.candidates.map(c=>[c.id,c]));
  const ready=c=>fresh.has(c.id)&&JSON.stringify(fresh.get(c.id).evidence)===JSON.stringify(c.evidence);
  const readyIds=pending.filter(ready).map(c=>c.id);
  $('acceptAllTransfers').disabled=!readyIds.length;$('acceptAllTransfers').textContent=`Taguer les ${readyIds.length} transfert(s) proposé(s)`;$('acceptAllTransfers').onclick=()=>tagTransfers(readyIds);
  const node=(tag,text,cls='')=>{const n=document.createElement(tag);n.textContent=text;n.className=cls;return n};
- const describe=c=>`${c.evidence[0].date} · ${Math.abs(c.evidence[0].amount).toLocaleString('fr-FR')} ${c.evidence[0].currency}`;
+ const describe=c=>`${c.evidence[0].date} · ${decimalFormatter.format(Math.abs(c.evidence[0].amount))} ${c.evidence[0].currency}`;
  const evidenceTable=rows=>{
   const wrap=node('div','','table-wrap');wrap.style.maxHeight='300px';wrap.style.overflow='auto';
   const table=document.createElement('table'),head=document.createElement('thead'),tr=document.createElement('tr');
   for(const caption of ['Date','Banque / compte source','Libellé','Montant','Tags actuels'])tr.append(node('th',caption));head.append(tr);table.append(head);
   const body=document.createElement('tbody');
-  for(const e of rows){const r=document.createElement('tr');for(const value of [e.date,e.bank+(e.sourceAccount?' / '+e.sourceAccount:''),e.desc,Number(e.amount).toLocaleString('fr-FR')+' '+e.currency,QBudgetEngine.tagsFor(model,e).join(', ')])r.append(node('td',value));body.append(r)}
+  for(const e of rows){const r=document.createElement('tr');for(const value of [e.date,e.bank+(e.sourceAccount?' / '+e.sourceAccount:''),e.desc,decimalFormatter.format(Number(e.amount))+' '+e.currency,QBudgetEngine.tagsFor(model,context.rowsById.get(e.id)||e,context).join(', ')])r.append(node('td',value));body.append(r)}
   table.append(body);wrap.append(table);return wrap;
  };
  const host=$('transferBacklogList');host.replaceChildren();
@@ -697,9 +726,9 @@ function renderTransferBacklog(){
   controls.append(accept,ignore);card.append(controls);host.append(card);
  }
  $('transferAmbiguousCount').textContent=analysis.ambiguous.length;$('transferAmbiguousList').replaceChildren(evidenceTable(analysis.ambiguous));
- const history=$('transferReviewedList');history.replaceChildren();
+ const history=$('transferReviewedList'),opened=new Set([...history.querySelectorAll('[data-candidate]')].filter(card=>card.open).map(card=>card.dataset.candidate));history.replaceChildren();
  for(const c of reviewed){
-  const validated=QBudgetTransfers.status(model,c)==='validated',card=node('details','','bank-match-item');card.append(node('summary',describe(c)+' · '+(validated?'Tag présent sur les deux lignes':'Ignorée')),evidenceTable(c.evidence));
+  const validated=states.get(c.id)==='validated',card=node('details','','bank-match-item');card.dataset.candidate=c.id;card.open=opened.has(c.id);card.append(node('summary',describe(c)+' · '+(validated?'Tag présent sur les deux lignes':'Ignorée')),evidenceTable(c.evidence));
   if(!validated){const reopen=node('button','Réexaminer','secondary');reopen.type='button';reopen.onclick=()=>{try{model=QBudgetTransfers.reopen(model,c.id);save();render()}catch(error){$('transferBacklogStatus').textContent=error.message}};card.append(reopen)}history.append(card);
  }
 }
@@ -740,8 +769,8 @@ for(const id of ['search','searchMode','typeFilter','operationTags','operationTa
  clearTimeout(filterTimer);clearChartSelection();clearBulkSelection();tableRowLimit=150;renderRows();
  filterTimer=setTimeout(()=>{if(!$('dashboardScreen').hidden)renderSummary()},220);
 });
-$('sort').addEventListener('input',()=>{clearBulkSelection();tableRowLimit=150;renderRows()});$('saveRef').onclick=()=>{if(!selected)return;const b=numeric($('refBalance').value),date=$('refDate').value;if(b===null||!date){alert('Renseigne une date et un solde valides.');return}model.references[selected]={date,balance:b};save();renderSummary()};$('clearData').onclick=()=>{if(!confirm('Effacer opérations, tags et références stockés dans ce navigateur ?'))return;model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};selected='';clearChartSelection();clearBulkSelection();localStorage.removeItem(KEY);$('sunburstDepth').value=2;render()};
-$('exportCli').onclick=()=>download(JSON.stringify(model,null,2),'qbudget-data.json','application/json');$('auditAt').value=$('asof').value;
+$('sort').addEventListener('input',()=>{clearBulkSelection();tableRowLimit=150;renderRows()});$('saveRef').onclick=()=>{if(!selected)return;const b=numeric($('refBalance').value),date=$('refDate').value;if(b===null||!date){alert('Renseigne une date et un solde valides.');return}model.references[selected]={date,balance:b};save();renderSummary()};$('clearData').onclick=()=>{if(!confirm('Effacer opérations, tags et références stockés dans ce navigateur ?'))return;model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};selected='';clearChartSelection();clearBulkSelection();try{localStorage.removeItem(KEY);$('storageWarning').hidden=true}catch{save()}$('sunburstDepth').value=2;render()};
+$('exportCli').onclick=()=>download(QBudgetAnnotations.exportJson(model),'qbudget-data.json','application/json');$('auditAt').value=$('asof').value;
 $('horizon').value=addMonths($('asof').value,1);$('auditUntil').value=$('horizon').value;
 $('asof').addEventListener('change',()=>{$('auditAt').value=$('asof').value});
 $('horizon').addEventListener('change',()=>{$('auditUntil').value=$('horizon').value});
@@ -855,7 +884,7 @@ function resizePlots(){if(typeof Plotly==='undefined')return;for(const id of ['c
 // L'éditeur de catégories existant change seulement de place : pas de copie d'interface ni de donnees.
 $('editorCategoriesHost').append($('tagCategoriesCard'));
 initializeLayout();
-editorApi=QBudgetEditor.mount({getModel:()=>model,asOf:()=>$('asof').value||today,onChange:()=>{clearChartSelection();save();render()},exportAnnotations:()=>$('exportSettings').click(),importAnnotations:()=>$('importSettings').click(),exportCategories:()=>$('exportTagCategories').click(),importCategories:()=>$('importTagCategories').click()});
+editorApi=QBudgetEditor.mount({getModel:()=>model,asOf:()=>$('asof').value||today,onChange:()=>{clearChartSelection();const saved=save();render();return saved},exportAnnotations:()=>$('exportSettings').click(),importAnnotations:()=>$('importSettings').click(),exportCategories:()=>$('exportTagCategories').click(),importCategories:()=>$('importTagCategories').click()});
 function showView(name){
  const editor=name==='editor';$('dashboardScreen').hidden=editor;$('editorScreen').hidden=!editor;
  $('viewDashboard').setAttribute('aria-selected',String(!editor));$('viewEditor').setAttribute('aria-selected',String(editor));

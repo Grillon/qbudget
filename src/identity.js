@@ -22,7 +22,6 @@
   return JSON.stringify([String(row.bank).trim(),String(row.sourceAccount??row.account??row.bank).trim(),normalize(row.desc),row.date,canonicalAmount(row.identityAmount??row.amount),row.currency||'EUR']);
  }
  const groups=rows=>{const map=new Map();for(const r of rows){const k=key(r);if(!map.has(k))map.set(k,[]);map.get(k).push(r)}return map};
- const makeId=(k,n)=>hash(k)+'-'+String(n).padStart(4,'0');
  const withoutAccount=k=>{const values=JSON.parse(k);values.splice(1,1);return JSON.stringify(values)};
  function copyEntries(model){
   if(model.bankIdentities!==undefined&&!Array.isArray(model.bankIdentities))throw Error('Registre d’identités bancaires invalide');
@@ -33,18 +32,23 @@
    return {...e,aliases:[...e.aliases],...(pending?{pendingMatch:{...pending,candidates:[...pending.candidates]}}:{})};
   });
  }
- function findEntry(entries,id){
-  const direct=entries.find(e=>e.id===id);if(direct)return direct;
-  const owners=entries.filter(e=>e.aliases.includes(id));
-  return owners.length===1?owners[0]:null;
+ function readIndex(entries){
+  const byId=new Map(entries.map(e=>[e.id,e])),aliases=new Map();
+  for(const entry of entries)for(const alias of entry.aliases){if(!aliases.has(alias))aliases.set(alias,new Set());aliases.get(alias).add(entry)}
+  return {byId,aliases};
+ }
+ function findEntry(entries,id,index=readIndex(entries)){
+  const direct=index.byId.get(id);if(direct)return direct;
+  const owners=index.aliases.get(id);
+  return owners?.size===1?owners.values().next().value:null;
  }
  function pendingMatches(model){
-  const entries=model.bankIdentities||[],rows=new Map((model.rows||[]).map(r=>[r.id,r]));
+  const entries=model.bankIdentities||[],rows=new Map((model.rows||[]).map(r=>[r.id,r])),index=readIndex(entries);
   return entries.filter(e=>e.pendingMatch).map(entry=>{
    const [bank,sourceAccount,desc,date,amount,currency]=JSON.parse(entry.key);
-   const candidates=[...new Set(entry.pendingMatch.candidates.map(id=>findEntry(entries,id)?.id).filter(Boolean))]
+   const candidates=[...new Set(entry.pendingMatch.candidates.map(id=>findEntry(entries,id,index)?.id).filter(Boolean))]
     .filter(id=>id!==entry.id&&!rows.has(id))
-    .map(id=>{const e=entries.find(e=>e.id===id);return {id,reference:e.reference||'',note:model.notes?.[id]||{}}});
+    .map(id=>{const e=index.byId.get(id);return {id,reference:e.reference||'',note:model.notes?.[id]||{}}});
    return {id:entry.id,present:rows.has(entry.id),row:rows.get(entry.id)||{id:entry.id,bank,sourceAccount,desc,date,amount:Number(amount),currency},reason:entry.pendingMatch.reason,candidates};
   });
  }
@@ -66,14 +70,16 @@
  function prepare(rows){
   const result=new Map();
   for(const [k,list] of groups(rows)){
+   const fingerprint=hash(k);
    const refs=list.map(r=>r.bankReference).filter(Boolean);
    const ordered=refs.length===list.length&&new Set(refs).size===list.length
     ?[...list].sort((a,b)=>a.bankReference<b.bankReference?-1:1):null;
+   const positions=ordered?new Map(ordered.map((row,i)=>[row,i])):null;
    list.forEach((r,i)=>{
     const sourceIdentity=format.test(r.sourceId||'')?r.sourceId:null;
-    if(sourceIdentity&&!sourceIdentity.startsWith(hash(k)+'-'))throw Error('Identifiant bancaire incompatible avec les caractéristiques de la ligne');
+    if(sourceIdentity&&!sourceIdentity.startsWith(fingerprint+'-'))throw Error('Identifiant bancaire incompatible avec les caractéristiques de la ligne');
     // Les identifiants pending sont uniquement des clés de lecture, jamais sauvegardées.
-    const id=sourceIdentity||(list.length===1?makeId(k,0):ordered?makeId(k,ordered.indexOf(r)):'pending:'+hash(k)+':'+i);
+    const id=sourceIdentity||(list.length===1?fingerprint+'-0000':ordered?fingerprint+'-'+String(positions.get(r)).padStart(4,'0'):'pending:'+fingerprint+':'+i);
     result.set(r,{...r,id,identityConfirmed:false});
    });
   }
@@ -87,44 +93,64 @@
  function reconcile(model,incoming,resolve){
   let entries=copyEntries(model);
   const notes={...(model.notes||{})},usedIds=new Set(),byId=new Map(),hashes=new Map();
+  const byKey=new Map(),unknownBySignature=new Map(),aliases=new Map(),order=new Map(),fingerprints=new Map(),signatures=new Map();
+  const fingerprint=k=>{if(!fingerprints.has(k))fingerprints.set(k,hash(k));return fingerprints.get(k)};
+  const signature=k=>{if(!signatures.has(k))signatures.set(k,withoutAccount(k));return signatures.get(k)};
+  const makeLocalId=(k,n)=>fingerprint(k)+'-'+String(n).padStart(4,'0');
+  const addTo=(map,key,entry)=>{if(!map.has(key))map.set(key,new Set());map.get(key).add(entry)};
+  const removeFrom=(map,key,entry)=>{const bucket=map.get(key);if(bucket){bucket.delete(entry);if(!bucket.size)map.delete(key)}};
+  const addAlias=(entry,alias)=>{if(!entry.aliases.includes(alias))entry.aliases.push(alias);addTo(aliases,alias,entry)};
+  const unregister=entry=>{byId.delete(entry.id);removeFrom(byKey,entry.key,entry);if(entry.accountUnknown)removeFrom(unknownBySignature,signature(entry.key),entry);for(const alias of entry.aliases)removeFrom(aliases,alias,entry)};
+  const indexed={byId,aliases};
   const manual=(model.rows||[]).filter(r=>r.manual),manualIds=new Set(manual.map(r=>r.id));
-  const occupied=id=>byId.has(id)||entries.some(e=>e.aliases.includes(id));
+  const occupied=id=>byId.has(id)||aliases.has(id);
   const annotated=e=>[e.id,...e.aliases].some(id=>Object.hasOwn(notes,id));
   const register=e=>{
    const prefix=e.id.slice(0,64);
    if(hashes.has(prefix)&&hashes.get(prefix)!==e.key)throw Error('Collision d’empreinte bancaire');
-   hashes.set(prefix,e.key);byId.set(e.id,e);
+   hashes.set(prefix,e.key);byId.set(e.id,e);addTo(byKey,e.key,e);
+   if(e.accountUnknown)addTo(unknownBySignature,signature(e.key),e);
+   if(!order.has(e))order.set(e,order.size);
+   for(const alias of e.aliases)addTo(aliases,alias,e);
   };
   for(const e of entries){
-   if(!format.test(e.id)||typeof e.key!=='string'||!e.id.startsWith(hash(e.key)+'-')||byId.has(e.id)||!e.aliases.every(x=>typeof x==='string'))throw Error('Collision ou registre d’identités bancaires invalide');
+   if(!format.test(e.id)||typeof e.key!=='string'||!e.id.startsWith(fingerprint(e.key)+'-')||byId.has(e.id)||!e.aliases.every(x=>typeof x==='string'))throw Error('Collision ou registre d’identités bancaires invalide');
    if(manualIds.has(e.id))throw Error('Collision avec une opération manuelle');
    register(e);
   }
+  // Les anciens rattachements pouvaient créer un alias vers une autre identité
+  // encore présente dans le registre. L'identité directe reste propriétaire.
+  for(const entry of entries)entry.aliases=entry.aliases.filter(alias=>{
+   const direct=byId.get(alias);if(!direct||direct===entry)return true;
+   removeFrom(aliases,alias,entry);return false;
+  });
   // Un ancien modèle ne conservait pas le compte CSV. Compléter ce renseignement
   // uniquement si les caractéristiques restantes désignent un compte sans ambiguïté.
   const incomingKeys=[...new Set(incoming.filter(bankRow).map(key))];
+  const incomingBySignature=new Map();
+  for(const k of incomingKeys){if(!incomingBySignature.has(signature(k)))incomingBySignature.set(signature(k),[]);incomingBySignature.get(signature(k)).push(k)}
   for(const entry of [...entries]){
    if(!entry.accountUnknown)continue;
-   if(entries.filter(e=>e.key===entry.key).length!==1)continue;
-   const matches=incomingKeys.filter(k=>withoutAccount(k)===withoutAccount(entry.key));
+   if(byKey.get(entry.key)?.size!==1)continue;
+   const matches=incomingBySignature.get(signature(entry.key))||[];
    if(matches.length!==1||matches[0]===entry.key)continue;
    const targetKey=matches[0];
-   if(entries.some(e=>e!==entry&&e.key===targetKey))continue;
-   let n=0;while(occupied(makeId(targetKey,n)))n++;
-   const oldId=entry.id,newId=makeId(targetKey,n);
-   moveNote(notes,oldId,newId);entry.aliases.push(oldId);
-   byId.delete(oldId);entry.id=newId;entry.key=targetKey;entry.accountUnknown=false;register(entry);
+   if(byKey.has(targetKey))continue;
+   let n=0;while(occupied(makeLocalId(targetKey,n)))n++;
+   const oldId=entry.id,newId=makeLocalId(targetKey,n);
+   moveNote(notes,oldId,newId);unregister(entry);entry.aliases.push(oldId);
+   entry.id=newId;entry.key=targetKey;entry.accountUnknown=false;register(entry);
   }
   for(const entry of entries)for(const alias of entry.aliases){
    if(manualIds.has(alias))throw Error('Conflit entre annotation bancaire historique et opération manuelle');
    if(!Object.hasOwn(notes,alias))continue;
-   if(entries.filter(e=>e.aliases.includes(alias)).length!==1)throw Error('Conflit de correspondances historiques : '+alias);
+   if(aliases.get(alias)?.size!==1)throw Error('Conflit de correspondances historiques : '+alias);
    moveNote(notes,alias,entry.id);
   }
   function assign(rows,stage){
    const assigned=new Map();
    for(const [k,list] of groups(rows)){
-    const candidates=entries.filter(e=>(!e.pendingMatch||annotated(e))&&(e.key===k||(e.accountUnknown&&withoutAccount(e.key)===withoutAccount(k))));
+    const candidates=[...new Set([...(byKey.get(k)||[]),...(unknownBySignature.get(signature(k))||[])])].filter(e=>!e.pendingMatch||annotated(e)).sort((a,b)=>order.get(a)-order.get(b));
     const references=list.map(r=>r.bankReference).filter(Boolean);
     const distinctReferences=references.length===list.length&&new Set(references).size===list.length;
     const ordered=distinctReferences?[...list].sort((a,b)=>a.bankReference<b.bankReference?-1:1):list;
@@ -133,15 +159,15 @@
      let deferred=null;
      const ref=r.bankReference||'';
      const explicit=r.identityConfirmed&&format.test(r.id)?r.id:format.test(r.sourceId||'')?r.sourceId:null;
-     let entry=explicit?(byId.get(explicit)||findEntry(entries,explicit)):null;
-     if(explicit&&(!explicit.startsWith(hash(k)+'-')||(entry&&entry.key!==k)))throw Error('Collision d’identité bancaire : '+explicit);
+     let entry=explicit?findEntry(entries,explicit,indexed):null;
+     if(explicit&&(!explicit.startsWith(fingerprint(k)+'-')||(entry&&entry.key!==k)))throw Error('Collision d’identité bancaire : '+explicit);
      if(explicit&&!entry){
-      if(!explicit.startsWith(hash(k)+'-')||byId.has(explicit))throw Error('Collision d’identité bancaire : '+explicit);
+      if(!explicit.startsWith(fingerprint(k)+'-')||byId.has(explicit))throw Error('Collision d’identité bancaire : '+explicit);
       entry={id:explicit,key:k,reference:ref,aliases:[],ambiguous:!distinctReferences&&list.length>1,accountUnknown:r.sourceAccount===undefined};entries.push(entry);register(entry);
      }
      if(!entry&&distinctReferences)entry=candidates.find(e=>e.reference===ref);
      const knownNewReference=distinctReferences&&candidates.every(e=>e.reference&&e.reference!==ref);
-     const accountCertain=!candidates[0]?.accountUnknown||incomingKeys.filter(other=>withoutAccount(other)===withoutAccount(k)).length<=1;
+     const accountCertain=!candidates[0]?.accountUnknown||(incomingBySignature.get(signature(k))||[]).length<=1;
      if(!entry&&accountCertain&&list.length===1&&candidates.length===1&&!candidates[0].ambiguous&&(!ref||!candidates[0].reference||ref===candidates[0].reference))entry=candidates[0];
      let create=!entry&&!candidates.length&&(list.length===1||distinctReferences);
      if(!entry&&knownNewReference)create=true;
@@ -157,17 +183,17 @@
       if(!entry&&!create)throw Error('Choix de rapprochement invalide');
      }
      if(create){
-      let n=0;while(occupied(makeId(k,n)))n++;
-      const id=makeId(k,n);
+      let n=0;while(occupied(makeLocalId(k,n)))n++;
+      const id=makeLocalId(k,n);
       entry={id,key:k,reference:ref,aliases:[],ambiguous:!!deferred||!distinctReferences&&list.length>1,accountUnknown:r.sourceAccount===undefined,...(deferred?{pendingMatch:deferred}:{})};
       entries.push(entry);register(entry);
      }
      if(entry.key!==k){
       if(!entry.accountUnknown)throw Error('Conflit de compte source');
-      let n=0;while(occupied(makeId(k,n)))n++;
-      const oldId=entry.id,newId=makeId(k,n);
-      moveNote(notes,oldId,newId);entry.aliases.push(oldId);
-      byId.delete(oldId);entry.id=newId;entry.key=k;entry.accountUnknown=false;register(entry);
+      let n=0;while(occupied(makeLocalId(k,n)))n++;
+      const oldId=entry.id,newId=makeLocalId(k,n);
+      moveNote(notes,oldId,newId);unregister(entry);entry.aliases.push(oldId);
+      entry.id=newId;entry.key=k;entry.accountUnknown=false;register(entry);
      }
      if(taken.has(entry.id)||manualIds.has(entry.id))throw Error('Collision avec une opération existante ou manuelle');
      taken.add(entry.id);
@@ -180,8 +206,9 @@
       const verified=(alias===r.id&&r.identityConfirmed!==false)||entry.aliases.includes(alias)||(r.bankReference&&r.bankReference===r.sourceId);
       if(!verified)continue;
       if(manualIds.has(alias))throw Error('Conflit entre annotation bancaire historique et opération manuelle');
-      if(Object.hasOwn(notes,alias)&&entries.some(e=>e!==entry&&e.aliases.includes(alias)))throw Error('Conflit de correspondances historiques : '+alias);
-      moveNote(notes,alias,entry.id);if(!entry.aliases.includes(alias))entry.aliases.push(alias);
+      if(byId.has(alias)&&byId.get(alias)!==entry)continue;
+      if(Object.hasOwn(notes,alias)&&[...(aliases.get(alias)||[])].some(e=>e!==entry))throw Error('Conflit de correspondances historiques : '+alias);
+      moveNote(notes,alias,entry.id);addAlias(entry,alias);
      }
      if(!entry.reference&&ref)entry.reference=ref;
      assigned.set(r,r.id===entry.id&&r.identityConfirmed?r:{...r,id:entry.id,identityConfirmed:true});
@@ -191,9 +218,12 @@
   }
   // Migration du modèle local : préserver aussi les lignes absentes du nouvel import.
   const oldBank=(model.rows||[]).filter(bankRow);
+  const migrationKey=r=>JSON.stringify([r.bank,normalize(r.desc),r.date,Number(r.amount),r.currency||'EUR']);
+  const migrationCandidates=new Map();
+  for(const row of incoming){if(!bankRow(row)||row.sourceAccount===undefined)continue;const k=migrationKey(row);if(!migrationCandidates.has(k))migrationCandidates.set(k,[]);migrationCandidates.get(k).push(row)}
   const migrationRows=oldBank.map(r=>{
    if(r.sourceAccount!==undefined)return r;
-   const matches=incoming.filter(n=>bankRow(n)&&n.sourceAccount!==undefined&&n.bank===r.bank&&normalize(n.desc)===normalize(r.desc)&&n.date===r.date&&Number(n.amount)===Number(r.amount)&&(n.currency||'EUR')===(r.currency||'EUR'));
+   const matches=migrationCandidates.get(migrationKey(r))||[];
    const accounts=new Set(matches.map(n=>n.sourceAccount??n.account));
    let sourceAccount;
    if(accounts.size>1){
@@ -207,14 +237,14 @@
    }else if(accounts.size===1)sourceAccount=[...accounts][0];
    else return r;
    const updated={...r,sourceAccount};
-   const upgraded=entries.find(e=>e.aliases.includes(r.id)&&e.key===key(updated));
+   const upgraded=[...(aliases.get(r.id)||[])].find(e=>e.key===key(updated));
    if(upgraded)return {...updated,id:upgraded.id};
-   return format.test(r.id)&&!r.id.startsWith(hash(key(updated))+'-')?{...updated,identityConfirmed:false,sourceId:'',legacyId:r.id}:updated;
+   return format.test(r.id)&&!r.id.startsWith(fingerprint(key(updated))+'-')?{...updated,identityConfirmed:false,sourceId:'',legacyId:r.id}:updated;
   });
   const migrated=assign(migrationRows,'migration');
   for(const r of migrated){
-   const obsolete=entries.find(e=>e.id===r.legacyId&&e.accountUnknown&&e.key!==key(r));
-   if(obsolete){entries.splice(entries.indexOf(obsolete),1);byId.delete(obsolete.id)}
+   const obsolete=byId.get(r.legacyId);
+   if(obsolete?.accountUnknown&&obsolete.key!==key(r)){entries.splice(entries.indexOf(obsolete),1);unregister(obsolete)}
   }
   // Le même tableau est utilisé lors de la migration au chargement du navigateur.
   const bank=incoming===model.rows?migrated:assign(incoming.filter(bankRow),'import');

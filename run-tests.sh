@@ -3,9 +3,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo '== Cohérence version, démo, documentation =='
-python3 scripts/sync-version.py --check
-python3 scripts/build-bank-config.py --check
-python3 scripts/build-demo.py --check
+node scripts/sync-version.js --check
+node scripts/build-bank-config.js --check
+node scripts/build-demo.js --check
 npm run check
 
 echo '== Tests du moteur, du CLI, filtres et des 55 jours fictifs =='
@@ -14,21 +14,23 @@ npm test
 echo '== Import bancaire fictif (3 banques) =='
 tmp_csv="$(mktemp --suffix=.csv)"
 trap 'rm -f "$tmp_csv"' EXIT
-python3 import_releves.py \
+node import_releves.js \
   tests/fixtures/bourso_exemple.csv \
   tests/fixtures/bps_exemple.csv \
   tests/fixtures/revolut_exemple.csv \
   -o "$tmp_csv"
-python3 - "$tmp_csv" <<'PY'
-import csv, sys
-with open(sys.argv[1], encoding='utf-8-sig', newline='') as f:
-    rows = list(csv.DictReader(f, delimiter=';'))
-assert len(rows) == 3, f'3 opérations attendues, obtenu {len(rows)}'
-assert rows[0]['Montant'].count('.') == 0, 'Export qbudget devrait utiliser la virgule décimale'
-assert all('.' not in row['Montant'] for row in rows), 'Montants décimaux non normalisés'
-assert any(',' in row['Montant'] for row in rows), 'Aucune virgule décimale trouvée'
-print('OK: 3 opérations importées, décimales à la virgule')
-PY
+node - "$tmp_csv" <<'JS'
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const {csvRows}=require('./src/normalize.js');
+const [header,...rows]=csvRows(fs.readFileSync(process.argv[2],'utf8'),';').map(row=>row.cells);
+const amount=header.indexOf('Montant');
+assert.notEqual(amount,-1,'Colonne Montant absente');
+assert.equal(rows.length,3,'3 opérations attendues');
+assert.ok(rows.every(row=>!row[amount].includes('.')),'Montants décimaux non normalisés');
+assert.ok(rows.some(row=>row[amount].includes(',')),'Aucune virgule décimale trouvée');
+console.log('OK: 3 opérations importées, décimales à la virgule');
+JS
 
 echo '== Contrôle du CLI sur données fictives =='
 node src/cli.js check \
@@ -59,6 +61,6 @@ test -s src/editor.js
 test -s src/history-plot.js
 test -s src/ui.js
 node src/cli.js --version
-python3 import_releves.py --version
+node import_releves.js --version
 
 echo 'Tous les contrôles ont réussi.'

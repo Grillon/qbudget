@@ -21,7 +21,9 @@ Cette séparation est appliquée seulement aux fichiers publiés : le code sourc
 
 ```sh
 node scripts/build-pages.js /chemin/vers/main /chemin/vers/dev /tmp/qbudget-public
-python3 -m http.server 8000 --directory /tmp/qbudget-public
+node scripts/serve.js --directory /tmp/qbudget-public --port 8000
 ```
 
 Le dossier de sortie doit être nouveau et extérieur aux deux dossiers sources. Consulter `/` et `/dev/` ; les imports, modifications et effacements dans une version ne doivent pas changer les données de l’autre.
+
+Le workflow vérifie aussi l’interface de développement avec `npm run test:browser` avant de publier. Ces parcours Firefox utilisent uniquement les exemples fictifs et un profil temporaire séparé.

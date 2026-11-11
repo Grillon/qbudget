@@ -5,12 +5,12 @@
  root.QBudgetTransfers=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.11',tag='transfert_intercomptes';
+ const version='0.20.0',tag='transfert_intercomptes';
  const engine=()=>root.QBudgetEngine||(typeof require==='function'?require('./engine.js'):null);
  const identity=()=>root.QBudgetIdentity||(typeof require==='function'?require('./identity.js'):null);
  const tags=()=>root.QBudgetTags||(typeof require==='function'?require('./tags.js'):null);
  const normalize=s=>String(s??'').normalize('NFC').trim().replace(/\s+/gu,' ').toLocaleLowerCase('fr');
- const validDate=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;
+ const validDate=s=>engine().validDate(s);
  const currency=r=>String(r.currency||'EUR').trim().toUpperCase()||'EUR';
  function magnitude(r){
   const exact=identity().canonicalAmount(r.identityAmount??r.amount);
@@ -33,13 +33,14 @@
   }
   return JSON.parse(JSON.stringify(input));
  }
- const hasTag=(model,row)=>engine().tagsFor(model,row).some(t=>normalize(t)===tag);
- function status(model,candidate){
-  if(candidate.evidence.every(e=>hasTag(model,(model.rows||[]).find(r=>r.id===e.id)||e)))return 'validated';
+ const hasTag=(model,row,context)=>engine().tagsFor(model,row,context).some(t=>normalize(t)===tag);
+ function status(model,candidate,context=engine().createReadContext(model)){
+  if(candidate.evidence.every(e=>hasTag(model,context.rowsById.get(e.id)||e,context)))return 'validated';
   return candidate.ignored?'ignored':'pending';
  }
- function analyze(model){
+ function analyze(model,context=engine().createReadContext(model)){
   const groups=new Map(),candidates=[],ambiguous=[];
+  const taggedIds=new Set((model.rows||[]).filter(r=>hasTag(model,r,context)).map(r=>r.id));
   const uncertain=new Set(engine().pendingBankMatches(model).flatMap(p=>[p.id,...p.candidates.map(c=>c.id)]));
   for(const r of model.rows||[]){
    if(r.manual||r.forecast||r.nature==='planned'||!validDate(r.date)||!normalize(r.bank)||!Number.isFinite(Number(r.amount))||!Number(r.amount)||!magnitude(r))continue;
@@ -55,7 +56,7 @@
   for(const rows of groups.values()){
    // Le tag posé sur UNE ligne ne l'enlève pas de la comparaison. Une paire
    // uniquement identifiable parmi les lignes déjà taguées est en revanche traitée.
-   const tagged=connections(rows.filter(r=>hasTag(model,r))),classified=new Set();
+   const tagged=connections(rows.filter(r=>taggedIds.has(r.id))),classified=new Set();
    for(const a of tagged.outgoing){
     const matches=tagged.links.get(a.id),b=matches[0];
     if(matches.length===1&&tagged.links.get(b.id).length===1&&!uncertain.has(a.id)&&!uncertain.has(b.id)){addPair(a,b);classified.add(a.id);classified.add(b.id)}
@@ -69,7 +70,7 @@
     }else if(matches.length){unclear.add(a);for(const other of matches)unclear.add(other)}
    }
    // Les lignes partiellement taguées participent aussi aux ambiguïtés.
-   if([...unclear].some(r=>!hasTag(model,r)))ambiguous.push(...[...unclear].map(snapshot));
+   if([...unclear].some(r=>!taggedIds.has(r.id)))ambiguous.push(...[...unclear].map(snapshot));
   }
   candidates.sort((a,b)=>a.evidence[0].date.localeCompare(b.evidence[0].date)||a.id.localeCompare(b.id));
   ambiguous.sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));

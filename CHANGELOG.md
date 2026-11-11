@@ -1,3 +1,16 @@
+# qbudget V0.20.0 — Corrections de fiabilité et outils Node uniques
+
+- Rattacher une annotation ne crée plus d’alias concurrent d’une autre identité bancaire : les tags futurs ne peuvent plus être détournés lors du retour d’une opération absente d’un import partiel.
+- Export CLI au format natif incluant toutes les manuelles et flottantes, et restauration des anciens exports qui les stockaient dans `rows`. Échecs de stockage signalés durablement, sans message de sauvegarde réussie ; les données en mémoire restent exportables.
+- Noms de comptes contenant « · » préservés ; ancienne migration limitée aux correspondances prouvées et sans fusion de références ambiguës.
+- Dates calendaires strictes, horizons CLI/REPL cohérents en fin de mois et comptes sans transaction accessibles dans le REPL. Calendrier de récurrences partagé par prévision et audit, sans plafond silencieux de 600 échéances.
+- Soldes et projections EUR indisponibles avec diagnostic si le périmètre contient une devise incompatible, sans conversion ou suppression de ligne. Le tableau de bord utilise directement la prévision du moteur.
+- Index locaux de rapprochement et contextes de lecture par calcul/rendu, formatteurs monétaires réutilisés, absence de reconstruction des backlogs cachés et préservation des brouillons ouverts.
+- Importateur Node utilisant le même normaliseur que le navigateur, générateurs Node et suppression des quatre scripts Python. Formats numériques configurables, encodages, précision décimale et CSV multilignes couverts sans moteur d’import parallèle.
+- Tests de régression sur les défauts reproduits et parcours fonctionnels Firefox versionnés, exécutés en CI avant publication. Documentation courante réécrite, historique conservé ici.
+
+---
+
 # qbudget V0.19.12 — Validation des transferts en un clic
 
 - Suppression de la confirmation supplémentaire pour ajouter `transfert_intercomptes` depuis le backlog, sur une paire ou en groupe. Le clic sur le bouton constitue la validation.

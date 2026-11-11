@@ -15,7 +15,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout main
@@ -37,6 +37,9 @@ jobs:
       - name: Vérifier la version de développement
         working-directory: versions/dev
         run: ./run-tests.sh
+      - name: Vérifier l’interface de développement dans Firefox
+        working-directory: versions/dev
+        run: npm run test:browser
       - name: Préparer la racine et le sous-dossier dev
         run: node versions/dev/scripts/build-pages.js versions/main versions/dev public-site
       - uses: actions/configure-pages@v5

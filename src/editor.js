@@ -5,11 +5,11 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.10';
+ const version='0.20.0';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
- const validDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+'T12:00:00'));
+ const validDate=s=>(root.QBudgetEngine||(typeof require==='function'?require('./engine.js'):null)).validDate(s);
  // Sélection tabulaire standard, indépendante des filtres et des calculs financiers.
  // ordered contient seulement les objets taguables dans l'ordre des lignes filtrées.
  function selectKeys(current,ordered,anchor,key,{ctrl=false,shift=false}={}){
@@ -93,6 +93,7 @@
   return {date:row?.date||'',account:row?.bank||rule?.account||'',label:item.label,
    amount:row?Number(row.amount):rule?Number(rule.amount):null,tags:tags.join(' · ')};
  }
+ const amountFormatter=new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
  const textOrder=new Intl.Collator('fr',{numeric:true,sensitivity:'base'});
  function sortItems(model,items,{column='',direction='asc'}={}){
   if(!['date','account','label','amount','tags'].includes(column))return [...items];
@@ -147,7 +148,7 @@
   }
   function link(parent,label,key){const b=elt('button',label,'secondary editor-link');b.type='button';b.onclick=()=>{byId('editorScope').value='all';byId('editorSearch').value='';selectedTag='';render();openDetail(key)};parent.append(b)}
   function status(text,failed=false){const e=byId('editorStatus');e.textContent=text;e.classList.toggle('editor-error',failed)}
-  function commit(change){try{change(getModel());options.onChange();status('Modifications enregistrées dans qbudget. Exporte tes annotations pour créer un fichier.')}catch(e){status(e.message,true)}}
+  function commit(change){try{change(getModel());const saved=options.onChange();if(saved===false)status('Modifications conservées en mémoire. Le stockage est indisponible : exporte tes annotations avant de fermer la page.',true);else status('Modifications enregistrées dans qbudget. Exporte tes annotations pour créer un fichier.')}catch(e){status(e.message,true)}}
   function renderDetail(list){
    const panel=byId('editorDetail');panel.replaceChildren();const model=getModel();
    const item=list.find(i=>i.key===selectedKey);
@@ -354,7 +355,7 @@
     if(i.kind==='account')name.append(elt('span','Compte','editor-badge'));
     if(i.kind==='orphan')name.append(elt('span','Référence','editor-badge'));
     tr.append(name);
-    const amount=elt('td',values.amount===null?'—':new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(values.amount)+' €','editor-amount'+(values.amount<0?' negative':''));tr.append(amount);
+    const amount=elt('td',values.amount===null?'—':amountFormatter.format(values.amount)+' €','editor-amount'+(values.amount<0?' negative':''));tr.append(amount);
     const tagCell=elt('td',values.tags||'—','editor-row-tags');tagCell.title=values.tags;tr.append(tagCell);
     const editCell=elt('td');const edit=elt('button','Modifier','secondary editor-row-detail');edit.type='button';edit.onclick=event=>{event.stopPropagation();openDetail(i.key)};editCell.append(edit);tr.append(editCell);
     tr.addEventListener('click',event=>{if(bankOrManual)selectVisible(i.key,{ctrl:event.ctrlKey||event.metaKey,shift:event.shiftKey});else openDetail(i.key)});

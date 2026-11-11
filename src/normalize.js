@@ -1,4 +1,4 @@
-// Normalisation bancaire locale : même configuration banques.json que l'importateur historique.
+// Normalisation bancaire commune au navigateur et à l’importateur Node.js.
 // JavaScript natif uniquement, utilisable dans le navigateur et dans Node pour les tests.
 (function(root){'use strict';
 const FIELDS=['id','banque','compte','date','date_valeur','description','montant','devise','solde','categorie','sous_categorie','statut','source','doublon_potentiel'];
@@ -19,7 +19,7 @@ function csvRows(src,separator){
   if(quoted){
    if(c==='"'&&src[i+1]==='"'){value+='"';i++}
    else if(c==='"')quoted=false;
-   else {value+=c;if(c==='\n')line++}
+   else {value+=c;if(c==='\r'||(c==='\n'&&src[i-1]!=='\r'))line++}
   }else if(c==='"'&&atStart){quoted=true;atStart=false}
   else if(c===separator){row.push(value);value='';atStart=true}
   else if(c==='\r'||c==='\n'){
@@ -52,12 +52,32 @@ function decimalSubtractAbs(credit,debit){
  const sign=result<0n?'-':'';const digits=(result<0n?-result:result).toString().padStart(scale+1,'0');
  return sign+(scale?digits.slice(0,-scale)+'.'+digits.slice(-scale):digits);
 }
+const DATE_PATTERNS=new Map();
+function datePattern(format){
+ if(DATE_PATTERNS.has(format))return DATE_PATTERNS.get(format);
+ const unsupported=()=>Error('format_date non pris en charge : '+JSON.stringify(format)+' ; utiliser une année (%Y ou %y), un mois (%m) et un jour (%d)');
+ if(typeof format!=='string'||!format)throw unsupported();
+ const fields=[];let pattern='';
+ for(let i=0;i<format.length;i++){
+  const char=format[i];
+  if(char!=='%'){pattern+=char.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');continue}
+  const token=format[++i];
+  if(token==='%'){pattern+='%';continue}
+  if(!['Y','y','m','d'].includes(token)||fields.includes(token))throw unsupported();
+  fields.push(token);pattern+=token==='Y'?'(\\d{4})':token==='y'?'(\\d{2})':'(\\d{1,2})';
+ }
+ if(fields.length!==3||fields.filter(field=>field==='Y'||field==='y').length!==1||!fields.includes('m')||!fields.includes('d'))throw unsupported();
+ const result={regex:new RegExp('^'+pattern+'$'),fields};
+ DATE_PATTERNS.set(format,result);return result;
+}
 function parseDate(source,format){
+ const {regex,fields}=datePattern(format);
  let value=clean(source);if(!value)return '';
  if(format==='%Y-%m-%d'&&value.length>10)value=value.slice(0,10);
- const m=format==='%Y-%m-%d'? /^(\d{1,4})-(\d{1,2})-(\d{1,2})$/.exec(value) : format==='%d/%m/%Y'? /^(\d{1,2})\/(\d{1,2})\/(\d{1,4})$/.exec(value) : null;
- if(!m)throw Error('date invalide '+JSON.stringify(value)+', attendu '+format);
- const [year,month,day]=format==='%Y-%m-%d'?[+m[1],+m[2],+m[3]]:[+m[3],+m[2],+m[1]];
+ const match=regex.exec(value);
+ if(!match)throw Error('date invalide '+JSON.stringify(value)+', attendu '+format);
+ const parts=Object.fromEntries(fields.map((field,index)=>[field,+match[index+1]]));
+ const year=parts.Y??(parts.y+(parts.y<=68?2000:1900)),month=parts.m,day=parts.d;
  const max=[31,(year%4===0&&(year%100!==0||year%400===0))?29:28,31,30,31,30,31,31,30,31,30,31][month-1];
  if(year<1||month<1||month>12||day<1||day>max)throw Error('date invalide '+JSON.stringify(value)+', attendu '+format);
  return String(year).padStart(4,'0')+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
@@ -89,18 +109,29 @@ function detect(headers,configs,delimiter){
  return matches[0];
 }
 function outputSpec(settings){
- const spec=settings.sortie||{},separator=spec.separateur||';',decimal=spec.decimal||'.';
+ const spec=settings.sortie===undefined?{}:settings.sortie;
+ if(!spec||typeof spec!=='object'||Array.isArray(spec))throw Error('sortie doit être un objet');
+ const separator=spec.separateur===undefined?';':spec.separateur,decimal=spec.decimal===undefined?'.':spec.decimal;
  if(typeof separator!=='string'||separator.length!==1||['\r','\n','"'].includes(separator))throw Error('sortie.separateur doit être un caractère valide');
  if(!['.',','].includes(decimal))throw Error('sortie.decimal doit être "." ou ","');
- const cols=spec.colonnes||FIELDS;
+ const cols=spec.colonnes===undefined?FIELDS:spec.colonnes;
  if(!Array.isArray(cols)||!cols.length)throw Error('sortie.colonnes doit être une liste non vide');
  const fields=[],names=[];
- for(const col of cols){const field=typeof col==='string'?col:col.champ,name=typeof col==='string'?col:col.nom;
+ for(const col of cols){const field=typeof col==='string'?col:col?.champ,name=typeof col==='string'?col:col?.nom;
   if(!FIELDS.includes(field)||typeof name!=='string'||!name.trim())throw Error('colonne de sortie inconnue ou nom invalide : '+JSON.stringify(col));
   fields.push(field);names.push(name);
  }
  if(new Set(names).size!==names.length)throw Error('les noms de colonnes de sortie doivent être uniques');
  return {separator,decimal,fields,names};
+}
+function validateSettings(settings){
+ if(!settings||!Array.isArray(settings.banques)||!settings.banques.length)throw Error('Configuration des banques absente');
+ for(const [index,bank] of settings.banques.entries()){
+  if(!bank||typeof bank.nom!=='string'||!bank.nom.trim()||typeof bank.separateur!=='string'||bank.separateur.length!==1||!Array.isArray(bank.colonnes_requises)||!bank.champs||typeof bank.champs!=='object'||typeof bank.format_date!=='string')
+   throw Error('Configuration bancaire invalide : profil '+(index+1));
+  datePattern(bank.format_date);
+ }
+ return outputSpec(settings);
 }
 function quoteCsv(value,delimiter){value=String(value??'');return /["\n\r]/.test(value)||value.includes(delimiter)?'"'+value.replace(/"/g,'""')+'"':value}
 function renderCsv(rows,spec){
@@ -150,13 +181,13 @@ async function sha256(text){
 // All-or-nothing : si une seule ligne est erronée, rien n'est importable.
 async function normalizeFiles(files,settings){
  if(!Array.isArray(files)||!files.length)throw Error('Sélectionne au moins un relevé CSV brut');
- if(!settings||!Array.isArray(settings.banques))throw Error('Configuration des banques absente');
- const spec=outputSpec(settings),rows=[],errors=[],sources=[],groups=new Map();
+ const spec=validateSettings(settings),rows=[],errors=[],sources=[],groups=new Map();
  for(const file of files){const name=String(file.name||'releve.csv');try{
   const content=decode(file.content??file.bytes);
   const headerLine=content.split(/\r?\n/).find(x=>x.trim())||'';
   const delimiter=(headerLine.match(/;/g)||[]).length>(headerLine.match(/,/g)||[]).length?';':',';
   const parsed=csvRows(content,delimiter);
+  while(parsed.length&&!parsed[0].cells.some(clean))parsed.shift();
   if(!parsed.length)throw Error('fichier vide');
   const headers=parsed.shift().cells.map(clean),cfg=detect(headers,settings.banques,delimiter);
   let count=0;
@@ -176,7 +207,8 @@ async function normalizeFiles(files,settings){
  rows.sort((a,b)=>a.date.localeCompare(b.date)||a.banque.localeCompare(b.banque,'en')||a.id.localeCompare(b.id));
  return {rows, csv:renderCsv(rows,spec),sources,duplicates:rows.filter(x=>x.doublon_potentiel==='oui').length,columns:spec.names};
 }
-const api={version:'0.15.0',normalizeFiles,decode,csvRows,parseNumber,parseDate,outputSpec,sha256Fallback};
+const version=root.QBudgetVersion||(typeof require==='function'?require('./version.js'):null);
+const api={version:version?.version,normalizeFiles,decode,csvRows,parseNumber,parseDate,outputSpec,validateSettings,sha256Fallback};
 if(typeof module==='object'&&module.exports)module.exports=api;
 root.QBudgetNormalize=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
