@@ -1,6 +1,8 @@
-# qbudget V0.19.9 — Repérage des opérations sans tags
+# qbudget V0.19.10 — Tri et affichage du tableau de l’éditeur
 
-**Nouveau :** dans l’éditeur, cocher **Sans tags** ou **Libellés partiellement tagués**. Les résultats restent dans le tableau et deviennent des correspondances taguables. Une suggestion commune est préremplie lorsque les opérations similaires le permettent, sans modifier votre saisie ni appliquer de tags automatiquement. [Mode d’emploi](docs/reperage-tags.md).
+**Nouveau :** cliquer sur Date, Compte, Élément, Montant ou Catégories · tags pour alterner le tri croissant/décroissant. Choisir 120, 250, 500 ou 1 000 lignes par affichage ; le bouton d’affichage supplémentaire suit ce choix. Tri et sélection portent sur toutes les correspondances filtrées. [Mode d’emploi](docs/tri-editeur.md).
+
+**Repérage des tags :** dans l’éditeur, cocher **Sans tags** ou **Libellés partiellement tagués**. Les résultats restent dans le tableau et deviennent des correspondances taguables. Une suggestion commune est préremplie lorsque les opérations similaires le permettent, sans modifier votre saisie ni appliquer de tags automatiquement. [Mode d’emploi](docs/reperage-tags.md).
 
 **Ajout groupé de tags :** saisir `SASU, IK, mission` pour ajouter plusieurs tags en une fois à une sélection ou aux résultats filtrés, dans les deux vues. Les tags existants restent conservés, sans doublons. Le retrait reste limité à un tag à la fois. [Mode d’emploi](docs/retrait-tags.md).
 

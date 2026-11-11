@@ -1,3 +1,12 @@
+# qbudget V0.19.10 — Tri et nombre de lignes dans l’éditeur
+
+- En-têtes de données cliquables au clavier comme à la souris : date, compte, élément, montant signé et tags. Alternance croissant/décroissant avec flèche et indication accessible du sens.
+- Tri de toutes les correspondances avant découpage de l’affichage, valeurs absentes en fin de liste dans les deux sens et égalités stables. Filtres et sélection restent actifs.
+- Choix de 120, 250, 500 ou 1 000 lignes par affichage, conservé lors des recherches ; le bouton d’affichage supplémentaire utilise le même nombre.
+- Aucun changement de l’ordre bancaire enregistré, des annotations, des calculs financiers ou du format JSON.
+
+---
+
 # qbudget V0.19.9 — Repérage et suggestion de tags dans l’éditeur
 
 - Cases Sans tags et Libellés partiellement tagués, combinables avec la recherche et les filtres existants. Les résultats sont les correspondances du tableau, taguables par sélection ou en totalité sans mot-clé.

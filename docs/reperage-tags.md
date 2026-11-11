@@ -19,4 +19,4 @@ Avec trois CARREFOUR tagués `courses` et deux sans tag :
 3. Vérifier ou modifier la suggestion, puis cliquer sur **Taguer toutes les correspondances**, même si la recherche est vide. La confirmation porte sur les deux opérations. Une sélection manuelle peut également être traitée.
 4. Après l’ajout, ces opérations quittent le filtre automatiquement. Aucun tag n’est modifié par le simple fait de cocher une case ou d’afficher une suggestion.
 
-Toutes les correspondances sont traitées, même au-delà des 120 lignes affichées. Les cases sont des filtres de vue ; les décisions de taggage sont enregistrées et exportables par les annotations JSON habituelles. Les identifiants, dates, montants et règles ne changent pas.
+Toutes les correspondances sont traitées, même au-delà des lignes affichées (120 par défaut, nombre réglable depuis la version 0.19.10). Les cases sont des filtres de vue ; les décisions de taggage sont enregistrées et exportables par les annotations JSON habituelles. Les identifiants, dates, montants et règles ne changent pas.

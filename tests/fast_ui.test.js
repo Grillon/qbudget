@@ -48,7 +48,7 @@ test('affichage progressif : toutes les opérations restent accessibles et aucun
  assert.match(ui,/tableRowLimit\+=150/);
  assert.match(ui,/rows\.slice\(0,tableRowLimit\)\.filter\(r=>!r\.forecast\)/);
  assert.match(editor,/visible\.slice\(0,visibleLimit\)/);
- assert.match(editor,/visibleLimit\+=120/);
+ assert.match(editor,/visibleLimit\+=pageSize/);
  assert.match(editor,/if\(!categoryOverviewOpen\)/);
  const m=model(),before=JSON.stringify(m),balance=engine.totalBalance(m,'2026-10-25');
  assert.ok(tags.defaults().length);
