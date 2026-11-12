@@ -7,7 +7,9 @@ Dans le panneau Sunburst / Treemap, les questions proposent des points de dépar
 - **Combien coûtent mes projets ?** : Entité → Projet → Poste, si Projet est configuré.
 - **Où va mon argent ?** : Finalité → Poste, si Finalité est configurée.
 
-Le catalogue historique utilise **Nature** : cette catégorie reste utilisable à la place de Poste, sans modification de ses tags. Si Poste existe, la perspective utilise Poste. Les noms personnalisés ne sont pas interprétés arbitrairement. Une question est proposée uniquement lorsque toutes ses dimensions sont présentes ; cela ne remplit pas les classifications manquantes des opérations, qui restent « Non renseigné ».
+Le nouveau catalogue active directement les quatre questions. Les opérations sans Projet ou Finalité restent « Non renseigné » ; aucune classification n’est inventée.
+
+Un dictionnaire importé peut encore utiliser **Nature** : cette catégorie reste utilisable à la place de Poste, sans modification de ses tags. Si Poste existe, la perspective utilise Poste. Les noms personnalisés ne sont pas interprétés arbitrairement. Une question est proposée uniquement lorsque toutes ses dimensions sont présentes ; cela ne remplit pas les classifications manquantes des opérations, qui restent « Non renseigné ».
 
 Un clic règle les dimensions, leur ordre et la profondeur, sans filtrer sur Perso, mission ou un projet particulier. Les filtres et le compte actuellement sélectionnés restent actifs. La lecture concerne toujours des **dépenses**, dans le périmètre et jusqu’à l’horizon indiqués au-dessus du graphique.
 

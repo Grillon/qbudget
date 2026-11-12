@@ -3,31 +3,80 @@
   "schemaVersion": 1,
   "categories": [
     {
-      "name": "Nature",
+      "name": "Entité",
+      "tags": [
+        "Micro",
+        "SASU",
+        "Perso",
+        "exploration",
+        "personnel"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Projet",
+      "tags": [
+        "qbudget",
+        "microbudget",
+        "levelup"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Poste",
       "tags": [
         "alimentation",
         "courses",
         "repas",
         "restaurant",
+        "cantine",
         "essence",
         "peage",
         "transport",
+        "transports",
         "telecom",
-        "logement",
         "streaming",
+        "logement",
+        "copro",
         "energie",
         "eau",
         "assurance",
         "sante",
         "loisirs",
         "sport",
-        "IK",
-        "noteDeFrais",
-        "copro",
-        "impots",
         "vetements",
         "cadeaux",
-        "revenu"
+        "impots",
+        "urssaf",
+        "pret",
+        "frais_bancaires",
+        "IK",
+        "noteDeFrais"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Contexte",
+      "tags": [
+        "mission",
+        "deplacement",
+        "contexte_loisirs",
+        "essentiel_quotidien",
+        "projets",
+        "Pro",
+        "quotidien",
+        "travail"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Finalité",
+      "tags": [
+        "finalite_quotidien",
+        "finalite_loisirs",
+        "épargne",
+        "investissement",
+        "activité professionnelle"
       ],
       "source": "tags"
     },
@@ -40,25 +89,7 @@
       "source": "type"
     },
     {
-      "name": "Contexte",
-      "tags": [
-        "mission",
-        "quotidien",
-        "deplacement",
-        "travail"
-      ],
-      "source": "tags"
-    },
-    {
-      "name": "Entité",
-      "tags": [
-        "SASU",
-        "personnel"
-      ],
-      "source": "tags"
-    },
-    {
-      "name": "Traitement",
+      "name": "Traitement / État",
       "tags": [
         "remboursement",
         "payéPerso",

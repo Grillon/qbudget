@@ -19,23 +19,21 @@ function model(){return {
 
 test('nouveau tag dans le dictionnaire par défaut et dans son export/import JSON',()=>{
  const data=tags.defaults();
- assert.ok(data.find(c=>c.name==='Traitement').tags.includes('transfert_intercomptes'));
+ assert.ok(data.find(c=>c.name==='Traitement / État').tags.includes('transfert_intercomptes'));
  assert.deepEqual(tags.parseJson(tags.exportJson(data)),data);
  const example=JSON.parse(fs.readFileSync(path.join(root,'examples/categories-par-defaut.json'),'utf8'));
  assert.deepEqual(tags.parseJson(example),data);
 });
 
-test('migration seulement de la catégorie Traitement d’origine : préserve les personnalisations et la suppression',()=>{
- const old=tags.defaults();old.find(c=>c.name==='Traitement').tags.pop();
- const migrated=tags.upgradeDefaultTreatment(old);
- assert.notStrictEqual(migrated,old);
- assert.equal(migrated.find(c=>c.name==='Traitement').tags.at(-1),'transfert_intercomptes');
- assert.equal(old.find(c=>c.name==='Traitement').tags.includes('transfert_intercomptes'),false);
- assert.strictEqual(tags.upgradeDefaultTreatment(migrated),migrated);
- const custom=structuredClone(old);custom.find(c=>c.name==='Traitement').tags.push('mon_tag');
- assert.strictEqual(tags.upgradeDefaultTreatment(custom),custom);
- const removed=old.filter(c=>c.name!=='Traitement');
- assert.strictEqual(tags.upgradeDefaultTreatment(removed),removed);
+test('ancien catalogue remplacé ; marqueur courant et catégories créées ensuite conservés',()=>{
+ const old={tagCategories:require('./fixtures/categories_legacy.json').categories,tagDefaultsVersion:2};
+ const migrated=tags.upgradeCategories(old);
+ assert.deepEqual(migrated.tagCategories,tags.defaults());
+ assert.equal(old.tagCategories[0].name,'Nature');
+ assert.strictEqual(tags.upgradeCategories(migrated),migrated);
+ migrated.tagCategories.push({name:'Ma catégorie',tags:['mon_tag'],source:'tags'});
+ assert.strictEqual(tags.upgradeCategories(migrated),migrated);
+ assert.equal(migrated.tagCategories.at(-1).name,'Ma catégorie');
 });
 
 test('filtre graphique : les virements sortants ne gonflent pas le donut ou le sunburst',()=>{

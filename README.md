@@ -1,8 +1,8 @@
-# qbudget V0.20.1 — Pilotage financier local
+# qbudget V0.20.2 — Pilotage financier local
 
 qbudget aide à explorer ses finances par les tags, suivre ses soldes, anticiper sa trésorerie et comparer des scénarios. Les opérations flottantes, prévisions et classifications restent souples. Les données sont locales ; aucun service ne reçoit les relevés.
 
-**0.20.1 :** perspectives guidées dans le Sunburst / Treemap, dimensions affichables ou masquables et exploration libre sauvegardée. Les catégories et les annotations historiques sont conservées.
+**0.20.2 :** nouveau dictionnaire d’exploration : Entité, Projet, Poste, Contexte et Finalité. Les anciennes catégories sont remplacées ; tous les tags et annotations des opérations restent conservés. Les tags non classés restent libres et les catégories restent créables et modifiables.
 
 ## Démarrer
 
@@ -46,7 +46,7 @@ Le tableau de bord et l’éditeur partagent les mêmes données et calculs.
 - **Associations de libellés** : motifs littéraux avec condition OU, insensibles à la casse et par mots entiers, vers un tag existant. Les tags manuels restent distincts des tags déduits. [Guide](docs/associations-libelles.md).
 - **Sans tags / Libellés partiellement tagués** : filtres combinables avec la recherche et les bornes de date/montant. Une suggestion commune peut préremplir le champ ; votre saisie reste prioritaire. [Guide](docs/reperage-tags.md).
 - **Tri et affichage** : en-têtes Date, Compte, Élément, Montant et Tags, croissants ou décroissants, sur tous les résultats. Choix de 120, 250, 500 ou 1 000 lignes ; sélection conservée après tri. [Guide](docs/tri-editeur.md).
-- **Catégories** : dimensions modifiables et réordonnables. Tous les tags restent visibles ; un graphique retient le premier tag de chaque catégorie pour ventiler un montant. Une [proposition de catégories d’exploration](docs/categories-exploration.md) est disponible, sans migration imposée.
+- **Catégories** : dimensions modifiables et réordonnables. Tous les tags restent visibles ; un graphique retient le premier tag de chaque catégorie pour ventiler un montant. Le [dictionnaire d’exploration](docs/categories-exploration.md) remplace les anciennes catégories. Les tags non classés restent libres ; **+ Catégorie** permet de créer ses propres dimensions.
 
 Dans le Sunburst / Treemap, les questions proposées appliquent une sélection de dimensions, un ordre et une profondeur. Les filtres restent actifs. **Dimensions du graphique** permet de masquer ou réintroduire un axe sans supprimer sa catégorie ; les onglets restent réordonnables à la souris ou avec Alt + flèches. La profondeur va de 1 à 8 ; les axes au-delà de la profondeur choisie restent disponibles. Les perspectives Projet et Finalité apparaissent lorsque ces catégories sont configurées. Compte / Flux et la périodicité détaillée restent différés. [Guide](docs/perspectives.md).
 

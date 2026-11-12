@@ -8,7 +8,7 @@ const engine=require('../src/engine.js');
 const annotations=require('../src/annotations.js');
 const editor=require('../src/editor.js');
 const tags=require('../src/tags.js');
-function make(){const rows=engine.readCsv(fs.readFileSync(path.join(root,'tests/fixtures/life_2026_operations.csv'),'utf8'));const input=JSON.parse(fs.readFileSync(path.join(root,'tests/fixtures/life_2026_annotations.json'),'utf8'));return {...engine.mergeAnnotations(rows,input),tagCategories:tags.defaults(),donutCategory:'Nature',sunburstDepth:3,hierarchyView:'treemap',excludeTransfersFromCharts:true,tagDefaultsVersion:2}}
+function make(){const rows=engine.readCsv(fs.readFileSync(path.join(root,'tests/fixtures/life_2026_operations.csv'),'utf8'));const input=JSON.parse(fs.readFileSync(path.join(root,'tests/fixtures/life_2026_annotations.json'),'utf8'));return {...engine.mergeAnnotations(rows,input),tagCategories:tags.defaults(),donutCategory:'Poste',sunburstDepth:3,hierarchyView:'treemap',excludeTransfersFromCharts:true,tagDefaultsVersion:tags.defaultsVersion}}
 const asJson=obj=>JSON.parse(JSON.stringify(obj));
 test('annotations : même format natif et mêmes clés historiques',()=>{
  const m=make(),exported=annotations.exportObject(m);

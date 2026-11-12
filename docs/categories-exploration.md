@@ -1,22 +1,40 @@
-# Proposition de catégories pour explorer ses finances
+# Catégories d’exploration
 
-Le catalogue actuel mélange parfois le poste de dépense, la nature du mouvement et son suivi administratif. `IK` et `noteDeFrais` décrivent un suivi ; `revenu` décrit un flux ; `transfert_intercomptes` n’est pas un poste de consommation. Je propose de séparer ces questions, tout en conservant les tags existants.
+Depuis la version 0.20.2, le nouveau dictionnaire remplace les anciennes catégories au chargement du navigateur et à l’import d’anciennes annotations. Aucune fusion avec les anciennes catégories n’est effectuée. **Les tags des opérations, les annotations et les liens de récurrence sont conservés à l’identique.** Un tag absent du dictionnaire reste libre : il demeure visible et utilisable dans les recherches et filtres.
 
-| Axe | Question | Exemples de tags |
-|---|---|---|
-| **Poste** | À quoi sert l’argent ? | courses, logement, transport, santé, abonnements, impôts |
-| **Flux** | Quel mouvement est-ce ? | depense, revenu, transfert_intercomptes, remboursement |
-| **Périmètre** | Quel budget est concerné ? | personnel, SASU, copro |
-| **Contexte** | Pour quelle activité ou quel projet ? | mission, quotidien, deplacement, travail, projet personnel |
-| **Périodicité** | Est-ce récurrent ? | Récurrent, Ponctuel, via le type existant |
-| **Variabilité** | Le montant est-il stable ? | fixe, variable |
+Le [JSON des catégories](../examples/categories-exploration.json) utilise toujours `qbudget-tag-categories`, `schemaVersion: 1`. Il est aussi fourni comme [catalogue par défaut](../examples/categories-par-defaut.json).
 
-Les exemples du tableau expriment les usages. Le [JSON proposé](../examples/categories-exploration.json) conserve les noms précis des tags existants : pas de renommage de `sante`, `telecom`, `streaming`, `essence`, etc. On peut ajouter un projet concret à Contexte quand il devient utile, sans créer un catalogue de projets hypothétiques.
+| Dimension | Valeurs et rôle |
+|---|---|
+| Entité | Micro, SASU, Perso, exploration ; personnel reste reconnu pour les opérations historiques. Cette dimension est analytique, indépendante du compte payeur. |
+| Projet | qbudget, microbudget, levelup ; autres projets ajoutables librement. |
+| Poste | Tags de consommation existants, avec cantine, transports, urssaf, pret et frais_bancaires. Les variantes transport/transports sont distinctes, sans conversion des annotations. |
+| Contexte | mission, deplacement, contexte_loisirs, essentiel_quotidien, projets, Pro ; quotidien et travail restent reconnus. |
+| Finalité | finalite_quotidien, finalite_loisirs, épargne, investissement, activité professionnelle. |
+| Périodicité | Récurrent / Ponctuel, via `source: "type"`. La fréquence détaillée issue des règles est différée. |
+| Traitement / État | remboursement, payéPerso, enCoursDeCreation, transfert_intercomptes. |
+| Variabilité | fixe / variable, conservés et disponibles en exploration libre. |
 
-Les marqueurs **IK**, **noteDeFrais**, **payéPerso** et **enCoursDeCreation** restent des **tags libres cumulables**, visibles et recherchables. Ils servent à retrouver un travail à faire ou une situation précise, plutôt qu’à ventiler des montants dans une catégorie qui mélangerait plusieurs questions. De futurs marqueurs `a_verifier` ou `a_rembourser` peuvent suivre le même principe.
+## Distinguer les usages d’un même mot
 
-Exemples : une course personnelle peut porter `courses, depense, personnel, quotidien, variable` et le type Ponctuel ; un remboursement de frais peut porter `remboursement, SASU, IK, mission`. Il n’est pas nécessaire de remplir tous les axes sur chaque opération. Le type Récurrent/Ponctuel est déjà disponible sans saisir un tag équivalent.
+Un nom de tag ne peut appartenir qu’à une seule catégorie, sans distinction de casse :
 
-Pour les axes utilisés dans les graphiques, privilégier une valeur principale par opération : **le moteur actuel affiche tous les tags dans le tableau, mais utilise le premier tag d’une catégorie pour ventiler le montant**. Ajouter `transfert_intercomptes` ne retire donc pas un éventuel ancien tag `depense` ou `revenu` ; vérifier ces classifications si l’axe Flux est utilisé. Le filtre d’exclusion des transferts repose toujours directement sur `transfert_intercomptes`.
+- `loisirs` reste un poste ; `contexte_loisirs` décrit le contexte ; `finalite_loisirs` décrit la finalité.
+- `quotidien` reste le tag historique de contexte ; `finalite_quotidien` désigne la finalité.
+- `remboursement` reste un marqueur de traitement. Aucun type de flux financier n’en est déduit.
 
-C’est une proposition à examiner, pas une migration appliquée. Le catalogue par défaut et les catégories du navigateur ne sont pas modifiés. Importer volontairement le JSON remplace les définitions de catégories, en conservant les tags des opérations ; les marqueurs de suivi deviennent simplement libres. Les calculs de trésorerie restent indépendants de ce classement.
+Ces nouveaux noms ne sont pas des alias : aucune annotation n’est réécrite ni dupliquée pour remplir automatiquement un nouvel axe. Les opérations sans tag de Projet ou de Finalité apparaissent sous **Non renseigné**. Les quatre perspectives guidées deviennent disponibles, et leurs filtres restent actifs.
+
+## Tags historiques et capacités différées
+
+`IK` et `noteDeFrais` restent provisoirement dans Poste ; leur déplacement vers Traitement / État reste une décision séparée. Le tag technique `transfert_intercomptes` reste reconnu par la détection et l’exclusion graphique existantes. Il ne prouve pas à lui seul qu’un mouvement est interne au périmètre patrimonial analysé.
+
+Le tag `revenu`, auparavant classé dans Nature, devient libre, comme les autres tags absents du nouveau dictionnaire. Aucun tag n’est supprimé des opérations. Les dimensions **Flux calculé**, **Compte / Support** et la périodicité détaillée seront implémentées séparément ; elles ne sont pas simulées par de nouveaux tags. Les graphiques actuels restent des répartitions de dépenses.
+
+## Créer ses propres catégories
+
+Dans **Éditeur → Tags · catégories et dimensions du tableau**, utiliser **+ Catégorie**, saisir son nom et ses tags. On peut y classer un tag libre déjà posé : l’opération ne change pas, seule sa présentation devient organisée. Un tag déjà classé doit être retiré de son ancienne catégorie avant d’être affecté à une autre.
+
+Le remplacement initial n’est effectué qu’une fois. Les catégories créées, modifiées ou retirées après cette mise à jour sont conservées au rechargement et dans les exports/imports d’annotations courants. Un import volontaire du seul JSON de catégories remplace le dictionnaire par celui du fichier ; cette personnalisation est également conservée. **Catégories par défaut** restaure le nouveau catalogue.
+
+Le camembert et les dimensions explicitement choisies pour le graphique passent de Nature à Poste et de Traitement à Traitement / État. Les anciennes dimensions supprimées sont ignorées. Les filtres par tags restent valables et les calculs de solde, d’audit et de forecast sont inchangés.

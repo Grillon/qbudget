@@ -5,30 +5,29 @@
  root.QBudgetTags=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.8';
- // Catégories de départ éditables et supprimables, jamais imposées aux opérations.
+ const version='0.20.2',defaultsVersion=3;
+ // Dictionnaire d’exploration ; le schéma reste en version 1.
  const defaultData=[
-  {name:'Nature',tags:['alimentation','courses','repas','restaurant','essence','peage','transport','telecom','logement','streaming','energie','eau','assurance','sante','loisirs','sport','IK','noteDeFrais','copro','impots','vetements','cadeaux','revenu'],source:'tags'},
+  {name:'Entité',tags:['Micro','SASU','Perso','exploration','personnel'],source:'tags'},
+  {name:'Projet',tags:['qbudget','microbudget','levelup'],source:'tags'},
+  {name:'Poste',tags:['alimentation','courses','repas','restaurant','cantine','essence','peage','transport','transports','telecom','streaming','logement','copro','energie','eau','assurance','sante','loisirs','sport','vetements','cadeaux','impots','urssaf','pret','frais_bancaires','IK','noteDeFrais'],source:'tags'},
+  {name:'Contexte',tags:['mission','deplacement','contexte_loisirs','essentiel_quotidien','projets','Pro','quotidien','travail'],source:'tags'},
+  {name:'Finalité',tags:['finalite_quotidien','finalite_loisirs','épargne','investissement','activité professionnelle'],source:'tags'},
   {name:'Périodicité',tags:['Récurrent','Ponctuel'],source:'type'},
-  {name:'Contexte',tags:['mission','quotidien','deplacement','travail'],source:'tags'},
-  {name:'Entité',tags:['SASU','personnel'],source:'tags'},
-  {name:'Traitement',tags:['remboursement','payéPerso','enCoursDeCreation','transfert_intercomptes'],source:'tags'},
+  {name:'Traitement / État',tags:['remboursement','payéPerso','enCoursDeCreation','transfert_intercomptes'],source:'tags'},
   {name:'Variabilité',tags:['fixe','variable'],source:'tags'}
  ];
- // Migration ciblée : ajoute le nouveau tag uniquement lorsque la dimension
- // Traitement possède toujours les valeurs du catalogue d'origine.
- // Un dictionnaire personnalisé reste intact, y compris après suppression volontaire du tag.
- function upgradeDefaultTreatment(categories){
-  if(!Array.isArray(categories))return categories;
-  const idx=categories.findIndex(c=>String(c.name||'').toLocaleLowerCase('fr')==='traitement'&&c.source==='tags');
-  if(idx<0)return categories;
-  const old=['remboursement','payéPerso','enCoursDeCreation'];
-  const values=categories[idx].tags;
-  if(!Array.isArray(values)||values.length!==old.length||values.some((v,i)=>v!==old[i]))return categories;
-  if(categories.some(c=>(c.tags||[]).some(t=>String(t).toLocaleLowerCase('fr')==='transfert_intercomptes')))return categories;
-  const next=clone(categories);
-  next[idx].tags.push('transfert_intercomptes');
-  return next;
+ // Remplacement unique des anciennes catégories, sans toucher aux annotations.
+ // Les éditions réalisées après cette mise à jour restent ensuite libres.
+ function upgradeCategories(model){
+  if(Number(model.tagDefaultsVersion)>=defaultsVersion)return model;
+  const categories=defaults(),names=new Set(categories.map(c=>c.name));
+  const aliases=new Map([['Nature','Poste'],['Traitement','Traitement / État'],['Périmètre','Entité']]);
+  const rename=name=>aliases.get(name)||name;
+  const donut=rename(model.donutCategory);
+  return {...model,tagCategories:categories,tagDefaultsVersion:defaultsVersion,
+   donutCategory:names.has(donut)?donut:'Poste',
+   ...(Array.isArray(model.hierarchyDimensions)?{hierarchyDimensions:[...new Set(model.hierarchyDimensions.map(rename).filter(name=>names.has(name)))]}:{})};
  }
  // Filtrage générique, seulement pour une visualisation (jamais une mutation).
  // Accepte les tags des écritures enregistrées comme ceux des prévisions.
@@ -131,5 +130,5 @@
   if(changes.length){const notes={...model.notes};for(const {id,note} of changes){if(note===null)delete notes[id];else notes[id]=note}model.notes=notes}
   return result;
  }
- return Object.freeze({version,defaults,validate,exportJson,parseJson,moveCategory,parseTagList,addTag,addTags,removeTag,removeTagPreview,upgradeDefaultTreatment,withoutTag});
+ return Object.freeze({version,defaultsVersion,defaults,upgradeCategories,validate,exportJson,parseJson,moveCategory,parseTagList,addTag,addTags,removeTag,removeTagPreview,withoutTag});
 });

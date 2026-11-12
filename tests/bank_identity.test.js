@@ -51,7 +51,7 @@ test('identité : migration des notes historiques complète et annotations orphe
  assert.deepEqual(m.notes[m.rows[0].id],legacy.notes['old-a|0']);
  assert.deepEqual(m.notes.opaque,legacy.notes.opaque);
  const exported=annotations.exportObject(m);
- assert.deepEqual(annotations.exportObject(annotations.importInto(m,exported,tags)),exported);
+ assert.deepEqual(annotations.exportObject(annotations.importInto(m,exported,tags)),annotations.exportObject(tags.upgradeCategories(m)));
  assert.deepEqual(engine.mergeAnnotations(input,exported).notes,m.notes);
 });
 

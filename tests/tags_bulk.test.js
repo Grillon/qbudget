@@ -9,11 +9,11 @@ const root=path.resolve(__dirname,'..');
 function demo(){const rows=e.readCsv(fs.readFileSync(path.join(root,'tests/fixtures/life_2026_operations.csv'),'utf8'));const a=JSON.parse(fs.readFileSync(path.join(root,'tests/fixtures/life_2026_annotations.json'),'utf8'));return e.mergeAnnotations(rows,a)}
 test('catégories de départ indépendantes, sans collision et réutilisables',()=>{
  const a=tags.defaults(),b=tags.defaults();
- assert.equal(a.length,6);
- assert.deepEqual(a.map(x=>x.name),['Nature','Périodicité','Contexte','Entité','Traitement','Variabilité']);
+ assert.equal(a.length,8);
+ assert.deepEqual(a.map(x=>x.name),['Entité','Projet','Poste','Contexte','Finalité','Périodicité','Traitement / État','Variabilité']);
  assert.deepEqual(e.validateTagCategories(a),a);
  a[0].name='Altération';a[0].tags.push('invention');
- assert.equal(b[0].name,'Nature');assert.ok(!b[0].tags.includes('invention'));
+ assert.equal(b[0].name,'Entité');assert.ok(!b[0].tags.includes('invention'));
  assert.equal(b.find(c=>c.name==='Périodicité').source,'type');
 });
 test('JSON de catégories indépendant des opérations, validation avant remplacement',()=>{

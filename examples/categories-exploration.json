@@ -2,11 +2,109 @@
   "format": "qbudget-tag-categories",
   "schemaVersion": 1,
   "categories": [
-    {"name":"Poste","tags":["alimentation","courses","repas","restaurant","essence","peage","transport","telecom","logement","streaming","energie","eau","assurance","sante","loisirs","sport","impots","vetements","cadeaux","frais_bancaires"],"source":"tags"},
-    {"name":"Flux","tags":["depense","revenu","transfert_intercomptes","remboursement"],"source":"tags"},
-    {"name":"Périmètre","tags":["personnel","SASU","copro"],"source":"tags"},
-    {"name":"Contexte","tags":["mission","quotidien","deplacement","travail"],"source":"tags"},
-    {"name":"Périodicité","tags":["Récurrent","Ponctuel"],"source":"type"},
-    {"name":"Variabilité","tags":["fixe","variable"],"source":"tags"}
+    {
+      "name": "Entité",
+      "tags": [
+        "Micro",
+        "SASU",
+        "Perso",
+        "exploration",
+        "personnel"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Projet",
+      "tags": [
+        "qbudget",
+        "microbudget",
+        "levelup"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Poste",
+      "tags": [
+        "alimentation",
+        "courses",
+        "repas",
+        "restaurant",
+        "cantine",
+        "essence",
+        "peage",
+        "transport",
+        "transports",
+        "telecom",
+        "streaming",
+        "logement",
+        "copro",
+        "energie",
+        "eau",
+        "assurance",
+        "sante",
+        "loisirs",
+        "sport",
+        "vetements",
+        "cadeaux",
+        "impots",
+        "urssaf",
+        "pret",
+        "frais_bancaires",
+        "IK",
+        "noteDeFrais"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Contexte",
+      "tags": [
+        "mission",
+        "deplacement",
+        "contexte_loisirs",
+        "essentiel_quotidien",
+        "projets",
+        "Pro",
+        "quotidien",
+        "travail"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Finalité",
+      "tags": [
+        "finalite_quotidien",
+        "finalite_loisirs",
+        "épargne",
+        "investissement",
+        "activité professionnelle"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Périodicité",
+      "tags": [
+        "Récurrent",
+        "Ponctuel"
+      ],
+      "source": "type"
+    },
+    {
+      "name": "Traitement / État",
+      "tags": [
+        "remboursement",
+        "payéPerso",
+        "enCoursDeCreation",
+        "transfert_intercomptes"
+      ],
+      "source": "tags"
+    },
+    {
+      "name": "Variabilité",
+      "tags": [
+        "fixe",
+        "variable"
+      ],
+      "source": "tags"
+    }
   ]
 }

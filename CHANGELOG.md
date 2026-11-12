@@ -1,3 +1,13 @@
+# qbudget V0.20.2 — Nouveau dictionnaire d’exploration
+
+- Remplacement initial des anciennes catégories par Entité, Projet, Poste, Contexte, Finalité, Périodicité, Traitement / État et Variabilité. Même schéma de catégories version 1 ; exemples JSON synchronisés.
+- Aucun tag d’opération supprimé ou renommé. Les tags absents du dictionnaire restent libres. Noms distincts pour les usages de loisirs et quotidien ; remboursement reste un traitement.
+- Perspectives Projet et Finalité disponibles ; choix graphiques Nature et Traitement adaptés aux nouveaux noms. Création et édition des catégories toujours disponibles, personnalisations ultérieures conservées dans le navigateur et les annotations.
+- IK et noteDeFrais restent dans Poste. Flux calculé, Compte / Support et fréquence détaillée différés, sans simulation par tags ni modification des calculs financiers.
+- Régressions couvertes : ancien stockage navigateur, anciens imports, tags libres, absence de double comptage et création persistante d’une catégorie.
+
+---
+
 # qbudget V0.20.1 — Perspectives guidées et exploration libre
 
 - Questions compactes dans le Sunburst / Treemap : répartition perso/pro et contextes, puis projets et finalités lorsque leurs catégories sont configurées. Compatibilité avec Nature et priorité à Poste ; aucun renommage automatique.
