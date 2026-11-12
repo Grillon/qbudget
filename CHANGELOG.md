@@ -1,3 +1,14 @@
+# qbudget V0.20.5 — Rapprochement et validation des périodicités
+
+- Détection stricte dès deux occurrences : libellé normalisé, montant signé exact, compte et devise identiques. Montants variables et regroupements par association ne sont plus utilisés pour proposer un groupe.
+- Six rythmes proposés : quotidien, hebdomadaire, mensuel, trimestriel, semestriel et annuel, avec calendrier ancré et tolérances de dates visibles dans la documentation.
+- Action Valider la périodicité dans le backlog : tags et annotations conservés, fréquence affichée dans la dimension automatique Périodicité, aucune règle ou modification du forecast. Création d’une règle explicite dans un volet facultatif séparé.
+- Calendrier, prévision, audit et éditeurs compatibles avec semestriel. Fréquence détaillée issue des validations ou règles liées, sans tags manuels artificiels ; visible et recherchable dans l’éditeur.
+- Preuves revérifiées avant validation, décisions sauvegardées et réexaminables, anciennes propositions compatibles, nouvelles occurrences soumises à validation sans doublon.
+- Tests des six fréquences, changements de montant, validation sans effet financier, import/export, calendrier semestriel et backlog mobile.
+
+---
+
 # qbudget V0.20.4 — Mobile et fusion du tag personnel
 
 - Interface mobile : actions de fichiers repliables, onglets accessibles pendant le défilement, champs et boutons agrandis, formulaires et catégories sur une colonne.

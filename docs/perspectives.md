@@ -23,6 +23,6 @@ La configuration du graphique est sauvegardée dans le navigateur et dans l’ex
 
 ## Perspectives différées
 
-**Comment circule mon argent ?** attend une dimension Compte issue des données bancaires, des flux calculés et une lecture fiable des transferts selon le périmètre. **Quelles dépenses vont se répéter ?** attend la périodicité détaillée issue des règles. La dimension actuelle Récurrent / Ponctuel reste disponible en exploration libre ; elle ne fournit pas cette fréquence détaillée.
+**Comment circule mon argent ?** attend une dimension Compte issue des données bancaires, des flux calculés et une lecture fiable des transferts selon le périmètre. La dimension Périodicité est disponible en exploration libre : elle affiche la fréquence issue des validations du backlog ou des règles liées, avec Récurrent / Ponctuel en complément lorsque la fréquence est inconnue. Une fréquence historique validée ne crée pas, à elle seule, de prévision future.
 
 Ces contrôles ne modifient ni les soldes, ni les règles, ni le forecast. Ils ne rapprochent pas une opération prévue saisie d’une échéance récurrente correspondante ; ces deux éléments restent distincts comme auparavant.

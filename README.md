@@ -1,8 +1,8 @@
-# qbudget V0.20.4 — Pilotage financier local
+# qbudget V0.20.5 — Pilotage financier local
 
 qbudget aide à explorer ses finances par les tags, suivre ses soldes, anticiper sa trésorerie et comparer des scénarios. Les opérations flottantes, prévisions et classifications restent souples. Les données sont locales ; aucun service ne reçoit les relevés.
 
-**0.20.4 :** interface adaptée aux téléphones et tablettes : fiches d’opérations, tri mobile, retagage plein écran et réorganisation tactile des dimensions. Le tag personnel est fusionné avec Perso, y compris dans les annotations et associations existantes.
+**0.20.5 :** rapprochement des mouvements de même libellé et même montant dès deux occurrences, avec quotidien, hebdo, mensuel, trimestriel, semestriel et annuel. Validation de la périodicité dans un backlog, sans modifier le forecast ; création d’une règle proposée séparément.
 
 ## Démarrer
 
@@ -61,7 +61,7 @@ Les recettes et dépenses du graphique mensuel gardent leur périmètre historiq
 
 Une opération manuelle peut être **réalisée**, **prévue** ou sans date (**flottante**). Une prévue ne doit pas être déplacée dans le passé sans passer en réalisé ; une flottante n’a jamais d’effet sur le solde ou les prévisions.
 
-- **Récurrences potentielles** : détection sur au moins trois occurrences régulières, puis backlog modifiable. Seule la création explicite d’une règle modifie les prévisions. Les brouillons restent présents lors des changements de filtre ou de vue. [Guide](docs/detection-recurrences.md).
+- **Récurrences potentielles** : détection sur au moins deux occurrences de même libellé et même montant, puis validation de la périodicité dans un backlog. Seule la création explicite d’une règle modifie les prévisions. Les brouillons restent présents lors des changements de filtre ou de vue. [Guide](docs/detection-recurrences.md).
 - **Transferts potentiels** : même date, devise et montant opposé, entre comptes distincts. Un clic appose `transfert_intercomptes` aux deux lignes ; les tags constituent la validation, même ajoutés depuis le tableau. Doubles débits et ambiguïtés restent manuels. [Guide](docs/detection-transferts.md).
 
 Un solde de référence est un solde de **fin de journée**. Les calculs historiques partent de cette référence dans les deux sens. Les prévisions et exports utilisent le même calendrier ancré, y compris les fins de mois et années bissextiles. Une règle ancienne ne cesse plus après 600 occurrences.

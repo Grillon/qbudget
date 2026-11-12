@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.20.4';
+const UI_VERSION='0.20.5';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('headerActionsToggle').onclick=()=>{const button=$('headerActionsToggle');button.setAttribute('aria-expanded',String(button.getAttribute('aria-expanded')!=='true'))};
@@ -67,13 +67,13 @@ function connectRule(r){
   dialog.onclose=()=>{
     if(dialog.returnValue!=='confirm')return;
     const f=$('newRuleFrequency').value;
-    if(!['quotidien','hebdomadaire','mensuel','trimestriel','annuel'].includes(f))return;
+    if(!['quotidien','hebdomadaire','mensuel','trimestriel','semestriel','annuel'].includes(f))return;
     const id=uid();model.rules[id]={id,account:key(r),desc:r.desc,amount:r.amount,frequency:f,start:r.date,anchor:r.date,end:''};
     model.notes[r.id]={...notes(r),type:'recurrent',ruleId:id};save();render();
   };
   dialog.showModal();
 }
-function renderRules(){const tbody=$('rules');tbody.replaceChildren();for(const r of Object.values(model.rules).filter(r=>!selected||r.account===selected)){const tr=document.createElement('tr');const cell=t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);return td};cell(r.account);cell(r.desc);cell(amount(r.amount));const f=document.createElement('select');for(const name of ['quotidien','hebdomadaire','mensuel','trimestriel','annuel'])f.add(new Option(name,name));f.value=r.frequency;f.onchange=()=>{r.frequency=f.value;save();renderSummary()};let td=cell('');td.append(f);const anchor=document.createElement('input');anchor.type='date';anchor.value=r.anchor;anchor.onchange=()=>{if(anchor.value){r.anchor=anchor.value;save();renderSummary()}};td=cell('');td.append(anchor);const fin=document.createElement('input');fin.type='date';fin.value=r.end||'';fin.onchange=()=>{r.end=fin.value;save();renderSummary()};td=cell('');td.append(fin);const del=document.createElement('button');del.className='warn';del.textContent='Supprimer';del.onclick=()=>{if(!confirm('Supprimer cette récurrence (les opérations restent conservées) ?'))return;delete model.rules[r.id];for(const n of Object.values(model.notes))if(n.ruleId===r.id){delete n.ruleId;n.type='ponctuel'}save();render()};td=cell('');td.append(del);tbody.append(tr)}}
+function renderRules(){const tbody=$('rules');tbody.replaceChildren();for(const r of Object.values(model.rules).filter(r=>!selected||r.account===selected)){const tr=document.createElement('tr');const cell=t=>{const td=document.createElement('td');td.textContent=t;tr.append(td);return td};cell(r.account);cell(r.desc);cell(amount(r.amount));const f=document.createElement('select');for(const name of ['quotidien','hebdomadaire','mensuel','trimestriel','semestriel','annuel'])f.add(new Option(name,name));f.value=r.frequency;f.onchange=()=>{r.frequency=f.value;save();renderSummary()};let td=cell('');td.append(f);const anchor=document.createElement('input');anchor.type='date';anchor.value=r.anchor;anchor.onchange=()=>{if(anchor.value){r.anchor=anchor.value;save();renderSummary()}};td=cell('');td.append(anchor);const fin=document.createElement('input');fin.type='date';fin.value=r.end||'';fin.onchange=()=>{r.end=fin.value;save();renderSummary()};td=cell('');td.append(fin);const del=document.createElement('button');del.className='warn';del.textContent='Supprimer';del.onclick=()=>{if(!confirm('Supprimer cette récurrence (les opérations restent conservées) ?'))return;delete model.rules[r.id];for(const n of Object.values(model.notes))if(n.ruleId===r.id){delete n.ruleId;n.type='ponctuel'}save();render()};td=cell('');td.append(del);tbody.append(tr)}}
 // L’horizon du tableau de bord finit toujours à la fin du mois cible.
 function addMonths(iso,n){const target=new Date(QBudgetEngine.addMonths(iso,n)+'T12:00:00Z');target.setUTCMonth(target.getUTCMonth()+1,0);return target.toISOString().slice(0,10)}
 function plotLayout(extra={}){return {paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'system-ui, sans-serif',color:'#334155',size:12},margin:{l:65,r:20,t:24,b:46},...extra}}
@@ -672,7 +672,7 @@ function detectRecurrences(){
   const before=new Set((model.recurrenceBacklog||[]).map(c=>c.id));
   model=QBudgetRecurrences.scan(model);save();openRecurrenceBacklog();
   const pending=model.recurrenceBacklog.filter(c=>c.status==='pending');
-  $('recurrenceBacklogStatus').textContent=`Détection terminée : ${pending.length} proposition(s) à examiner, dont ${pending.filter(c=>!before.has(c.id)).length} nouvelle(s). Aucune règle créée. Les décisions antérieures sont conservées.`;
+  $('recurrenceBacklogStatus').textContent=`Détection terminée : ${pending.length} proposition(s) à examiner, dont ${pending.filter(c=>!before.has(c.id)).length} nouvelle(s). Aucune périodicité validée ni règle créée. Les décisions antérieures sont conservées.`;
  }catch(error){$('recurrenceBacklogStatus').textContent=error.message}
 }
 function renderRecurrenceBacklog(){
@@ -689,8 +689,9 @@ function renderRecurrenceBacklog(){
  for(const c of pending){
   const card=node('details','','bank-match-item recurrence-candidate');card.dataset.candidate=c.id;const draft=drafts.get(c.id);card.open=draft?.open||false;
   card.append(node('summary',`${c.desc} · ${c.account}${c.sourceAccount?' / '+c.sourceAccount:''} · ${c.frequency} · ${amount(c.amount)} · ${c.evidence.length} occurrences`));
-  const values=c.evidence.map(e=>e.amount),missing=c.evidence.filter(e=>!rowIds.has(e.id)).length;
-  card.append(node('p',`Observations du ${c.evidence[0].date} au ${c.anchor} · montants de ${amount(Math.min(...values))} à ${amount(Math.max(...values))}. Le montant proposé est celui de la dernière opération.`,'mutednote'));
+  const missing=c.evidence.filter(e=>!rowIds.has(e.id)).length;
+  const amountText=new Set(c.evidence.map(e=>e.amount)).size===1?amount(c.amount)+' par occurrence':'ancienne hypothèse à montants variables';
+  card.append(node('p',`Observations du ${c.evidence[0].date} au ${c.anchor} · ${amountText}. Vérifie les dates ci-dessous avant de valider.`,'mutednote'));
   if(missing)card.append(node('p',`${missing} opération(s) absente(s) de l’import actuel. Réimporte cet historique puis relance la détection avant de créer une règle.`,'filter-error'));
   else if(c.stale)card.append(node('p','Cette proposition n’est plus détectée dans les données actuelles. Réimporte l’historique utile ou ignore cette proposition.','filter-error'));
   const evidence=node('details','');evidence.open=draft?.details[0]||false;evidence.append(node('summary','Voir les opérations observées'));
@@ -700,15 +701,22 @@ function renderRecurrenceBacklog(){
   const body=document.createElement('tbody');
   for(const e of c.evidence){const row=document.createElement('tr');for(const value of [e.date,e.bank+(e.sourceAccount?' / '+e.sourceAccount:''),e.desc,amount(e.amount),QBudgetEngine.tagsFor(model,context.rowsById.get(e.id)||e,context).join(', ')])row.append(node('td',value));body.append(row)}
   table.append(body);wrap.append(table);evidence.append(wrap);card.append(evidence);
-  const form=node('div','','toolbar');form.style.alignItems='end';
-  const field=(label,name,value,type='text')=>{const l=node('label',label,'field'),input=document.createElement(type==='select'?'select':'input');input.dataset.field=name;
-   if(type==='select')for(const f of ['quotidien','hebdomadaire','mensuel','trimestriel','annuel'])input.add(new Option(f,f));
-   else{input.type=type;if(type==='number')input.step='0.01'}input.value=draft?.fields[name]??value;l.append(input);form.append(l);return input};
-  const desc=field('Libellé de la règle','desc',c.desc),value=field('Montant signé (€)','amount',c.amount,'number'),frequency=field('Fréquence','frequency',c.frequency,'select'),anchor=field('Dernière échéance de référence','anchor',c.anchor,'date');
+  const classification=node('div','','toolbar');card.append(classification);
+  const optionalRule=node('details','');optionalRule.open=draft?.details[1]||false;optionalRule.append(node('summary','Prévoir les prochaines échéances (facultatif)'));
+  const form=node('div','','toolbar');form.style.alignItems='end';optionalRule.append(form);
+  const field=(label,name,value,type='text',parent=form)=>{const l=node('label',label,'field'),input=document.createElement(type==='select'?'select':'input');input.dataset.field=name;
+   if(type==='select')for(const f of ['quotidien','hebdomadaire','mensuel','trimestriel','semestriel','annuel'])input.add(new Option(f,f));
+   else{input.type=type;if(type==='number')input.step='0.01'}input.value=draft?.fields[name]??value;l.append(input);parent.append(l);return input};
+  const frequency=field('Périodicité','frequency',c.frequency,'select',classification);
+  const validate=node('button','Valider la périodicité');validate.type='button';validate.dataset.action='classify';validate.disabled=!!missing||!!c.stale;
+  validate.onclick=()=>{if(act(()=>QBudgetRecurrences.classify(model,c.id,{frequency:frequency.value})))$('recurrenceBacklogStatus').textContent='Périodicité validée sur les opérations observées. Leurs tags sont conservés ; aucune règle ni échéance de forecast n’a été créée.'};
+  classification.append(validate);
+  card.append(node('p','La périodicité validée apparaît dans le tableau et les graphiques. Elle ne modifie pas le forecast.','mutednote'));
+  const desc=field('Libellé de la règle','desc',c.desc),value=field('Montant signé (€)','amount',c.amount,'number'),anchor=field('Dernière échéance de référence','anchor',c.anchor,'date');
   const next=node('p','','mutednote');
   const preview=()=>{try{next.textContent='Première échéance calculée : '+shiftDate(anchor.value,frequency.value,1)+'. La création sera revérifiée sur les opérations actuelles.'}catch{next.textContent='Choisis une date de référence valide.'}};
   anchor.oninput=frequency.onchange=preview;preview();
-  const accept=node('button','Créer la récurrence'),ignore=node('button','Ignorer','secondary');accept.type=ignore.type='button';accept.disabled=!!missing||!!c.stale;
+  const accept=node('button','Créer une règle de prévision'),ignore=node('button','Ignorer','secondary');accept.type=ignore.type='button';accept.dataset.action='rule';ignore.dataset.action='ignore';accept.disabled=!!missing||!!c.stale;
   accept.onclick=()=>{
    const val=numeric(value.value);if(val===null||!val){$('recurrenceBacklogStatus').textContent='Montant de récurrence invalide';return}
    let nextDate;try{nextDate=shiftDate(anchor.value,frequency.value,1)}catch{$('recurrenceBacklogStatus').textContent='Date de référence invalide';return}
@@ -716,12 +724,12 @@ function renderRecurrenceBacklog(){
    if(act(()=>QBudgetRecurrences.accept(model,c.id,{id:uid(),desc:desc.value,amount:val,frequency:frequency.value,anchor:anchor.value})))$('recurrenceBacklogStatus').textContent='Récurrence créée et sauvegardée. Les prévisions incluent désormais ses échéances ; elle reste modifiable dans l’éditeur.';
   };
   ignore.onclick=()=>{if(act(()=>QBudgetRecurrences.ignore(model,c.id)))$('recurrenceBacklogStatus').textContent='Proposition ignorée. Elle ne sera pas reproposée à chaque détection ; elle reste consultable dans les décisions déjà prises.'};
-  form.append(accept,ignore);card.append(form,next);host.append(card);
+  form.append(accept);optionalRule.append(next);classification.append(ignore);card.append(optionalRule);host.append(card);
  }
  const history=$('recurrenceReviewedList');history.replaceChildren();
  for(const c of reviewed){
-  const card=node('div','','bank-match-item');card.append(node('span',`${c.desc} · ${c.account} · ${c.status==='ignored'?'Ignorée':model.rules[c.ruleId]?'Règle créée':'Règle créée puis supprimée'}`));
-  if(c.status==='ignored'){const reopen=node('button','Réexaminer','secondary');reopen.type='button';reopen.onclick=()=>act(()=>QBudgetRecurrences.reopen(model,c.id));card.append(reopen)}history.append(card);
+  const card=node('div','','bank-match-item');card.append(node('span',`${c.desc} · ${c.account} · ${c.status==='ignored'?'Ignorée':c.classificationOnly?'Périodicité validée : '+c.frequency:model.rules[c.ruleId]?'Règle créée':'Règle créée puis supprimée'}`));
+  if(c.status==='ignored'||c.classificationOnly){const reopen=node('button','Réexaminer','secondary');reopen.type='button';reopen.onclick=()=>act(()=>QBudgetRecurrences.reopen(model,c.id));card.append(reopen)}history.append(card);
  }
 }
 $('openRecurrenceBacklog').onclick=$('editorOpenRecurrences').onclick=openRecurrenceBacklog;

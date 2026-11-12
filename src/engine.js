@@ -100,8 +100,11 @@ function operationType(model,row){return row.forecast?'recurrent':(model.notes?.
 function tagsByCategory(model,row,category,context){
  const raw=rowTags(model,row,context),allowed=new Set((category.tags||[]).map(fold));
  const tagged=raw.filter(t=>allowed.has(fold(t)));
- if(category.source==='type'&&tagged.length===0){
-  const type=operationType(model,row);
+ if(category.source==='type'){
+  const type=operationType(model,row),note=model.notes?.[row.id]||{},rule=model.rules?.[row.ruleId||note.ruleId];
+  const frequency=rule?.frequency||note.recurrenceFrequency;
+  if((type==='recurrent'||!type&&rule)&&['quotidien','hebdomadaire','mensuel','trimestriel','semestriel','annuel'].includes(frequency))return [frequency==='hebdomadaire'?'hebdo':frequency];
+  if(tagged.length)return tagged;
   if(type==='recurrent')return ['Récurrent'];
   if(type==='ponctuel')return ['Ponctuel'];
  }
@@ -268,7 +271,7 @@ function totalBalance(model,date,account=''){
 }
 function shiftDate(iso,frequency,k){if(!validDate(iso)||!Number.isInteger(k))throw Error('Invalid anchor date or interval');const d=asDate(iso);
  if(frequency==='quotidien'||frequency==='hebdomadaire'){d.setUTCDate(d.getUTCDate()+(frequency==='quotidien'?1:7)*k);return dateStr(d)}
- const step=({mensuel:1,trimestriel:3,annuel:12})[frequency];if(!step)throw Error('Unknown frequency: '+frequency);
+ const step=({mensuel:1,trimestriel:3,semestriel:6,annuel:12})[frequency];if(!step)throw Error('Unknown frequency: '+frequency);
  let m=d.getUTCMonth()+step*k,y=d.getUTCFullYear()+Math.floor(m/12);m=((m%12)+12)%12;
  const target=asDate(iso);target.setUTCDate(1);target.setUTCFullYear(y,m+1,0);const day=Math.min(d.getUTCDate(),target.getUTCDate());target.setUTCFullYear(y,m,day);
  return dateStr(target);
@@ -278,7 +281,7 @@ function* ruleDates(rule,start,end){
  if(!anchor)return;
  if(!validDate(anchor)||!validDate(start)||!validDate(end)||rule.end&&!validDate(rule.end))throw Error('Invalid recurrence date');
  const limit=rule.end&&rule.end<end?rule.end:end;if(limit<=start||limit<=anchor)return;
- const origin=asDate(anchor),step=({mensuel:1,trimestriel:3,annuel:12})[frequency];
+ const origin=asDate(anchor),step=({mensuel:1,trimestriel:3,semestriel:6,annuel:12})[frequency];
  let indexFor;
  if(frequency==='quotidien'||frequency==='hebdomadaire')indexFor=date=>Math.floor((date-origin)/(86400000*(frequency==='quotidien'?1:7)));
  else if(step)indexFor=date=>Math.floor(((date.getUTCFullYear()-origin.getUTCFullYear())*12+date.getUTCMonth()-origin.getUTCMonth())/step);
@@ -387,5 +390,5 @@ function check(model){const errors=[],warnings=[];
  if(orphanCount)warnings.push(orphanCount+' annotation(s) sans opération chargée : conservées, rattachement possible dans l’éditeur');
  return {ok:errors.length===0,errors,warnings};
 }
-return {version:'0.20.0',validDate,addMonths,createReadContext,currencyDiagnostics,compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,pendingBankMatches,resolveBankMatch,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,validateLabelAssociations,automaticTagsFor,manualTagsFor,labelAssociationPreview,knownTags,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {version:'0.20.5',validDate,addMonths,createReadContext,currencyDiagnostics,compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,pendingBankMatches,resolveBankMatch,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,validateLabelAssociations,automaticTagsFor,manualTagsFor,labelAssociationPreview,knownTags,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });

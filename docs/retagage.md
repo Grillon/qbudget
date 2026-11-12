@@ -19,6 +19,6 @@ La liste du parcours reste stable même si un retagage fait sortir une opératio
 
 Un tag provenant d’une association de libellés ne peut pas être remplacé par un tag manuel concurrent. Le panneau indique son origine et désactive les choix incompatibles. Choisir l’unique tag automatique permet de retirer les tags manuels concurrents de sa catégorie sans recopier le tag automatique dans les annotations. Lorsque plusieurs tags automatiques se contredisent dans une catégorie, corriger leurs associations dans l’éditeur.
 
-La périodicité actuelle, issue des tags ou du type de l’opération, reste en lecture seule dans ce parcours. Elle peut être modifiée dans le détail habituel de l’opération. Ce mode ne crée ni règle de récurrence ni fréquence artificielle.
+La périodicité actuelle, issue du backlog validé, d’une règle liée, des tags ou du type de l’opération, reste en lecture seule dans ce parcours. Elle peut être modifiée dans le détail habituel de l’opération. Ce mode ne crée ni règle de récurrence ni fréquence artificielle.
 
 Le retagage ne change pas les montants, les dates, les comptes, les règles ou les calculs financiers. Comme dans les autres vues, le classement peut changer les branches affichées dans les graphiques sans multiplier les montants.

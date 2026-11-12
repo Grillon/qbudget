@@ -23,48 +23,49 @@ test('détection : calendrier mensuel, fins de mois, historique consultable et s
  assert.deepEqual(engine.forecast(scanned,'2026-11-01','2027-01-31'),forecast);
  assert.deepEqual(engine.auditOperations(scanned,{scope:'all',at:'2026-11-01',until:'2027-01-31'}),engine.auditOperations(m,{scope:'all',at:'2026-11-01',until:'2027-01-31'}));
 });
-test('détection : fréquences, décalages bancaires et montants variables',()=>{
+test('détection : fréquences, décalages bancaires et montants strictement identiques',()=>{
  for(const [dates,frequency] of [
   [['2026-10-01','2026-10-02','2026-10-03'],'quotidien'],
   [['2026-10-02','2026-10-10','2026-10-16'],'hebdomadaire'],
   [['2026-01-05','2026-04-06','2026-07-05'],'trimestriel'],
+  [['2025-05-05','2025-11-06','2026-05-05'],'semestriel'],
   [['2024-05-05','2025-05-06','2026-05-05'],'annuel']
  ])assert.equal(pending(detect(model(dates)))[0].frequency,frequency);
  const m=model();m.rows[0].amount=-12;m.rows[1].amount=-18;
- assert.equal(pending(detect(m))[0].amount,-15.99);
+ assert.equal(pending(detect(m)).length,0);
 });
-test('détection : libellés normalisés ou alias explicites, pas de regroupement par tag manuel',()=>{
+test('détection : libellés strictement égaux normalisés, sans regroupement par association ou tag',()=>{
  const m=model();m.rows[0].desc=' CB NETFLIX ';m.rows[1].desc='PRLV NFLX';m.rows[2].desc='cb  netflix';
- for(const r of m.rows)m.notes[r.id]={tags:['personnel']};
+ for(const r of m.rows)m.notes[r.id]={tags:['Perso']};
  assert.equal(pending(detect(m)).length,0);
  m.labelAssociations=[{tag:'Netflix',patterns:['NETFLIX','NFLX']}];
- const c=pending(detect(m))[0];assert.equal(c.desc,'Netflix');assert.equal(c.evidence.length,3);
- assert.deepEqual(c.evidence.map(e=>e.desc),m.rows.map(r=>r.desc));
- m.labelAssociations.push({tag:'Loisirs',patterns:['NETFLIX','NFLX']});
  assert.equal(pending(detect(m)).length,0);
+ m.rows[1].desc='CB NETFLIX';const c=pending(detect(m))[0];
+ assert.equal(c.desc,'cb  netflix');assert.equal(c.evidence.length,3);
+ assert.deepEqual(c.evidence.map(e=>e.desc),m.rows.map(r=>r.desc));
 });
 test('détection : comptes sources, banques et sens des flux séparés',()=>{
- const m=model();m.rows[0].sourceAccount='Epargne';assert.equal(pending(detect(m)).length,0);
- m.rows[0].sourceAccount='Courant';m.rows[0].bank='Autre';assert.equal(pending(detect(m)).length,0);
- m.rows[0].bank='BPS';m.rows[0].amount=15.99;assert.equal(pending(detect(m)).length,0);
+ const m=model();m.rows[0].sourceAccount='Epargne';assert.equal(pending(detect(m))[0].evidence.length,2);
+ m.rows[0].sourceAccount='Courant';m.rows[0].bank='Autre';assert.equal(pending(detect(m))[0].evidence.length,2);
+ m.rows[0].bank='BPS';m.rows[0].amount=15.99;assert.equal(pending(detect(m))[0].evidence.length,2);
 });
-test('détection : aucun faux motif sur deux dates, dates irrégulières ou doublons du même jour',()=>{
- assert.equal(pending(detect(model(['2026-08-01','2026-09-01']))).length,0);
+test('détection : deux dates suffisent ; dates irrégulières ou doublons du même jour',()=>{
+ assert.equal(pending(detect(model(['2026-08-01','2026-09-01']))).length,1);
  assert.equal(pending(detect(model(['2026-08-01','2026-08-13','2026-10-22']))).length,0);
  const m=model();m.rows.push({...m.rows[0],id:'doublon'});assert.equal(pending(detect(m)).length,0);
 });
 test('détection : flottantes, prévisions, lignes prévues, ponctuelles et devises non prises en charge exclues',()=>{
  for(const change of [r=>r.date=null,r=>r.forecast=true,r=>r.nature='planned',r=>r.currency='USD',r=>r.amount=0]){
-  const m=model();change(m.rows[0]);assert.equal(pending(detect(m)).length,0);
+  const m=model();change(m.rows[0]);assert.equal(pending(detect(m))[0].evidence.length,2);
  }
- const m=model();m.notes[m.rows[0].id]={type:'ponctuel'};assert.equal(pending(detect(m)).length,0);
+ const m=model();m.notes[m.rows[0].id]={type:'ponctuel'};assert.equal(pending(detect(m))[0].evidence.length,2);
 });
 test('détection : règles existantes et rapprochements bancaires incertains jamais associés arbitrairement',()=>{
  const m=model();m.rules.r={id:'r',account:'BPS',desc:'netflix',amount:-15.99,frequency:'mensuel',anchor:'2026-10-31'};
  assert.equal(pending(detect(m)).length,0);delete m.rules.r;m.notes[m.rows[0].id]={ruleId:'regle-absente'};
  assert.equal(pending(detect(m)).length,0);delete m.notes[m.rows[0].id];
  m.bankIdentities.find(e=>e.id===m.rows[0].id).pendingMatch={candidates:[],reason:'doublon'};
- assert.equal(pending(detect(m)).length,0);
+ assert.equal(pending(detect(m))[0].evidence.length,2);
 });
 test('backlog : scans répétés et réordonnancement sans duplication, décisions ignorées conservées',()=>{
  let m=detect(model());const id=pending(m)[0].id;
@@ -85,7 +86,7 @@ test('backlog : acceptation explicite et modifiable, tags complets préservés, 
  assert.throws(()=>accept(accepted,c),/traitée|introuvable/i);
 });
 test('backlog : données modifiées, import partiel et conflit d’annotations refusés sans mutation',()=>{
- for(const change of [m=>m.rows.pop(),m=>m.rows[0].amount=-200,m=>m.notes[m.rows[0].id]={ruleId:'autre'},m=>m.labelAssociations=[{tag:'Netflix',patterns:['NETFLIX']} ]]){
+ for(const change of [m=>m.rows.pop(),m=>m.rows[0].amount=-200,m=>m.notes[m.rows[0].id]={ruleId:'autre'}]){
   const m=detect(model()),c=pending(m)[0];change(m);const before=JSON.stringify(m);
   assert.throws(()=>accept(m,c),/changé|relanc|règle|disponible/i);assert.equal(JSON.stringify(m),before);
  }
@@ -127,5 +128,5 @@ test('backlog : scan actualisé après nouvel historique, proposition obsolète 
  assert.equal(pending(stale)[0].stale,true);assert.equal(pending(stale)[0].evidence.length,3);
  const refreshed=detect({...stale,rows:m.rows});assert.equal(pending(refreshed)[0].id,id);assert.ok(!pending(refreshed)[0].stale);
  const updated=detect({...m,rows:[...m.rows,{...m.rows.at(-1),id:'suivante',date:'2026-11-30',amount:-18}]});
- assert.equal(updated.recurrenceBacklog.length,1);assert.equal(pending(updated)[0].evidence.length,4);assert.equal(pending(updated)[0].amount,-18);
+ assert.equal(updated.recurrenceBacklog.length,1);assert.equal(pending(updated)[0].evidence.length,3);assert.equal(pending(updated)[0].amount,-15.99);
 });
