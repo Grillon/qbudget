@@ -1,8 +1,8 @@
-# qbudget V0.20.2 — Pilotage financier local
+# qbudget V0.20.3 — Pilotage financier local
 
 qbudget aide à explorer ses finances par les tags, suivre ses soldes, anticiper sa trésorerie et comparer des scénarios. Les opérations flottantes, prévisions et classifications restent souples. Les données sont locales ; aucun service ne reçoit les relevés.
 
-**0.20.2 :** nouveau dictionnaire d’exploration : Entité, Projet, Poste, Contexte et Finalité. Les anciennes catégories sont remplacées ; tous les tags et annotations des opérations restent conservés. Les tags non classés restent libres et les catégories restent créables et modifiables.
+**0.20.3 :** retagage opération par opération depuis les résultats filtrés ou la sélection. Tous les tags sont proposés par catégorie, avec validation et passage à l’opération suivante ; les tags libres et les annotations restent conservés.
 
 ## Démarrer
 
@@ -42,6 +42,7 @@ Un rattachement manuel d’annotation ne fusionne pas deux identités bancaires 
 
 Le tableau de bord et l’éditeur partagent les mêmes données et calculs.
 
+- **Retagage guidé** : parcourir les résultats ou la sélection, choisir un tag par catégorie et enregistrer avant de passer à la suivante. Les tags libres et catégories non modifiées restent conservés. [Guide](docs/retagage.md).
 - **Tags multiples** : `SASU, IK, mission` ajoute les tags manquants à une sélection ou aux résultats filtrés, sans doublons. Le retrait groupé porte sur un tag à la fois. [Guide](docs/retrait-tags.md).
 - **Associations de libellés** : motifs littéraux avec condition OU, insensibles à la casse et par mots entiers, vers un tag existant. Les tags manuels restent distincts des tags déduits. [Guide](docs/associations-libelles.md).
 - **Sans tags / Libellés partiellement tagués** : filtres combinables avec la recherche et les bornes de date/montant. Une suggestion commune peut préremplir le champ ; votre saisie reste prioritaire. [Guide](docs/reperage-tags.md).

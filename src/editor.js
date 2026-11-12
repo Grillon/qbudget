@@ -5,7 +5,7 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.20.0';
+ const version='0.20.3';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
@@ -137,6 +137,7 @@
   let matchingEditableIds=[],matchingEditableKeys=[],visibleItems=[];
   let currentTagReview=null,automaticTagValue=null;
   let selectedKeys=new Set(),selectionAnchor='';
+  let retagSession=null,detailOpener=null;
   const elt=(tag,text,cls)=>{const e=doc.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e};
   function field(parent,label,value,type='text',opts={}){
    const wrap=elt('label',undefined,'editor-field'),name=elt('span',label),input=elt(type==='select'?'select':type==='textarea'?'textarea':'input');
@@ -150,6 +151,7 @@
   function status(text,failed=false){const e=byId('editorStatus');e.textContent=text;e.classList.toggle('editor-error',failed)}
   function commit(change){try{change(getModel());const saved=options.onChange();if(saved===false)status('Modifications conservées en mémoire. Le stockage est indisponible : exporte tes annotations avant de fermer la page.',true);else status('Modifications enregistrées dans qbudget. Exporte tes annotations pour créer un fichier.')}catch(e){status(e.message,true)}}
   function renderDetail(list){
+   if(retagSession){renderRetag();return}
    const panel=byId('editorDetail');panel.replaceChildren();const model=getModel();
    const item=list.find(i=>i.key===selectedKey);
    if(!item){panel.append(elt('p','Sélectionne un élément du tableau pour voir et modifier ses propriétés.','mutednote'));return}
@@ -262,9 +264,75 @@
    }
    host.append(details);
   }
+  function renderRetag(){
+   const panel=byId('editorDetail');panel.replaceChildren();
+   const session=retagSession,model=getModel(),engine=root.QBudgetEngine;
+   const nav=elt('div',undefined,'retag-navigation');panel.append(nav);
+   const done=session.index>=session.ids.length;
+   const progress=elt('p',done?`Parcours terminé · ${session.saved.size} opération(s) enregistrée(s) sur ${session.ids.length}`:`Opération ${session.index+1} sur ${session.ids.length} · ${session.saved.size} enregistrée(s)`,'retag-progress');
+   progress.id='editorRetagProgress';progress.setAttribute('role','status');nav.append(progress);
+   const move=index=>{
+    session.index=index;
+    if(session.ids[index])selectedKey='row:'+session.ids[index];
+    renderRetag();byId('editorDetail').parentElement.scrollTop=0;(byId('editorRetagSave')||byId('editorRetagPrevious')||byId('editorClose')).focus();
+   };
+   const previous=elt('button','Précédent','secondary');previous.type='button';previous.id='editorRetagPrevious';previous.disabled=session.index===0;
+   previous.onclick=()=>move(session.index-1);nav.append(previous);
+   if(done){panel.append(elt('h3','Retagage terminé'));panel.append(elt('p','Les opérations passées restent inchangées. Tu peux revenir en arrière ou fermer ce parcours.','mutednote'));return}
+   const id=session.ids[session.index],row=model.rows.find(r=>r.id===id&&!r.forecast);
+   if(!session.drafts.has(id))session.drafts.set(id,Object.create(null));
+   const choices=session.drafts.get(id);
+   const skip=elt('button','Passer','secondary');skip.type='button';skip.id='editorRetagSkip';skip.onclick=()=>{session.drafts.delete(id);session.feedback='';move(session.index+1)};nav.append(skip);
+   const save=elt('button',session.index===session.ids.length-1?'Enregistrer et terminer':'Enregistrer et suivant');save.type='button';save.id='editorRetagSave';save.disabled=!row;
+   save.onclick=()=>{
+    try{
+     root.QBudgetTags.retagOperation(model,id,choices);
+     session.saved.add(id);session.drafts.delete(id);
+     const persisted=options.onChange();
+     if(persisted===false){session.feedback='Choix conservés en mémoire. Le stockage est indisponible : exporte tes annotations avant de fermer la page.';renderRetag();return}
+     session.feedback='';move(session.index+1);
+    }catch(error){session.feedback=error.message;renderRetag()}
+   };nav.append(save);
+   if(session.feedback){const error=elt('p',session.feedback,'filter-error');error.setAttribute('role','alert');panel.append(error)}
+   if(!row){panel.append(elt('p','Cette opération n’est plus disponible. Tu peux passer à la suivante.','mutednote'));return}
+   panel.append(elt('h3',row.desc||'Sans libellé'));
+   panel.append(elt('p',`${row.date||'Sans date'} · ${row.bank||'Sans compte'}${row.sourceAccount?' · '+row.sourceAccount:''} · ${amountFormatter.format(Number(row.amount))} ${row.currency||'EUR'}`,'mutednote'));
+   panel.append(elt('p','Choisis au plus un tag par catégorie. Seules les catégories modifiées seront remplacées. Passer abandonne les choix de cette opération ; Fermer abandonne les choix non enregistrés.','mutednote'));
+   const automatic=engine.automaticTagsFor(model,row);
+   for(const [index,category] of (model.tagCategories||[]).entries()){
+    const group=elt('fieldset',undefined,'retag-category');group.dataset.category=category.name;group.append(elt('legend',category.name));panel.append(group);
+    const values=engine.tagsByCategory(model,row,category);
+    if(category.source==='type'){
+     group.append(elt('p',(values.join(', ')||'Non renseignée')+' · périodicité existante (tags ou type), à modifier dans le détail de l’opération.','mutednote'));continue;
+    }
+    const allowed=new Set(category.tags.map(lower)),derived=automatic.filter(tag=>allowed.has(lower(tag)));
+    if(values.length>1)group.append(elt('p','Tags actuels : '+values.join(', ')+'. Ils sont conservés tant que tu ne choisis pas un remplacement.','mutednote'));
+    if(derived.length)group.append(elt('p','Par association : '+derived.join(', ')+'. Pour choisir un autre tag, modifie l’association de libellés.','mutednote'));
+    const selected=Object.hasOwn(choices,category.name)?choices[category.name]:values.length===1?values[0]:values.length===0?'':null;
+    const options=elt('div',undefined,'retag-options');group.append(options);
+    for(const [tagIndex,tag] of ['',...category.tags].entries()){
+     const label=elt('label',undefined,'retag-option'),input=elt('input');input.type='radio';input.name='retag-category-'+index;input.value=tag;
+     input.id=`retag-option-${index}-${tagIndex}`;label.htmlFor=input.id;
+     input.checked=selected!==null&&lower(selected)===lower(tag);
+     input.disabled=derived.length>0&&(derived.length!==1||lower(tag)!==lower(derived[0]));
+     input.onchange=()=>{choices[category.name]=tag};
+     label.append(input,doc.createTextNode(tag||'Sans tag'));options.append(label);
+    }
+   }
+   const free=engine.organizedTags(model,row).other;
+   const freeInfo=elt('p','Tags libres conservés : '+(free.join(', ')||'aucun'),'mutednote retag-free');freeInfo.id='editorRetagFreeTags';panel.append(freeInfo);
+  }
+  byId('editorRetag').onclick=()=>{
+   const ids=visibleItems.filter(i=>(i.kind==='bank'||i.kind==='manual')&&(!selectedKeys.size||selectedKeys.has(i.key))).map(i=>i.id);
+   if(!ids.length||byId('editorSearchError').textContent)return;
+   detailOpener=doc.activeElement;
+   retagSession={ids,index:0,drafts:new Map(),saved:new Set(),feedback:''};selectedKey='row:'+ids[0];
+   renderRetag();byId('editorDetailBackdrop').hidden=false;byId('editorDetail').parentElement.scrollTop=0;byId('editorRetagSave').focus();
+  };
   function detailOpen(){return !byId('editorDetailBackdrop').hidden}
-  function closeDetail(){byId('editorDetailBackdrop').hidden=true}
+  function closeDetail(){byId('editorDetailBackdrop').hidden=true;retagSession=null;detailOpener?.focus()}
   function openDetail(key){
+   retagSession=null;detailOpener=doc.activeElement;
    selectedKey=key;
    renderDetail(itemList(getModel()));
    byId('editorDetailBackdrop').hidden=false;
@@ -272,11 +340,27 @@
   }
   byId('editorClose').onclick=closeDetail;
   byId('editorDetailBackdrop').addEventListener('click',event=>{if(event.target===byId('editorDetailBackdrop'))closeDetail()});
-  doc.addEventListener('keydown',event=>{if(event.key==='Escape'&&detailOpen())closeDetail()});
+  doc.addEventListener('keydown',event=>{
+   if(!detailOpen())return;
+   if(event.key==='Escape'){closeDetail();return}
+   if(event.key==='Tab'){
+    const available=[...byId('editorDetailBackdrop').querySelectorAll('button,input,select,textarea,[tabindex]')].filter(node=>!node.disabled&&node.tabIndex>=0&&node.getClientRects().length);
+    const controls=available.filter(node=>{
+     if(node.type!=='radio'||!node.name)return true;
+     const group=available.filter(other=>other.type==='radio'&&other.name===node.name);
+     return node===(group.find(other=>other.checked)||group[0]);
+    });
+    const target=event.shiftKey?controls.at(-1):controls[0];
+    if(controls.length&&(event.shiftKey&&doc.activeElement===controls[0]||!event.shiftKey&&doc.activeElement===controls.at(-1))){event.preventDefault();target.focus()}
+   }
+  });
   function updateSelection(allowSuggestion=true){
    const matching=new Set(matchingEditableKeys);
    selectedKeys=new Set([...selectedKeys].filter(k=>matching.has(k)));
    const count=selectedKeys.size,input=byId('editorBulkTag');
+   const retag=byId('editorRetag'),retagCount=count||matchingEditableIds.length;
+   retag.disabled=!retagCount||!!byId('editorSearchError').textContent;
+   retag.textContent=`Retaguer ${count?'la sélection':'les résultats'} (${retagCount})`;
    const selectedIds=visibleItems.filter(i=>selectedKeys.has(i.key)&&(i.kind==='bank'||i.kind==='manual')).map(i=>i.id);
    const proposed=tagSuggestions(currentTagReview,selectedIds.length?selectedIds:matchingEditableIds),suggestion=proposed.join(', ');
    if(allowSuggestion&&(!input.value.trim()||automaticTagValue!==null&&input.value===automaticTagValue)){input.value=suggestion;automaticTagValue=suggestion}

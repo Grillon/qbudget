@@ -1,3 +1,13 @@
+# qbudget V0.20.3 — Retagage opération par opération
+
+- Parcours depuis les résultats filtrés ou la sélection de l’éditeur, dans l’ordre du tableau et au-delà de la pagination. Compteur, Précédent, Passer et Enregistrer et suivant ; liste stable malgré les changements de tags.
+- Tous les tags proposés par catégorie, y compris les catégories personnalisées. Un choix remplace uniquement les tags manuels de cette catégorie ; les catégories non modifiées, tags libres et autres annotations sont conservés.
+- Tags par association identifiés, choix concurrents désactivés ; périodicité existante en lecture seule. Aucune règle ni fréquence créée par le retagage.
+- Sauvegarde locale et exports habituels, erreurs de stockage visibles, navigation clavier dans le panneau et fermeture par Échap. Aucun changement aux écritures ou calculs financiers.
+- Tests de remplacement atomique, tags libres, associations, export/import et parcours Firefox sur 205 opérations.
+
+---
+
 # qbudget V0.20.2 — Nouveau dictionnaire d’exploration
 
 - Remplacement initial des anciennes catégories par Entité, Projet, Poste, Contexte, Finalité, Périodicité, Traitement / État et Variabilité. Même schéma de catégories version 1 ; exemples JSON synchronisés.

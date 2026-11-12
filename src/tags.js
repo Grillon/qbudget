@@ -5,7 +5,7 @@
  root.QBudgetTags=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.20.2',defaultsVersion=3;
+ const version='0.20.3',defaultsVersion=3;
  // Dictionnaire d’exploration ; le schéma reste en version 1.
  const defaultData=[
   {name:'Entité',tags:['Micro','SASU','Perso','exploration','personnel'],source:'tags'},
@@ -77,6 +77,33 @@
   if(!tags.length)throw Error('Saisis au moins un tag, séparé des suivants par une virgule.');
   return tags;
  }
+ // Remplace uniquement les catégories explicitement choisies pour une opération.
+ // Les tags libres, catégories non touchées et autres annotations sont conservés.
+ function retagOperation(model,id,choices){
+  const engine=root.QBudgetEngine||(typeof require==='function'?require('./engine.js'):null);
+  const row=(model.rows||[]).find(r=>r.id===id&&!r.forecast);
+  if(!row)throw Error('Opération à retaguer introuvable');
+  if(!choices||typeof choices!=='object'||Array.isArray(choices))throw Error('Choix de catégories invalides');
+  const fold=value=>String(value).trim().toLocaleLowerCase('fr');
+  const categories=validate(model.tagCategories||[]),automatic=engine.automaticTagsFor(model,row);
+  const before=engine.manualTagsFor(model,row);let tags=[...before];
+  for(const [name,value] of Object.entries(choices)){
+   const category=categories.find(c=>c.name===name);
+   if(!category||category.source!=='tags')throw Error('Catégorie non modifiable : '+name);
+   if(typeof value!=='string')throw Error('Tag invalide : '+name);
+   const selected=value===''?'':category.tags.find(tag=>fold(tag)===fold(value));
+   if(selected===undefined)throw Error('Tag absent de la catégorie : '+name);
+   const allowed=new Set(category.tags.map(fold)),derived=automatic.filter(tag=>allowed.has(fold(tag)));
+   if(derived.length&&(derived.length!==1||fold(selected)!==fold(derived[0])))throw Error('Le tag de « '+name+' » provient d’une association de libellés. Modifie cette association pour le remplacer.');
+   const current=tags.filter(tag=>allowed.has(fold(tag)));
+   if(!derived.length&&current.length===(selected?1:0)&&(!selected||fold(current[0])===fold(selected)))continue;
+   tags=tags.filter(tag=>!allowed.has(fold(tag)));
+   if(selected&&!derived.length)tags.push(selected);
+  }
+  const changed=JSON.stringify(tags)!==JSON.stringify(before);
+  if(changed)model.notes={...model.notes,[id]:{...(model.notes?.[id]||{}),tags,tag:tags[0]||''}};
+  return {changed};
+ }
  // API historique : conserve la validation d'un seul tag.
  function addTag(model,ids,tag){
   const value=String(tag??'').trim();
@@ -130,5 +157,5 @@
   if(changes.length){const notes={...model.notes};for(const {id,note} of changes){if(note===null)delete notes[id];else notes[id]=note}model.notes=notes}
   return result;
  }
- return Object.freeze({version,defaultsVersion,defaults,upgradeCategories,validate,exportJson,parseJson,moveCategory,parseTagList,addTag,addTags,removeTag,removeTagPreview,withoutTag});
+ return Object.freeze({version,defaultsVersion,defaults,upgradeCategories,validate,exportJson,parseJson,retagOperation,moveCategory,parseTagList,addTag,addTags,removeTag,removeTagPreview,withoutTag});
 });
