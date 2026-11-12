@@ -1,3 +1,96 @@
+# qbudget V0.20.0 — Corrections de fiabilité et outils Node uniques
+
+- Rattacher une annotation ne crée plus d’alias concurrent d’une autre identité bancaire : les tags futurs ne peuvent plus être détournés lors du retour d’une opération absente d’un import partiel.
+- Export CLI au format natif incluant toutes les manuelles et flottantes, et restauration des anciens exports qui les stockaient dans `rows`. Échecs de stockage signalés durablement, sans message de sauvegarde réussie ; les données en mémoire restent exportables.
+- Noms de comptes contenant « · » préservés ; ancienne migration limitée aux correspondances prouvées et sans fusion de références ambiguës.
+- Dates calendaires strictes, horizons CLI/REPL cohérents en fin de mois et comptes sans transaction accessibles dans le REPL. Calendrier de récurrences partagé par prévision et audit, sans plafond silencieux de 600 échéances.
+- Soldes et projections EUR indisponibles avec diagnostic si le périmètre contient une devise incompatible, sans conversion ou suppression de ligne. Le tableau de bord utilise directement la prévision du moteur.
+- Index locaux de rapprochement et contextes de lecture par calcul/rendu, formatteurs monétaires réutilisés, absence de reconstruction des backlogs cachés et préservation des brouillons ouverts.
+- Importateur Node utilisant le même normaliseur que le navigateur, générateurs Node et suppression des quatre scripts Python. Formats numériques configurables, encodages, précision décimale et CSV multilignes couverts sans moteur d’import parallèle.
+- Tests de régression sur les défauts reproduits et parcours fonctionnels Firefox versionnés, exécutés en CI avant publication. Documentation courante réécrite, historique conservé ici.
+
+---
+
+# qbudget V0.19.12 — Validation des transferts en un clic
+
+- Suppression de la confirmation supplémentaire pour ajouter `transfert_intercomptes` depuis le backlog, sur une paire ou en groupe. Le clic sur le bouton constitue la validation.
+- Vérification des correspondances au moment de l’ajout et refus atomique des données devenues ambiguës conservés.
+
+---
+
+# qbudget V0.19.11 — Transferts intercomptes potentiels
+
+- Détection manuelle des paires lisibles : même date, même devise, montants exactement opposés et comptes distincts, y compris deux comptes sources d’une même banque.
+- Backlog sauvegardé avec preuves et décisions d’ignorer ; ambiguïtés signalées sans choix arbitraire. Les doubles débits restent manuels.
+- Valider ajoute uniquement `transfert_intercomptes` aux deux lignes. Les tags présents déterminent le traitement, y compris après une édition manuelle ; aucun état de validation indépendant.
+- Validation groupée revérifiée et atomique ; imports partiels, réordonnancement et anciennes sauvegardes compatibles. Aucun changement aux montants, soldes ou exports d’audit.
+- Proposition de catégories d’exploration documentée et JSON facultatif, sans modification du catalogue par défaut ou des données personnelles.
+
+---
+
+# qbudget V0.19.10 — Tri et nombre de lignes dans l’éditeur
+
+- En-têtes de données cliquables au clavier comme à la souris : date, compte, élément, montant signé et tags. Alternance croissant/décroissant avec flèche et indication accessible du sens.
+- Tri de toutes les correspondances avant découpage de l’affichage, valeurs absentes en fin de liste dans les deux sens et égalités stables. Filtres et sélection restent actifs.
+- Choix de 120, 250, 500 ou 1 000 lignes par affichage, conservé lors des recherches ; le bouton d’affichage supplémentaire utilise le même nombre.
+- Aucun changement de l’ordre bancaire enregistré, des annotations, des calculs financiers ou du format JSON.
+
+---
+
+# qbudget V0.19.9 — Repérage et suggestion de tags dans l’éditeur
+
+- Cases Sans tags et Libellés partiellement tagués, combinables avec la recherche et les filtres existants. Les résultats sont les correspondances du tableau, taguables par sélection ou en totalité sans mot-clé.
+- Comparaison du même libellé normalisé sur le même compte source, dans tout l’historique chargé ; tags manuels et automatiques pris en compte.
+- Préremplissage modifiable avec les tags communs aux opérations similaires taguées. Aucun choix arbitraire en cas de contradiction, aucune application automatique et aucune saisie manuelle écrasée.
+- Repérage sans modification des opérations, annotations, règles, montants ou calculs. Les corrections utilisent le format JSON existant.
+
+---
+
+# qbudget V0.19.8 — Ajout groupé de plusieurs tags
+
+- Ajout de plusieurs tags séparés par des virgules, sur la sélection ou sur tous les résultats filtrés, dans le tableau de bord et l’éditeur.
+- Seuls les tags manquants sont ajoutés, sans doublons de casse ; les tags existants, annotations et calculs sont préservés. Les compteurs portent sur les opérations modifiées.
+- Le retrait reste limité à un seul tag, avec une aide explicite lorsque plusieurs sont saisis. Le format JSON ne change pas.
+
+---
+
+# qbudget V0.19.7 — Backlog des récurrences potentielles
+
+- Détection déclenchée manuellement sur les opérations réalisées : compte source, libellé normalisé ou alias explicites, au moins trois occurrences régulières.
+- Backlog persistant avec opérations observées, montant et fréquence proposés, création modifiable puis confirmée ou décision d’ignorer réversible.
+- Aucune modification financière avant validation. Création d’une règle native, tags conservés et échéances auditables par les exports existants.
+- Scans sans doublons, décisions exportées et restaurées en JSON ; création refusée sur un historique devenu absent ou modifié.
+
+---
+
+# qbudget V0.19.6 — Retrait groupé des tags manuels
+
+- Retrait d’un tag sur la sélection ou sur tous les résultats filtrés, dans le tableau de bord et l’éditeur, y compris au-delà des limites d’affichage.
+- Aperçu du nombre d’opérations concernées et confirmation avant retrait ; correspondance exacte et insensible à la casse.
+- Autres tags, annotations, identifiants, opérations flottantes, règles et montants conservés. Le champ historique `tag` est mis à jour pour éviter toute réapparition du tag supprimé.
+- Les tags d’associations ne sont pas supprimés : le nombre d’opérations où le tag restera automatique est signalé. Les associations et le type restent gérés dans leurs réglages.
+
+---
+
+# qbudget V0.19.5 — Rapprochements à traiter après import
+
+- Les ambiguïtés d’identité sont reportées dans une liste persistante : plus de questions de rapprochement pendant l’import navigateur.
+- Toutes les lignes sont conservées et comptées ; les annotations incertaines ne sont pas attribuées automatiquement. Le bandeau indique que les statistiques par tags peuvent évoluer après traitement.
+- Rattachement à une identité historique ou confirmation d’une opération distincte après import, sans fusion de lignes ni écrasement d’annotations différentes.
+- Liste sauvegardée dans le registre d’identités du JSON existant. Imports partiels, opérations flottantes et associations de libellés préservés ; mode CLI strict inchangé.
+
+---
+
+# qbudget V0.19.4 — Réimports fiables et associations de libellés
+
+- Identités bancaires stables et rapprochement au réimport, avec migration compatible des annotations et résolution explicite des ambiguïtés. Opérations manuelles et flottantes préservées.
+- Associations de mots ou expressions littérales vers un tag existant, avec conditions OU, aperçu avant enregistrement et modification/suppression dans l’éditeur.
+- Classement recalculé sur les opérations existantes et les futurs imports, sans copier les tags automatiques dans les annotations manuelles ni modifier les libellés originaux.
+- Associations persistantes dans le navigateur et dans les annotations JSON ; même comportement dans le moteur Node et le navigateur. Anciens fichiers acceptés.
+- Version produit, interface, éditeur, annotations et moteur en 0.19.4 sur dev. Aucune modification des calculs financiers ou création automatique de récurrences.
+
+---
+
 # qbudget V0.19.3 — Éditeur compact, sélection multiple et filtres montant/période
 
 - **Tableau compact pleine largeur** dans l'onglet Éditeur ; aucune liste latérale étroite, pas de défilement horizontal au format bureau. Détail modifiable dans une fenêtre à la demande, non ouvert par le simple fait de sélectionner une ligne.

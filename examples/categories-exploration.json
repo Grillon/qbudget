@@ -1,0 +1,12 @@
+{
+  "format": "qbudget-tag-categories",
+  "schemaVersion": 1,
+  "categories": [
+    {"name":"Poste","tags":["alimentation","courses","repas","restaurant","essence","peage","transport","telecom","logement","streaming","energie","eau","assurance","sante","loisirs","sport","impots","vetements","cadeaux","frais_bancaires"],"source":"tags"},
+    {"name":"Flux","tags":["depense","revenu","transfert_intercomptes","remboursement"],"source":"tags"},
+    {"name":"Périmètre","tags":["personnel","SASU","copro"],"source":"tags"},
+    {"name":"Contexte","tags":["mission","quotidien","deplacement","travail"],"source":"tags"},
+    {"name":"Périodicité","tags":["Récurrent","Ponctuel"],"source":"type"},
+    {"name":"Variabilité","tags":["fixe","variable"],"source":"tags"}
+  ]
+}

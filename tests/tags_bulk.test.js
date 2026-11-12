@@ -61,7 +61,7 @@ test('interface : modules séparés, contrôle JSON et sélection visible des é
  for(const path of ['./src/engine.js','./src/normalize.js','./src/tags.js','./src/ui.js'])assert.ok(html.includes(path));
  for(const id of ['modulesPanel','modulesVersions','exportTagCategories','importTagCategories','tagCategoriesFile','resetTagCategories','selectVisibleRows','clearSelectedRows','bulkTag','applyBulkTag','bulkStatus'])assert.ok(html.includes('id="'+id+'"'));
  assert.match(ui,/displayedEditableIds=rows\.slice\(0,tableRowLimit\)\.filter\(r=>!r\.forecast\)/);
- assert.match(ui,/QBudgetTags\.addTag\(model,/);
+ assert.match(ui,/QBudgetTags\.addTags\(model,/);
  assert.match(ui,/QBudgetTags\.parseJson/);
  assert.match(ui,/QBudgetTags\.exportJson/);
  assert.match(ui,/renderModuleVersions/);

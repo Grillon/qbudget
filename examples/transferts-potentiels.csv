@@ -1,0 +1,11 @@
+Date;Banque;Compte;Libellé;Montant;Devise
+2026-11-01;BPS;Courant;Virement vers Qonto;-2000,00;EUR
+2026-11-01;Qonto;Courant;Virement depuis BPS;2000,00;EUR
+2026-11-02;BPS;LDD;Virement vers courant;-500,00;EUR
+2026-11-02;BPS;Courant;Virement depuis LDD;500,00;EUR
+2026-11-03;BPS;Courant;Virement ambigu;-700,00;EUR
+2026-11-03;Qonto;Courant;Virement possible A;700,00;EUR
+2026-11-03;Revolut;Courant;Virement possible B;700,00;EUR
+2026-11-04;BPS;LDD;Double debit illisible LDD;-800,00;EUR
+2026-11-04;BPS;Courant;Double debit illisible courant;-800,00;EUR
+2026-11-05;BPS;Courant;Courses;-45,00;EUR

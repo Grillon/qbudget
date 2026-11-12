@@ -69,7 +69,7 @@ test('les deux interfaces offrent aperçu, Regex, action groupée explicite et c
  assert.match(ui,/QBudgetEngine\.compileSearch\(search,searchMode\)/);
  assert.match(ui,/matchingSavedRows=rows\.filter\(r=>!r\.forecast\)/);
  assert.match(ui,/if\(!confirm\(`/);
- assert.match(ui,/QBudgetTags\.addTag\(model,matches\.map\(r=>r\.id\),tag\)/);
- assert.match(editor,/root\.QBudgetTags\.addTag\(getModel\(\),ids,tag\)/);
+ assert.match(ui,/QBudgetTags\.addTags\(model,matches\.map\(r=>r\.id\),tag\)/);
+ assert.match(editor,/root\.QBudgetTags\.addTags\(getModel\(\),ids,tag\)/);
  assert.match(editor,/root\.confirm\(`/);
 });

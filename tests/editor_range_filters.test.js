@@ -39,6 +39,8 @@ test('filtres invalides sont bloquants : montants, ordre, période',()=>{
  assert.throws(()=>editor.parseEditorFilters({min:'200',max:'100'}),/minimum supérieur/);
  assert.throws(()=>editor.parseEditorFilters({from:'2026-12-31',to:'2026-01-01'}),/postérieure/);
  assert.throws(()=>editor.parseEditorFilters({from:'pas-une-date'}),/Date de début/);
+ assert.throws(()=>editor.parseEditorFilters({from:'2026-02-30'}),/Date de début/);
+ assert.throws(()=>editor.parseEditorFilters({to:'2026-02-29'}),/Date de fin/);
 });
 test('sélection filtrée puis taggage : seul le bon groupe change, jamais les montants',()=>{
  const m=model(),f=editor.parseEditorFilters({min:'1000',max:'2000',from:'2026-09-12',to:'2026-10-01'});

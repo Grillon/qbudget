@@ -5,11 +5,11 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.19.3';
+ const version='0.20.0';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
- const validDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+'T12:00:00'));
+ const validDate=s=>(root.QBudgetEngine||(typeof require==='function'?require('./engine.js'):null)).validDate(s);
  // Sélection tabulaire standard, indépendante des filtres et des calculs financiers.
  // ordered contient seulement les objets taguables dans l'ordre des lignes filtrées.
  function selectKeys(current,ordered,anchor,key,{ctrl=false,shift=false}={}){
@@ -55,12 +55,69 @@
   return true;
  }
 
+ // Repérage sur tout l'historique chargé, avant les filtres de la vue.
+ function tagReview(model){
+  const groups=new Map(),untagged=new Set(),partiallyTagged=new Set(),suggestions=new Map();
+  for(const row of model.rows||[]){
+   if(row.forecast)continue;
+   const tags=root.QBudgetEngine.tagsFor(model,row),tagged=tags.length>0;
+   if(!tagged)untagged.add(row.id);
+   const label=lower(String(row.desc??'').normalize('NFC').trim().replace(/\s+/gu,' '));
+   if(!label)continue;
+   const key=JSON.stringify([row.bank||'',row.sourceAccount||'',label]);
+   if(!groups.has(key))groups.set(key,{ids:[],tagged:false,untagged:false,tags:null});
+   const group=groups.get(key);group.ids.push(row.id);group[tagged?'tagged':'untagged']=true;
+   if(tagged){const keys=new Set(tags.map(lower));group.tags=group.tags===null?tags:group.tags.filter(tag=>keys.has(lower(tag)))}
+  }
+  for(const group of groups.values())for(const id of group.ids){
+   if(group.tagged&&group.untagged)partiallyTagged.add(id);
+   if(group.tags?.length)suggestions.set(id,group.tags);
+  }
+  return {untagged,partiallyTagged,suggestions};
+ }
+ function matchesTagReview(row,review,{withoutTags=false,partialTags=false}={}){
+  if(!withoutTags&&!partialTags)return true;
+  return !!row&&!row.forecast&&(!withoutTags||review.untagged.has(row.id))&&(!partialTags||review.partiallyTagged.has(row.id));
+ }
+ function tagSuggestions(review,ids){
+  if(!review||!ids.length)return [];
+  let common=review.suggestions.get(ids[0])||[];
+  for(const id of ids.slice(1)){const keys=new Set((review.suggestions.get(id)||[]).map(lower));common=common.filter(tag=>keys.has(lower(tag)));if(!common.length)break}
+  return [...common];
+ }
+
+ // Valeurs visibles communes à l'affichage et au tri, sans modifier le modèle.
+ function tableValues(model,item,row){
+  const rule=item.kind==='rule'?model.rules?.[item.id]:null;
+  const tags=row?root.QBudgetEngine.tagsFor(model,row):item.kind==='orphan'?root.QBudgetEngine.manualTagsFor(model,{id:item.id}):[];
+  return {date:row?.date||'',account:row?.bank||rule?.account||'',label:item.label,
+   amount:row?Number(row.amount):rule?Number(rule.amount):null,tags:tags.join(' · ')};
+ }
+ const amountFormatter=new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const textOrder=new Intl.Collator('fr',{numeric:true,sensitivity:'base'});
+ function sortItems(model,items,{column='',direction='asc'}={}){
+  if(!['date','account','label','amount','tags'].includes(column))return [...items];
+  const rows=new Map((model.rows||[]).map(r=>[r.id,r]));
+  const values=items.map((item,index)=>{
+   const row=item.kind==='bank'||item.kind==='manual'?rows.get(item.id):null;
+   let value=tableValues(model,item,row)[column];
+   value=typeof value==='number'?(Number.isFinite(value)?value:null):(String(value??'').trim().normalize('NFC')||null);
+   return {item,index,value};
+  });
+  values.sort((a,b)=>{
+   if(a.value===null||b.value===null)return a.value===b.value?a.index-b.index:a.value===null?1:-1;
+   const order=column==='amount'?a.value-b.value:textOrder.compare(a.value,b.value);
+   return (direction==='desc'?-order:order)||a.index-b.index;
+  });
+  return values.map(v=>v.item);
+ }
+
  function itemList(model){
   const list=[];
   const rowIds=new Set();
   for(const r of model.rows||[]){
-   rowIds.add(r.id);const n=model.notes?.[r.id]||{};
-   list.push({key:'row:'+r.id,kind:r.manual?'manual':'bank',id:r.id,label:r.desc||'Sans libellé',detail:`${r.bank||'Sans compte'} · ${r.date||'En attente'} · ${Number(r.amount).toFixed(2)} €`,search:[r.desc,r.bank,r.date,r.amount,...(n.tags||[]),n.tag].join(' ')});
+   rowIds.add(r.id);
+   list.push({key:'row:'+r.id,kind:r.manual?'manual':'bank',id:r.id,label:r.desc||'Sans libellé',detail:`${r.bank||'Sans compte'} · ${r.date||'En attente'} · ${Number(r.amount).toFixed(2)} €`,search:[r.desc,r.bank,r.date,r.amount,...root.QBudgetEngine.tagsFor(model,r)].join(' ')});
   }
   for(const id of Object.keys(model.notes||{})){
    if(rowIds.has(id))continue;
@@ -75,8 +132,10 @@
   const doc=root.document,host=doc.getElementById('editorScreen');
   if(!host)throw Error('Vue éditeur introuvable');
   const byId=id=>doc.getElementById(id),getModel=options.getModel;
-  let selectedKey='',selectedTag='',categoryOverviewOpen=false,visibleLimit=120;
+  let selectedKey='',selectedTag='',categoryOverviewOpen=false,pageSize=120,visibleLimit=pageSize;
+  let sorting={column:'',direction:'asc'};
   let matchingEditableIds=[],matchingEditableKeys=[],visibleItems=[];
+  let currentTagReview=null,automaticTagValue=null;
   let selectedKeys=new Set(),selectionAnchor='';
   const elt=(tag,text,cls)=>{const e=doc.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e};
   function field(parent,label,value,type='text',opts={}){
@@ -89,7 +148,7 @@
   }
   function link(parent,label,key){const b=elt('button',label,'secondary editor-link');b.type='button';b.onclick=()=>{byId('editorScope').value='all';byId('editorSearch').value='';selectedTag='';render();openDetail(key)};parent.append(b)}
   function status(text,failed=false){const e=byId('editorStatus');e.textContent=text;e.classList.toggle('editor-error',failed)}
-  function commit(change){try{change(getModel());options.onChange();status('Modifications enregistrées dans qbudget. Exporte tes annotations pour créer un fichier.')}catch(e){status(e.message,true)}}
+  function commit(change){try{change(getModel());const saved=options.onChange();if(saved===false)status('Modifications conservées en mémoire. Le stockage est indisponible : exporte tes annotations avant de fermer la page.',true);else status('Modifications enregistrées dans qbudget. Exporte tes annotations pour créer un fichier.')}catch(e){status(e.message,true)}}
   function renderDetail(list){
    const panel=byId('editorDetail');panel.replaceChildren();const model=getModel();
    const item=list.find(i=>i.key===selectedKey);
@@ -110,11 +169,22 @@
      account=field(form,'Compte',row.bank||'','select',{items:[['','Sans compte (en attente)'],...root.QBudgetEngine.accountNames(model).map(a=>[a,a])]});
      nature=field(form,'État',row.nature==='actual'?'actual':'planned','select',{items:[['planned','Prévu'],['actual','Réalisé']]});
     }
-    const tags=field(form,'Tags (séparés par des virgules)',row?root.QBudgetEngine.tagsFor(model,row).join(', '):(n.tags||[]).join(', ')||n.tag||'','textarea');
+    const tags=field(form,'Tags manuels (séparés par des virgules)',root.QBudgetEngine.manualTagsFor(model,row||{id:item.id}).join(', '),'textarea');
+    if(row){
+     const automatic=root.QBudgetEngine.automaticTagsFor(model,row);
+     if(automatic.length)form.append(elt('p','Tags par association : '+automatic.join(', ')+'. Pour les modifier, utilise « Associations de libellés ».','mutednote'));
+    }
     const type=field(form,'Périodicité',n.type||'','select',{items:[['','Non définie'],['ponctuel','Ponctuel'],['recurrent','Récurrent']]});
     const choices=[['','Aucune règle'],...Object.entries(model.rules||{}).map(([id,r])=>[id,(r.desc||id)+' · '+r.account+' ('+r.frequency+')'])];
     if(n.ruleId&&!model.rules?.[n.ruleId])choices.push([n.ruleId,'Règle introuvable : '+n.ruleId]);
     const rule=field(form,'Récurrence liée',n.ruleId||'','select',{items:choices});
+    if(item.kind==='orphan'){
+     const target=field(form,'Rattacher cette annotation à une opération','', 'select',{items:[['','Choisir une opération'],...(model.rows||[]).map(r=>[r.id,`${r.date||'En attente'} · ${r.bank||'Sans compte'} · ${r.desc||''} · ${r.amount}`])]});
+     const attach=elt('button','Rattacher l’annotation');attach.type='button';attach.onclick=()=>commit(m=>{
+      const updated=root.QBudgetEngine.reassignAnnotation(m,item.id,target.value);
+      m.notes=updated.notes;m.bankIdentities=updated.bankIdentities;selectedKey='row:'+target.value;
+     });form.append(attach);
+    }
     if(n.ruleId&&model.rules?.[n.ruleId])link(form,'Voir la règle « '+model.rules[n.ruleId].desc+' »','rule:'+n.ruleId);
     const save=elt('button','Enregistrer','');save.type='button';save.onclick=()=>commit(m=>{
      const old=m.notes[item.id]||{};const next={...old,tags:commaTags(tags.value)};next.tag=next.tags[0]||'';
@@ -180,12 +250,12 @@
     }
    }
    const buttonWrap=elt('p',undefined,'mutednote');buttonWrap.append(elt('span','Choisis un tag pour afficher exactement les opérations annotées avec celui-ci. '));
-   const clear=elt('button','Voir tout','secondary editor-link');clear.onclick=()=>{selectedTag='';byId('editorSearch').value='';visibleLimit=120;selectedKeys.clear();selectionAnchor='';render()};buttonWrap.append(clear);details.append(buttonWrap);
+   const clear=elt('button','Voir tout','secondary editor-link');clear.onclick=()=>{selectedTag='';byId('editorSearch').value='';visibleLimit=pageSize;selectedKeys.clear();selectionAnchor='';render()};buttonWrap.append(clear);details.append(buttonWrap);
    for(const category of categories){
     const line=elt('div',undefined,'editor-category-line');line.append(elt('strong',category.name));
     for(const tag of category.tags||[]){
      const b=elt('button',tag+' ('+(counts.get(lower(tag))||0)+')','secondary editor-link');b.type='button';
-     b.onclick=()=>{selectedTag=tag;selectedKey='';selectedKeys.clear();selectionAnchor='';visibleLimit=120;byId('editorScope').value='all';byId('editorSearch').value='';render();byId('editorItems').scrollIntoView({behavior:'smooth',block:'nearest'})};
+     b.onclick=()=>{selectedTag=tag;selectedKey='';selectedKeys.clear();selectionAnchor='';visibleLimit=pageSize;byId('editorScope').value='all';byId('editorSearch').value='';render();byId('editorItems').scrollIntoView({behavior:'smooth',block:'nearest'})};
      line.append(b);
     }
     details.append(line);
@@ -203,13 +273,28 @@
   byId('editorClose').onclick=closeDetail;
   byId('editorDetailBackdrop').addEventListener('click',event=>{if(event.target===byId('editorDetailBackdrop'))closeDetail()});
   doc.addEventListener('keydown',event=>{if(event.key==='Escape'&&detailOpen())closeDetail()});
-  function updateSelection(){
+  function updateSelection(allowSuggestion=true){
    const matching=new Set(matchingEditableKeys);
    selectedKeys=new Set([...selectedKeys].filter(k=>matching.has(k)));
-   const count=selectedKeys.size,tag=byId('editorBulkTag').value.trim(),term=byId('editorSearch').value.trim();
+   const count=selectedKeys.size,input=byId('editorBulkTag');
+   const selectedIds=visibleItems.filter(i=>selectedKeys.has(i.key)&&(i.kind==='bank'||i.kind==='manual')).map(i=>i.id);
+   const proposed=tagSuggestions(currentTagReview,selectedIds.length?selectedIds:matchingEditableIds),suggestion=proposed.join(', ');
+   if(allowSuggestion&&(!input.value.trim()||automaticTagValue!==null&&input.value===automaticTagValue)){input.value=suggestion;automaticTagValue=suggestion}
+   byId('editorTagSuggestion').textContent=suggestion?`Suggestion ${selectedIds.length?'pour la sélection':'pour toutes les correspondances'} : ${suggestion} · tags communs aux opérations similaires déjà taguées. À vérifier avant application.`:currentTagReview&&matchingEditableIds.length?'Aucune suggestion commune pour ces correspondances. La saisie reste libre.':'';
+   const tag=input.value.trim(),term=byId('editorSearch').value.trim();
    byId('editorSelectedCount').textContent=`${count} opération(s) sélectionnée(s)`;
    byId('editorApplySelectedTag').disabled=!count||!tag||!!byId('editorSearchError').textContent;
-   byId('editorApplyTag').disabled=!matchingEditableIds.length||!(term||['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))||!!byId('editorSearchError').textContent||!tag;
+   byId('editorApplyTag').disabled=!matchingEditableIds.length||!(term||tagFilterActive()||['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))||!!byId('editorSearchError').textContent||!tag;
+   byId('editorRemoveSelectedTag').disabled=byId('editorRemoveTag').disabled=true;
+   if(tag.includes(','))byId('editorRemovePreview').textContent='Ajout : plusieurs tags séparés par des virgules. Pour un retrait, saisis un seul tag.';
+   else if(tag&&!byId('editorSearchError').textContent){
+    try{
+     const ids=visibleItems.filter(i=>selectedKeys.has(i.key)&&(i.kind==='bank'||i.kind==='manual')).map(i=>i.id);
+     const selected=root.QBudgetTags.removeTagPreview(getModel(),ids,tag),all=root.QBudgetTags.removeTagPreview(getModel(),matchingEditableIds,tag);
+     byId('editorRemoveSelectedTag').disabled=!selected.changed;byId('editorRemoveTag').disabled=!all.changed;
+     byId('editorRemovePreview').textContent=`Retrait manuel possible : ${selected.changed}/${selected.selected} sur la sélection · ${all.changed}/${all.selected} dans les résultats actuels.`+(all.automatic?` Le tag restera présent par association sur ${all.automatic} opération(s).`:'');
+    }catch(error){byId('editorRemovePreview').textContent=error.message}
+   }else byId('editorRemovePreview').textContent='Saisis le tag à retirer pour voir le nombre d’opérations concernées.';
    const lines=byId('editorItems').querySelectorAll('tr[data-key]');
    for(const row of lines){
     const active=selectedKeys.has(row.dataset.key);
@@ -222,6 +307,7 @@
    const result=selectKeys(selectedKeys,matchingEditableKeys,selectionAnchor,key,modifiers);
    selectedKeys=result.keys;selectionAnchor=result.anchor;updateSelection();
   }
+  function tagFilterActive(){return byId('editorWithoutTags').checked||byId('editorPartialTags').checked}
   function render(){
    const model=getModel(),scope=byId('editorScope').value||'all',term=byId('editorSearch').value.trim(),mode=byId('editorSearchMode').value;
    const rawBounds={min:byId('editorAmountMin').value,max:byId('editorAmountMax').value,from:byId('editorDateFrom').value,to:byId('editorDateTo').value};
@@ -230,9 +316,13 @@
    try{bounds=parseEditorFilters(rawBounds)}catch(e){searchError=[searchError,e.message].filter(Boolean).join(' · ')}
    byId('editorSearchError').textContent=searchError;
    const all=itemList(model),rowById=new Map((model.rows||[]).map(r=>[r.id,r]));
-   const visible=all.filter(i=>{
+   const tagFilters={withoutTags:byId('editorWithoutTags').checked,partialTags:byId('editorPartialTags').checked},hasTagFilter=tagFilterActive(),review=hasTagFilter?tagReview(model):null;
+   currentTagReview=review;
+   const visible=sortItems(model,all.filter(i=>{
     if(scope!=='all'&&i.kind!==scope)return false;
     if(searchError)return false;
+    if(hasTagFilter&&i.kind!=='bank'&&i.kind!=='manual')return false;
+    if(!matchesTagReview(rowById.get(i.id),review,tagFilters))return false;
     if(bounds.active&&!matchesEditorFilters(rowById.get(i.id),bounds))return false;
     if(term){const content=[i.label,i.detail,i.search].join(' ');if(mode==='regex'?!regex.test(content):!lower(content).includes(lower(term)))return false}
     if(!selectedTag)return true;
@@ -240,34 +330,33 @@
     if(row)return matchesTag(model,row,selectedTag);
     if(i.kind==='orphan')return (model.notes[i.id]?.tags||[]).some(t=>lower(t)===lower(selectedTag));
     return false;
-   });
+   }),sorting);
    visibleItems=visible;
    const editable=visible.filter(i=>i.kind==='manual'||i.kind==='bank');
    matchingEditableIds=editable.map(i=>i.id);
    matchingEditableKeys=editable.map(i=>i.key);
-   byId('editorCount').textContent=`${visible.length} / ${all.length} élément(s)`+(selectedTag?' · tag '+selectedTag:'')+(bounds.active?' · filtre montant/période':'')+(visible.length>visibleLimit?` · ${visibleLimit} affichés`:'')+` · ${matchingEditableIds.length} opération(s) taguables`;
+   byId('editorCount').textContent=`${visible.length} / ${all.length} élément(s)`+(selectedTag?' · tag '+selectedTag:'')+(bounds.active?' · filtre montant/période':'')+(tagFilters.withoutTags?' · sans tags':'')+(tagFilters.partialTags?' · libellés partiellement tagués':'')+(visible.length>visibleLimit?` · ${visibleLimit} affichés`:'')+` · ${matchingEditableIds.length} opération(s) taguables`;
    renderCategoryOverview(model);
    const host=byId('editorItems');host.replaceChildren();
    const fragment=doc.createDocumentFragment();
    for(const i of visible.slice(0,visibleLimit)){
-    const bankOrManual=i.kind==='bank'||i.kind==='manual',row=rowById.get(i.id);
+    const bankOrManual=i.kind==='bank'||i.kind==='manual',row=bankOrManual?rowById.get(i.id):null,values=tableValues(model,i,row);
     const tr=elt('tr',undefined,'editor-item');tr.dataset.key=i.key;
     tr.tabIndex=0;tr.setAttribute('aria-label',i.label+' '+i.detail);tr.setAttribute('aria-selected','false');
     const checkCell=elt('td'),cb=elt('input',undefined,'editor-checkbox');cb.type='checkbox';cb.disabled=!bankOrManual;cb.setAttribute('aria-label','Sélectionner '+i.label);
     cb.addEventListener('click',event=>event.stopPropagation());
     cb.addEventListener('change',()=>{if(!bankOrManual)return;selectVisible(i.key,{ctrl:true})});
     checkCell.append(cb);tr.append(checkCell);
-    const date=elt('td',row?.date||'—');date.title=row?.date||'Sans date';tr.append(date);
-    const account=elt('td',row?.bank||((i.kind==='rule')?model.rules?.[i.id]?.account:'')||'—','editor-account-cell');account.title=account.textContent;tr.append(account);
+    const date=elt('td',values.date||'—');date.title=values.date||'Sans date';tr.append(date);
+    const account=elt('td',values.account||'—','editor-account-cell');account.title=account.textContent;tr.append(account);
     const name=elt('td',undefined,'editor-row-desc'),label=elt('span',i.label);label.title=i.label;
     name.append(label);if(i.kind==='manual')name.append(elt('span','Manuel','editor-badge'));
     if(i.kind==='rule')name.append(elt('span','Règle','editor-badge'));
     if(i.kind==='account')name.append(elt('span','Compte','editor-badge'));
     if(i.kind==='orphan')name.append(elt('span','Référence','editor-badge'));
     tr.append(name);
-    const amount=elt('td',row?new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(row.amount))+' €':i.kind==='rule'?new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(model.rules?.[i.id]?.amount||0))+' €':'—','editor-amount'+(Number(row?.amount??(i.kind==='rule'?model.rules?.[i.id]?.amount:0))<0?' negative':''));tr.append(amount);
-    const tags=root.QBudgetEngine.tagsFor&&row?root.QBudgetEngine.tagsFor(model,row):model.notes?.[i.id]?.tags||[];
-    const tagCell=elt('td',tags.length?tags.join(' · '):'—','editor-row-tags');tagCell.title=tags.join(' · ');tr.append(tagCell);
+    const amount=elt('td',values.amount===null?'—':amountFormatter.format(values.amount)+' €','editor-amount'+(values.amount<0?' negative':''));tr.append(amount);
+    const tagCell=elt('td',values.tags||'—','editor-row-tags');tagCell.title=values.tags;tr.append(tagCell);
     const editCell=elt('td');const edit=elt('button','Modifier','secondary editor-row-detail');edit.type='button';edit.onclick=event=>{event.stopPropagation();openDetail(i.key)};editCell.append(edit);tr.append(editCell);
     tr.addEventListener('click',event=>{if(bankOrManual)selectVisible(i.key,{ctrl:event.ctrlKey||event.metaKey,shift:event.shiftKey});else openDetail(i.key)});
     tr.addEventListener('keydown',event=>{
@@ -278,22 +367,52 @@
     fragment.append(tr);
    }
    host.append(fragment);
-   const more=byId('editorMore');more.hidden=visible.length<=visibleLimit;
+   const more=byId('editorMore');more.hidden=visible.length<=visibleLimit;more.textContent=`Afficher ${pageSize} éléments supplémentaires`;
+   for(const button of host.closest('table').querySelectorAll('[data-editor-sort]')){
+    const active=button.dataset.editorSort===sorting.column;
+    button.closest('th').setAttribute('aria-sort',active?(sorting.direction==='asc'?'ascending':'descending'):'none');
+    button.querySelector('span').textContent=active?(sorting.direction==='asc'?'↑':'↓'):'↕';
+    button.title=`Trier ${active&&sorting.direction==='asc'?'par ordre décroissant':'par ordre croissant'}`;
+   }
    if(detailOpen()){
     if(!all.some(i=>i.key===selectedKey))closeDetail();else renderDetail(all);
    }
    updateSelection();
   }
-  byId('editorMore').onclick=()=>{visibleLimit+=120;render()};
+  for(const button of byId('editorItems').closest('table').querySelectorAll('[data-editor-sort]'))button.onclick=()=>{
+   const column=button.dataset.editorSort;
+   sorting={column,direction:sorting.column===column&&sorting.direction==='asc'?'desc':'asc'};render();
+  };
+  byId('editorPageSize').onchange=()=>{
+   const requested=Number(byId('editorPageSize').value);
+   pageSize=[120,250,500,1000].includes(requested)?requested:120;
+   byId('editorPageSize').value=pageSize;visibleLimit=pageSize;render();
+  };
+  byId('editorMore').onclick=()=>{visibleLimit+=pageSize;render()};
   byId('editorSelectMatching').onclick=()=>{selectedKeys=new Set(matchingEditableKeys);selectionAnchor=matchingEditableKeys[0]||'';updateSelection()};
   byId('editorClearSelection').onclick=()=>{selectedKeys.clear();selectionAnchor='';updateSelection()};
-  byId('editorBulkTag').addEventListener('input',updateSelection);
+  byId('editorBulkTag').addEventListener('input',()=>{automaticTagValue=null;updateSelection(false)});
   function bulkTag(ids,kind){
    const tag=byId('editorBulkTag').value.trim();
    if(!ids.length||!tag||byId('editorSearchError').textContent)return;
-   if(!root.confirm(`Ajouter « ${tag} » aux ${ids.length} opération(s) ${kind} ?\nAucune prévision FORECAST ne sera modifiée.`))return;
-   try{const result=root.QBudgetTags.addTag(getModel(),ids,tag);options.onChange();byId('editorBulkStatus').textContent=`${result.changed} opération(s) modifiée(s) · ${result.alreadyPresent} déjà taguée(s).`}
+   try{
+    const values=root.QBudgetTags.parseTagList(tag);
+    if(!root.confirm(`Ajouter les tags « ${values.join(', ')} » aux ${ids.length} opération(s) ${kind} ?\nLes tags existants sont conservés. Aucune prévision FORECAST ne sera modifiée.`))return;
+    const result=root.QBudgetTags.addTags(getModel(),ids,tag);options.onChange();
+    byId('editorBulkStatus').textContent=`Tags « ${values.join(', ')} » : ${result.changed} opération(s) modifiée(s) · ${result.alreadyPresent} avec tous ces tags déjà présents.`;
+   }
    catch(e){byId('editorBulkStatus').textContent=e.message}
+  }
+  function bulkRemoveTag(ids,kind){
+   const tag=byId('editorBulkTag').value.trim();
+   if(!tag||byId('editorSearchError').textContent)return;
+   try{
+    const preview=root.QBudgetTags.removeTagPreview(getModel(),ids,tag);
+    if(!preview.changed){byId('editorBulkStatus').textContent=preview.automatic?'Aucun tag manuel à retirer ; modifie l’association de libellé pour retirer le tag automatique.':'Aucun tag manuel correspondant à retirer.';return}
+    if(!root.confirm(`Retirer le tag manuel « ${tag} » de ${preview.changed} opération(s) parmi ${preview.selected} ${kind} ?\nLes autres tags et annotations sont conservés.`+(preview.automatic?`\nLe tag restera affiché par association sur ${preview.automatic} opération(s).`:'')))return;
+    const result=root.QBudgetTags.removeTag(getModel(),ids,tag);options.onChange();
+    byId('editorBulkStatus').textContent=`Tag manuel « ${tag} » retiré de ${result.changed} opération(s).`+(result.automatic?` Encore présent par association sur ${result.automatic} opération(s) : modifie l’association si nécessaire.`:'');
+   }catch(error){byId('editorBulkStatus').textContent=error.message}
   }
   byId('editorApplySelectedTag').onclick=()=>{
    const selected=new Set(selectedKeys);
@@ -302,13 +421,19 @@
   };
   byId('editorApplyTag').onclick=()=>{
    const ids=[...matchingEditableIds];
-   if(!byId('editorSearch').value.trim()&&!['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))return;
+   if(!byId('editorSearch').value.trim()&&!tagFilterActive()&&!['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'].some(id=>byId(id).value.trim()))return;
    bulkTag(ids,'trouvée(s)');
   };
-  function resetFilter(){selectedKey='';selectedTag='';selectedKeys.clear();selectionAnchor='';visibleLimit=120;closeDetail();render()}
+  byId('editorRemoveSelectedTag').onclick=()=>{
+   const ids=visibleItems.filter(i=>selectedKeys.has(i.key)&&(i.kind==='bank'||i.kind==='manual')).map(i=>i.id);
+   bulkRemoveTag(ids,'sélectionnée(s)');
+  };
+  byId('editorRemoveTag').onclick=()=>bulkRemoveTag([...matchingEditableIds],'correspondant aux filtres actuels');
+  function resetFilter(){selectedKey='';selectedTag='';selectedKeys.clear();selectionAnchor='';visibleLimit=pageSize;closeDetail();render()}
   byId('editorScope').onchange=resetFilter;
   byId('editorSearchMode').onchange=resetFilter;
   byId('editorSearch').oninput=resetFilter;
+  byId('editorWithoutTags').onchange=byId('editorPartialTags').onchange=resetFilter;
   for(const id of ['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'])byId(id).addEventListener('input',resetFilter);
   byId('editorClearRange').onclick=()=>{
    for(const id of ['editorAmountMin','editorAmountMax','editorDateFrom','editorDateTo'])byId(id).value='';
@@ -320,5 +445,5 @@
   byId('editorImportCategories').onclick=()=>options.importCategories();
   return Object.freeze({render});
  }
- return Object.freeze({version,mount,itemList,commaTags,selectKeys,parseEditorFilters,matchesEditorFilters});
+ return Object.freeze({version,mount,itemList,commaTags,selectKeys,parseEditorFilters,matchesEditorFilters,tagReview,matchesTagReview,tagSuggestions,sortItems});
 });

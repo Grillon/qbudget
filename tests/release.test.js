@@ -14,10 +14,11 @@ const engine=require('../src/engine.js');
 test('version CLI, importateur, HTML et package identiques',()=>{
  const cli=execFileSync(process.execPath,['src/cli.js','--version'],{cwd:root,encoding:'utf8'}).trim();
  const cliFromCommand=execFileSync(process.execPath,['src/cli.js','forecast','--version'],{cwd:root,encoding:'utf8'}).trim();
- const py=execFileSync('python3',['import_releves.py','--version'],{cwd:root,encoding:'utf8'}).trim();
+ const importer=execFileSync(process.execPath,['import_releves.js','--version'],{cwd:root,encoding:'utf8'}).trim();
  const html=fs.readFileSync(path.join(root,'index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  assert.equal(cli,pkg.version);assert.equal(cliFromCommand,pkg.version);
- assert.ok(py.endsWith(pkg.version));assert.equal(version.version,pkg.version);
+ assert.equal(importer,pkg.version);assert.equal(version.version,pkg.version);
+ assert.equal(require('../src/normalize.js').version,pkg.version);
  assert.match(html,/id="appVersion"/);assert.match(html,/QBudgetVersion\.version/);
  assert.match(html,/src\/version\.js/);
 });
@@ -35,9 +36,7 @@ test('démonstration HTML : 92 transactions bancaires et 7 exemples manuels dont
  assert.match(fs.readFileSync(path.join(root,'src/ui.js'),'utf8'),/QBudgetDemo/);
 });
 test('générateurs de version et de démo restent synchronisés',()=>{
- execFileSync('python3',['scripts/sync-version.py','--check'],{cwd:root});
- execFileSync('python3',['scripts/build-demo.py','--check'],{cwd:root});
- execFileSync('python3',['scripts/build-bank-config.py','--check'],{cwd:root});
+ for(const script of ['sync-version','build-demo','build-bank-config'])execFileSync(process.execPath,['scripts/'+script+'.js','--check'],{cwd:root});
 });
 test('scénario démo et CLI produisent le même audit',()=>{
  const demo=demoSandbox.QBudgetDemo;

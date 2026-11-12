@@ -12,7 +12,7 @@ function make(){const rows=engine.readCsv(fs.readFileSync(path.join(root,'tests/
 const asJson=obj=>JSON.parse(JSON.stringify(obj));
 test('annotations : même format natif et mêmes clés historiques',()=>{
  const m=make(),exported=annotations.exportObject(m);
- assert.deepEqual(Object.keys(exported).sort(),['version','notes','references','rules','accounts','excludedAccounts','tagCategories','donutCategory','sunburstDepth','hierarchyView','excludeTransfersFromCharts','tagDefaultsVersion','manualRows'].sort());
+ assert.deepEqual(Object.keys(exported).sort(),['transferBacklog','recurrenceBacklog','labelAssociations','bankIdentities','version','notes','references','rules','accounts','excludedAccounts','tagCategories','donutCategory','sunburstDepth','hierarchyView','excludeTransfersFromCharts','tagDefaultsVersion','manualRows'].sort());
  assert.equal(exported.version,3);assert.equal(exported.manualRows.length,7);
  assert.equal(annotations.exportJson(m),JSON.stringify(exported,null,2));
  assert.deepEqual(asJson(annotations.exportObject(annotations.importInto(m,asJson(exported),tags))),asJson(exported));

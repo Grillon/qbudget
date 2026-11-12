@@ -74,7 +74,7 @@ test('sauvegarde annotations JSON puis rechargement CSV : flottantes intactes et
  const annotations={version:3,accounts:source.accounts,excludedAccounts:source.excludedAccounts,notes:source.notes,references:source.references,rules:source.rules,manualRows:source.rows.filter(r=>r.manual)};
  const json=JSON.stringify(annotations);const copies=JSON.parse(json);
  const loaded=e.mergeAnnotations(source.rows.filter(r=>!r.manual),copies);
- assert.deepEqual(loaded,source);
+ assert.deepEqual(loaded,e.reimportBankRows(source,source.rows));
  assert.equal(e.pendingOperations(loaded)[0].date,null);
  assert.equal(e.auditOperations(loaded,{scope:'all',at:'2026-10-25',until:'2027-12-31'}).some(r=>r.identifiant==='f1'),false);
  assert.equal(e.mergeAnnotations(loaded.rows,copies).rows.length,loaded.rows.length);
