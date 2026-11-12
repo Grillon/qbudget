@@ -88,7 +88,7 @@ test('sauvegarde / rechargement : dictionnaire persistant sans perte des tags',(
 test('l’interface expose le slider, les radios camembert et le tableau en deux lignes distinctement',()=>{
  const ui=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8')+fs.readFileSync(path.join(__dirname,'../src/ui.js'),'utf8');
  for(const id of ['sunburstDepth','sunburstDepthText','donutRadios','tagCategoryList','addTagCategory','rows'])assert.match(ui,new RegExp(`id="${id}"`));
- assert.match(ui,/max="8"/);assert.match(ui,/min="2"/);
+ assert.match(ui,/max="8"/);assert.match(ui,/min="1"/);
  assert.match(ui,/organizedTags\(model,r(?:,context)?\)/);assert.match(ui,/renderDonutRadios/);
 });
 

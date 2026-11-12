@@ -7,6 +7,27 @@
  'use strict';
  const fold=s=>String(s??'').trim().toLocaleLowerCase('fr');
  const round=n=>Math.round(n*100)/100;
+ // Préférences de lecture uniquement : le dictionnaire et les opérations restent intacts.
+ function hierarchyDimensions(model){
+  const names=engine.tagCategories(model).map(c=>c.name),known=new Set(names);
+  return Array.isArray(model.hierarchyDimensions)
+   ?[...new Set(model.hierarchyDimensions.filter(name=>known.has(name)))]:names;
+ }
+ function perspectives(model){
+  const names=engine.tagCategories(model).map(c=>c.name);
+  const find=name=>names.find(n=>fold(n)===fold(name));
+  const poste=find('Poste')||find('Nature');
+  return [
+   {id:'activities',question:'Comment se répartissent mes dépenses entre perso et pro ?',dimensions:[find('Entité'),poste]},
+   {id:'contexts',question:'Dans quels contextes est-ce que je dépense ?',dimensions:[find('Contexte'),poste]},
+   {id:'projects',question:'Combien coûtent mes projets ?',dimensions:[find('Entité'),find('Projet'),poste]},
+   {id:'purpose',question:'Où va mon argent ?',dimensions:[find('Finalité'),poste]}
+  ].filter(p=>p.dimensions.every(Boolean));
+ }
+ function applyPerspective(model,id){
+  const perspective=perspectives(model).find(p=>p.id===id);
+  return perspective?{...model,hierarchyDimensions:[...perspective.dimensions],sunburstDepth:perspective.dimensions.length}:model;
+ }
  const categoryFor=(model,name)=>engine.tagCategories(model).find(c=>c.name===name);
  const fallbackLabel=(model,row)=>(row.forecast?(row.tags||[]):engine.tagsFor(model,row))[0]||row.category||'Sans tag';
  function categoryLabel(model,row,name){
@@ -54,5 +75,5 @@
   });
   return {ids:selected.map(r=>r.id),count:selected.length,total:round(selected.reduce((sum,r)=>sum-Number(r.amount),0))};
  }
- return Object.freeze({version:'0.18.5',select,analysisRows});
+ return Object.freeze({version:'0.20.1',select,analysisRows,hierarchyDimensions,perspectives,applyPerspective});
 });

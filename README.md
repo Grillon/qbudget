@@ -1,8 +1,8 @@
-# qbudget V0.20.0 — Pilotage financier local
+# qbudget V0.20.1 — Pilotage financier local
 
 qbudget aide à explorer ses finances par les tags, suivre ses soldes, anticiper sa trésorerie et comparer des scénarios. Les opérations flottantes, prévisions et classifications restent souples. Les données sont locales ; aucun service ne reçoit les relevés.
 
-**0.20.0 :** correction des rattachements d’annotations, de l’export CLI et des échecs de sauvegarde masqués ; calendrier partagé sans troncature des récurrences ; protection des cumuls de devises ; rendu optimisé. Importateur, générateurs et tests utilisent désormais **Node.js**, avec un seul moteur de normalisation.
+**0.20.1 :** perspectives guidées dans le Sunburst / Treemap, dimensions affichables ou masquables et exploration libre sauvegardée. Les catégories et les annotations historiques sont conservées.
 
 ## Démarrer
 
@@ -47,6 +47,8 @@ Le tableau de bord et l’éditeur partagent les mêmes données et calculs.
 - **Sans tags / Libellés partiellement tagués** : filtres combinables avec la recherche et les bornes de date/montant. Une suggestion commune peut préremplir le champ ; votre saisie reste prioritaire. [Guide](docs/reperage-tags.md).
 - **Tri et affichage** : en-têtes Date, Compte, Élément, Montant et Tags, croissants ou décroissants, sur tous les résultats. Choix de 120, 250, 500 ou 1 000 lignes ; sélection conservée après tri. [Guide](docs/tri-editeur.md).
 - **Catégories** : dimensions modifiables et réordonnables. Tous les tags restent visibles ; un graphique retient le premier tag de chaque catégorie pour ventiler un montant. Une [proposition de catégories d’exploration](docs/categories-exploration.md) est disponible, sans migration imposée.
+
+Dans le Sunburst / Treemap, les questions proposées appliquent une sélection de dimensions, un ordre et une profondeur. Les filtres restent actifs. **Dimensions du graphique** permet de masquer ou réintroduire un axe sans supprimer sa catégorie ; les onglets restent réordonnables à la souris ou avec Alt + flèches. La profondeur va de 1 à 8 ; les axes au-delà de la profondeur choisie restent disponibles. Les perspectives Projet et Finalité apparaissent lorsque ces catégories sont configurées. Compte / Flux et la périodicité détaillée restent différés. [Guide](docs/perspectives.md).
 
 Les graphiques de répartition incluent les dépenses réalisées, les manuelles prévues datées et les occurrences récurrentes calculées jusqu’à l’horizon choisi. Cliquer sur une part retrouve les opérations correspondantes. Les flottantes restent hors calcul. Les transferts tagués peuvent être exclus des répartitions sans modifier les soldes ou l’audit.
 

@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.20.0';
+const UI_VERSION='0.20.1';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:2};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const currencyFormatter=new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}),decimalFormatter=new Intl.NumberFormat('fr-FR');const amount=n=>currencyFormatter.format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
@@ -200,13 +200,15 @@ function renderVisuals(){
  renderDonutRadios();
  const pie=QBudgetEngine.expenseCategoryTotals(model,breakdownRows,selectedDonutCategory());
  Plotly.react('donutChart',pie.length?[{type:'pie',hole:.57,labels:pie.map(x=>x[0]),values:pie.map(x=>x[1]),textinfo:'percent',hovertemplate:'%{label}<br>%{value:,.2f} €<extra></extra>'}]:[],plotLayout({height:340,margin:{l:12,r:12,t:12,b:12},showlegend:true,legend:{orientation:'h',y:-.1},...(pie.length?{}:noData)}),{responsive:true,displaylogo:false,locale:'fr'}).then(()=>bindBreakdownClick('donutChart','pie'));
- const categories=QBudgetEngine.tagCategories(model);
- const depth=Math.max(2,Math.min(8,Number($('sunburstDepth').value)||2));
+ const categories=QBudgetVisualSelect.hierarchyDimensions(model);
+ renderHierarchyControls();
+ const depth=Math.max(1,Math.min(8,Number($('sunburstDepth').value)||2));
  $('sunburstDepthText').textContent=depth;
- const names=categories.slice(0,depth).map(c=>c.name);
- $('sunburstDimensions').textContent=names.length?names.join(' → ')+(categories.length<depth?' · profondeur limitée aux catégories disponibles':''):'Sans catégorie : tag → libellé';
+ const names=categories.slice(0,depth);
+ $('sunburstDimensions').textContent=names.length?names.join(' → ')+(categories.length<depth?' · profondeur limitée aux catégories disponibles':''):'Aucune dimension sélectionnée';
  const tree=QBudgetEngine.expenseBreakdown(model,breakdownRows,names);
- const hasExpenses=tree.values[0]>0;
+ const hasExpenses=names.length>0&&tree.values[0]>0;
+ if(!names.length)noData.annotations[0].text='Choisis au moins une dimension pour explorer tes dépenses';
  // Sunburst et Treemap utilisent EXACTEMENT la même arborescence et les mêmes montants.
  breakdownSnapshot={rows:breakdownRows,category:selectedDonutCategory(),dimensions:names};
  const chartType=model.hierarchyView==='treemap'?'treemap':'sunburst';
@@ -217,10 +219,43 @@ function renderVisuals(){
 // Ordre des dimensions : onglets natifs glissables, sans nouvelle bibliothèque.
 // Les catégories restent des métadonnées ; réordonner ne modifie aucune opération.
 function reorderTagCategories(from,to){
- const ordered=QBudgetTags.moveCategory(QBudgetEngine.tagCategories(model),from,to);
- if(ordered===null)return;
- model.tagCategories=ordered;
- save();renderTagCategories();renderRows();renderSummary();
+ const dimensions=QBudgetVisualSelect.hierarchyDimensions(model);
+ if(from===to||from<0||to<0||from>=dimensions.length||to>=dimensions.length)return;
+ const [moved]=dimensions.splice(from,1);dimensions.splice(to,0,moved);
+ model.hierarchyDimensions=dimensions;
+ $('hierarchyPerspectiveStatus').textContent='Exploration libre · ordre des dimensions modifié.';
+ save();renderVisuals();
+}
+function renderHierarchyControls(){
+ const dimensions=QBudgetVisualSelect.hierarchyDimensions(model),categories=QBudgetEngine.tagCategories(model);
+ renderCategoryTabs(dimensions.map(name=>({name})));
+ const host=$('hierarchyPerspectives');host.replaceChildren();
+ for(const perspective of QBudgetVisualSelect.perspectives(model)){
+  const button=document.createElement('button');button.type='button';button.className='secondary';
+  button.id='perspective-'+perspective.id;button.textContent=perspective.question;
+  button.setAttribute('aria-pressed',String(JSON.stringify(dimensions)===JSON.stringify(perspective.dimensions)&&Number(model.sunburstDepth)===perspective.dimensions.length));
+  button.onclick=()=>{
+   model=QBudgetVisualSelect.applyPerspective(model,perspective.id);
+   $('sunburstDepth').value=model.sunburstDepth;
+   save();renderVisuals();
+   $('hierarchyPerspectiveStatus').textContent=perspective.question+' · '+perspective.dimensions.join(' → ')+'. Les filtres restent actifs ; tu peux modifier les dimensions et la profondeur.';
+   $(button.id)?.focus();
+  };
+  host.append(button);
+ }
+ host.hidden=!host.childElementCount;
+ const choices=$('hierarchyDimensionChoices');choices.replaceChildren();
+ for(const category of categories){
+  const label=document.createElement('label'),checkbox=document.createElement('input');
+  checkbox.type='checkbox';checkbox.checked=dimensions.includes(category.name);checkbox.value=category.name;
+  checkbox.onchange=()=>{
+   model.hierarchyDimensions=checkbox.checked?[...dimensions,category.name]:dimensions.filter(name=>name!==category.name);
+   $('hierarchyPerspectiveStatus').textContent='Exploration libre · dimensions du graphique modifiées.';
+   save();renderVisuals();
+   [...choices.querySelectorAll('input')].find(input=>input.value===category.name)?.focus();
+  };
+  label.append(checkbox,document.createTextNode(category.name));choices.append(label);
+ }
 }
 function renderCategoryTabs(categories){
  const host=$('tagCategoryOrder');host.replaceChildren();
@@ -266,7 +301,7 @@ function renderCategoryTabs(categories){
 function renderTagCategories(){
  const host=$('tagCategoryList');host.replaceChildren();
  const categories=QBudgetEngine.tagCategories(model);
- renderCategoryTabs(categories);
+ renderHierarchyControls();
  for(let i=0;i<categories.length;i++){
   const item=categories[i],row=document.createElement('div');row.className='tag-category-editor';row.id='tag-category-row-'+i;
   const field=(name,cls,val)=>{const label=document.createElement('label');label.className='field';label.textContent=name;const input=document.createElement('input');input.className=cls;input.value=val;label.append(input);row.append(label);return input};
@@ -276,7 +311,7 @@ function renderTagCategories(){
   const change=()=>{
    const next=categories.map(c=>({...c,tags:[...c.tags]}));
    next[i]={name:name.value.trim(),tags:tags.value.split(',').map(t=>t.trim()).filter(Boolean),source:source.value};
-   try{model.tagCategories=QBudgetEngine.validateTagCategories(next);model.donutCategory=selectedDonutCategory();save();renderTagCategories();renderRows();renderSummary()}catch(error){$('tagCategoryStatus').textContent=error.message}
+   try{const valid=QBudgetEngine.validateTagCategories(next);if(Array.isArray(model.hierarchyDimensions))model.hierarchyDimensions=model.hierarchyDimensions.map(n=>n===item.name?next[i].name:n);model.tagCategories=valid;model.donutCategory=selectedDonutCategory();save();renderTagCategories();renderRows();renderSummary()}catch(error){$('tagCategoryStatus').textContent=error.message}
   };
   for(const el of [name,tags,source])el.addEventListener('change',change);
   const button=(label,tip,fn)=>{const b=document.createElement('button');b.className='secondary';b.textContent=label;b.title=tip;b.type='button';b.onclick=fn;row.append(b)};
@@ -284,7 +319,7 @@ function renderTagCategories(){
   host.append(row);
  }
  renderLabelAssociations();
- $('tagCategoryStatus').textContent=categories.length+' catégorie(s) · ordre modifiable par glisser-déposer des onglets · tags non classés toujours visibles dans la ligne de détail.';
+ $('tagCategoryStatus').textContent=categories.length+' catégorie(s) · ordre du graphique modifiable via les onglets · tags non classés toujours visibles dans la ligne de détail.';
 }
 
 function labelAssociationDraft(){
@@ -360,7 +395,7 @@ for(const radio of document.querySelectorAll('input[name="hierarchyView"]'))radi
  if(!radio.checked)return;
  model.hierarchyView=radio.value;clearChartSelection();save();renderRows();renderVisuals();
 };
-$('sunburstDepth').oninput=()=>{model.sunburstDepth=Number($('sunburstDepth').value);save();renderVisuals()};
+$('sunburstDepth').oninput=()=>{model.sunburstDepth=Number($('sunburstDepth').value);$('hierarchyPerspectiveStatus').textContent='Exploration libre · profondeur du graphique modifiée.';save();renderVisuals()};
 for(const id of ['excludeTransfersDonut','excludeTransfersSunburst'])$(id).onchange=e=>{
  model.excludeTransfersFromCharts=e.target.checked;save();renderVisuals();
 };
@@ -756,7 +791,7 @@ $('sample').onclick=()=>{
   const demo=QBudgetDemo;
   const rows=readCsv(demo.csv);
   model=QBudgetEngine.mergeAnnotations(rows,structuredClone(demo.annotations));
-  model.tagCategories=QBudgetTags.defaults();
+  model.tagCategories=QBudgetTags.defaults();model.hierarchyDimensions=undefined;
   model.donutCategory='Nature';model.excludeTransfersFromCharts=true;model.tagDefaultsVersion=2;model.sunburstDepth=3;$('sunburstDepth').value=3;
   selected='';clearChartSelection();clearBulkSelection();$('asof').value=demo.asof;$('horizon').value=demo.until;
   $('auditAt').value=demo.asof;$('auditUntil').value=demo.until;
@@ -893,4 +928,4 @@ function showView(name){
  if(!editor)resizePlots();
 }
 $('viewDashboard').onclick=()=>showView('dashboard');$('viewEditor').onclick=()=>showView('editor');
-renderModuleVersions();load();$('sunburstDepth').value=Math.max(2,Math.min(8,Number(model.sunburstDepth)||2));render();let resizeFrame=0;window.addEventListener('resize',()=>{if(!$('dashboardScreen').hidden&&!resizeFrame)resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;resizePlots()})});
+renderModuleVersions();load();$('sunburstDepth').value=Math.max(1,Math.min(8,Number(model.sunburstDepth)||2));render();let resizeFrame=0;window.addEventListener('resize',()=>{if(!$('dashboardScreen').hidden&&!resizeFrame)resizeFrame=requestAnimationFrame(()=>{resizeFrame=0;resizePlots()})});

@@ -1,3 +1,12 @@
+# qbudget V0.20.1 — Perspectives guidées et exploration libre
+
+- Questions compactes dans le Sunburst / Treemap : répartition perso/pro et contextes, puis projets et finalités lorsque leurs catégories sont configurées. Compatibilité avec Nature et priorité à Poste ; aucun renommage automatique.
+- Sélection et ordre des dimensions propres au graphique, indépendants du dictionnaire et du camembert. Masquer ou réintroduire une dimension conserve ses tags ; profondeur de 1 à 8, ordre modifiable par glisser-déposer ou Alt + flèches.
+- Préférences conservées dans le navigateur et les annotations JSON, anciens fichiers compatibles. Filtres et calculs inchangés ; Compte, Flux calculé et périodicité détaillée différés.
+- Vérifications des totaux, de la navigation vers les opérations, de la persistance et du clavier.
+
+---
+
 # qbudget V0.20.0 — Corrections de fiabilité et outils Node uniques
 
 - Rattacher une annotation ne crée plus d’alias concurrent d’une autre identité bancaire : les tags futurs ne peuvent plus être détournés lors du retour d’une opération absente d’un import partiel.
