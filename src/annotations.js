@@ -6,7 +6,7 @@
  root.QBudgetAnnotations=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.20.2';
+ const version='0.20.4';
  const fields=['transferBacklog','recurrenceBacklog','labelAssociations','bankIdentities','version','notes','references','rules','accounts','excludedAccounts','tagCategories','donutCategory','sunburstDepth','hierarchyView','hierarchyDimensions','excludeTransfersFromCharts','tagDefaultsVersion','manualRows'];
  const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
  function exportObject(model){
@@ -44,7 +44,7 @@
   if(manualRows.some(r=>bankIds.has(r.id)))throw Error('Identifiant manuel en conflit avec un relevé bancaire');
   const extras=Object.fromEntries(Object.entries(o).filter(([k])=>!fields.includes(k)&&!(legacyRows&&k==='rows')));
   const imported={...model,hierarchyDimensions:o.hierarchyDimensions===undefined?undefined:[...new Set(o.hierarchyDimensions)],labelAssociations,transferBacklog,recurrenceBacklog,bankIdentities:o.bankIdentities??model.bankIdentities??[],notes:o.notes,references:o.references,rules:o.rules||{},accounts:o.accounts||[],excludedAccounts:o.excludedAccounts||[],tagCategories:categories,tagDefaultsVersion:o.tagDefaultsVersion,donutCategory:o.donutCategory||'',excludeTransfersFromCharts:o.excludeTransfersFromCharts!==false,sunburstDepth:Math.max(1,Math.min(8,Number(o.sunburstDepth)||2)),hierarchyView:o.hierarchyView==='treemap'?'treemap':'sunburst',rows:[...oldBankRows,...manualRows.map(r=>({...r}))],annotationExtras:extras};
-  return engine.reimportBankRows(tagsApi.upgradeCategories(imported),imported.rows,resolve);
+  return engine.reimportBankRows(tagsApi.normalizePersonalTag(tagsApi.upgradeCategories(imported)),imported.rows,resolve);
  }
  function exportJson(model){return JSON.stringify(exportObject(model),null,2)}
  return Object.freeze({version,exportObject,exportJson,importInto,validateInput});

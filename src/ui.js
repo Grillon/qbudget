@@ -1,12 +1,13 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.20.3';
+const UI_VERSION='0.20.4';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
+$('headerActionsToggle').onclick=()=>{const button=$('headerActionsToggle');button.setAttribute('aria-expanded',String(button.getAttribute('aria-expanded')!=='true'))};
 $('appVersion').textContent='V'+QBudgetVersion.version;document.title='qbudget V'+QBudgetVersion.version+' — tableau de bord & éditeur';let model={rows:[],notes:{},references:{},rules:{},accounts:[],excludedAccounts:[],labelAssociations:[],tagCategories:QBudgetTags.defaults(),donutCategory:'',sunburstDepth:2,hierarchyView:'sunburst',excludeTransfersFromCharts:true,tagDefaultsVersion:QBudgetTags.defaultsVersion};let selected='';const selectedRowIds=new Set();let displayedEditableIds=[];let tableRowLimit=150;let editorApi=null;let chartSelection=null;let breakdownSnapshot=null;const currencyFormatter=new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}),decimalFormatter=new Intl.NumberFormat('fr-FR');const amount=n=>currencyFormatter.format(n);const numeric=v=>{const x=String(v??'').trim().replace(/\s/g,'').replace(',','.');return x===''?null:Number.isFinite(Number(x))?Number(x):null};const dateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;const asDate=s=>new Date(s+'T12:00:00');const today=dateStr(new Date());$('asof').value=today;
 const readCsv=QBudgetEngine.readCsv;
 let labelAssociationEditIndex=-1,labelAssociationPreviewLimit=100;
-function initModel(){model.transferBacklog??=[];model.recurrenceBacklog??=[];model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.labelAssociations??=[];model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;model=QBudgetTags.upgradeCategories(model);}function save(){
+function initModel(){model.transferBacklog??=[];model.recurrenceBacklog??=[];model.rules??={};model.notes??={};model.references??={};model.rows??=[];model.accounts??=[];model.excludedAccounts??=[];model.tagCategories??=QBudgetTags.defaults();model.labelAssociations??=[];model.donutCategory??='';model.sunburstDepth??=2;model.hierarchyView=['sunburst','treemap'].includes(model.hierarchyView)?model.hierarchyView:'sunburst';model.excludeTransfersFromCharts??=true;model=QBudgetTags.normalizePersonalTag(QBudgetTags.upgradeCategories(model));}function save(){
  try{localStorage.setItem(KEY,JSON.stringify(model));$('storageWarning').hidden=true;return true}
  catch(e){$('storageWarning').textContent='Attention : stockage du navigateur indisponible. Les modifications restent en mémoire ; exporte tes annotations en JSON avant de fermer la page.';$('storageWarning').hidden=false;return false}
 }
@@ -254,7 +255,15 @@ function renderHierarchyControls(){
    save();renderVisuals();
    [...choices.querySelectorAll('input')].find(input=>input.value===category.name)?.focus();
   };
-  label.append(checkbox,document.createTextNode(category.name));choices.append(label);
+  label.append(checkbox,document.createTextNode(category.name));
+  const line=document.createElement('div');line.className='hierarchy-dimension-choice';line.append(label);
+  const position=dimensions.indexOf(category.name);
+  if(position>=0)for(const [direction,caption] of [[-1,'Monter'],[1,'Descendre']]){
+   const button=document.createElement('button');button.type='button';button.className='secondary dimension-move';button.textContent=direction<0?'↑':'↓';button.setAttribute('aria-label',caption+' '+category.name);
+   button.disabled=position+direction<0||position+direction>=dimensions.length;
+   button.onclick=()=>{reorderTagCategories(position,position+direction);[...choices.querySelectorAll('.dimension-move')].find(b=>b.getAttribute('aria-label')===caption+' '+category.name)?.focus()};line.append(button);
+  }
+  choices.append(line);
  }
 }
 function renderCategoryTabs(categories){
@@ -389,7 +398,7 @@ $('addTagCategory').onclick=()=>{
 };
 $('exportTagCategories').onclick=()=>download(QBudgetTags.exportJson(model.tagCategories),'qbudget-categories.json','application/json');
 $('importTagCategories').onclick=()=>$('tagCategoriesFile').click();
-$('tagCategoriesFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const next=QBudgetTags.parseJson(await file.text());model.tagCategories=next;model.tagDefaultsVersion=QBudgetTags.defaultsVersion;if(!next.some(c=>c.name===model.donutCategory))model.donutCategory=next[0]?.name||'';save();render();$('tagCategoryStatus').textContent=next.length+' catégories importées. Les opérations et leurs tags n’ont pas été modifiés.'}catch(error){$('tagCategoryStatus').textContent='Import non effectué : '+error.message}finally{e.target.value=''}};
+$('tagCategoriesFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const next=QBudgetTags.parseJson(await file.text());model=QBudgetTags.normalizePersonalTag({...model,tagCategories:next});model.tagDefaultsVersion=QBudgetTags.defaultsVersion;if(!next.some(c=>c.name===model.donutCategory))model.donutCategory=next[0]?.name||'';save();render();$('tagCategoryStatus').textContent=next.length+' catégories importées. Les opérations et leurs tags n’ont pas été modifiés.'}catch(error){$('tagCategoryStatus').textContent='Import non effectué : '+error.message}finally{e.target.value=''}};
 $('resetTagCategories').onclick=()=>{if(!confirm('Remplacer uniquement le dictionnaire de catégories par celui de départ ? Les tags des opérations seront conservés.'))return;model.tagCategories=QBudgetTags.defaults();model.tagDefaultsVersion=QBudgetTags.defaultsVersion;model.donutCategory='Poste';model.hierarchyDimensions=undefined;save();render()};
 for(const radio of document.querySelectorAll('input[name="hierarchyView"]'))radio.onchange=()=>{
  if(!radio.checked)return;
@@ -795,6 +804,7 @@ $('sample').onclick=()=>{
   model.donutCategory='Poste';model.excludeTransfersFromCharts=true;model.tagDefaultsVersion=QBudgetTags.defaultsVersion;model.sunburstDepth=3;$('sunburstDepth').value=3;
   selected='';clearChartSelection();clearBulkSelection();$('asof').value=demo.asof;$('horizon').value=demo.until;
   $('auditAt').value=demo.asof;$('auditUntil').value=demo.until;
+  model=QBudgetTags.normalizePersonalTag(model);
   save();render();
   $('importStatus').textContent=`Démonstration fictive : ${rows.length} bancaires + ${model.rows.length-rows.length} manuelles (${model.rows.filter(QBudgetEngine.isFloating).length} flottantes), ${Object.keys(model.rules).length} récurrences · du 01/09 au 25/10/2026`;
  }catch(e){alert('Démo impossible : '+e.message)}

@@ -1,8 +1,8 @@
-# qbudget V0.20.3 — Pilotage financier local
+# qbudget V0.20.4 — Pilotage financier local
 
 qbudget aide à explorer ses finances par les tags, suivre ses soldes, anticiper sa trésorerie et comparer des scénarios. Les opérations flottantes, prévisions et classifications restent souples. Les données sont locales ; aucun service ne reçoit les relevés.
 
-**0.20.3 :** retagage opération par opération depuis les résultats filtrés ou la sélection. Tous les tags sont proposés par catégorie, avec validation et passage à l’opération suivante ; les tags libres et les annotations restent conservés.
+**0.20.4 :** interface adaptée aux téléphones et tablettes : fiches d’opérations, tri mobile, retagage plein écran et réorganisation tactile des dimensions. Le tag personnel est fusionné avec Perso, y compris dans les annotations et associations existantes.
 
 ## Démarrer
 
@@ -37,6 +37,8 @@ Les suffixes distinguent les véritables opérations identiques. Une référence
 Les identités et annotations anciennes sont conservées dans `bankIdentities`. Les ambiguïtés arrivent dans **Rapprochements à traiter**, après la fin de l’import. Choisir une identité connue ou confirmer une opération distincte ; aucun tag incertain n’est déplacé automatiquement. Le CLI refuse les ambiguïtés non résolues. [Rapprochements](docs/rapprochements.md).
 
 Un rattachement manuel d’annotation ne fusionne pas deux identités bancaires : une nouvelle annotation sur l’opération source reste attachée à cette source lors des imports suivants. Les anciens alias concurrents sont nettoyés sans déplacer les notes ; une annotation déjà mal attribuée avant ce correctif reste à vérifier manuellement. Les opérations manuelles conservent leur UUID lorsqu’elles changent de date.
+
+Sur téléphone ou tablette, les opérations de l’éditeur deviennent des fiches et les commandes restent utilisables au toucher. [Guide mobile](docs/mobile.md).
 
 ## Explorer et classer
 

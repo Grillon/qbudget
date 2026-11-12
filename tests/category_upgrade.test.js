@@ -49,13 +49,13 @@ test('anciens imports remplacés ; nouvelles catégories et tags libres exportab
  for(const marker of [undefined,1,2]){
   const m=make();m.tagDefaultsVersion=marker;
   const restored=annotations.importInto(m,annotations.exportObject(m),tags);
-  assert.deepEqual(restored.tagCategories,tags.defaults());assert.deepEqual(restored.notes,m.notes);
+  assert.deepEqual(restored.tagCategories,tags.defaults());assert.deepEqual(restored.notes,tags.normalizePersonalTag(m).notes);
   assert.deepEqual(restored.hierarchyDimensions,['Poste','Traitement / État']);
  }
  const m=tags.upgradeCategories(make());
  m.tagCategories.push({name:'Mes frais spécifiques',tags:['tag_libre'],source:'tags'});
  const restored=annotations.importInto(m,annotations.exportObject(m),tags);
- assert.deepEqual(restored.tagCategories,m.tagCategories);assert.deepEqual(restored.notes,m.notes);
+ assert.deepEqual(restored.tagCategories,m.tagCategories);assert.deepEqual(restored.notes,tags.normalizePersonalTag(m).notes);
  assert.ok(restored.rows.some(r=>e.organizedTags(restored,r).values.some(c=>c.name==='Mes frais spécifiques'&&c.values.includes('tag_libre'))));
  const empty={...m,tagCategories:[],hierarchyDimensions:[]};
  assert.deepEqual(annotations.importInto(empty,annotations.exportObject(empty),tags).tagCategories,[]);

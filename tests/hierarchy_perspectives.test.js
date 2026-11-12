@@ -2,7 +2,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const e=require('../src/engine.js'),v=require('../src/visual-select.js'),tags=require('../src/tags.js'),annotations=require('../src/annotations.js');
-function make(){return {rows:[{id:'a',bank:'Perso',date:'2026-10-24',amount:-100,desc:'Courses'},{id:'b',bank:'Perso',date:'2026-10-24',amount:-50,desc:'Repas'}],notes:{a:{tags:['personnel','courses','repas','mission'],memo:'conserver'},b:{tags:['SASU','repas','mission']}},rules:{},references:{Perso:{date:'2026-10-25',balance:1000}},accounts:[],excludedAccounts:[],tagCategories:structuredClone(require('./fixtures/categories_legacy.json').categories),tagDefaultsVersion:tags.defaultsVersion,sunburstDepth:2,donutCategory:'Nature'};}
+function make(){return {rows:[{id:'a',bank:'Perso',date:'2026-10-24',amount:-100,desc:'Courses'},{id:'b',bank:'Perso',date:'2026-10-24',amount:-50,desc:'Repas'}],notes:{a:{tags:['Perso','courses','repas','mission'],memo:'conserver'},b:{tags:['SASU','repas','mission']}},rules:{},references:{Perso:{date:'2026-10-25',balance:1000}},accounts:[],excludedAccounts:[],tagCategories:structuredClone(require('./fixtures/categories_legacy.json').categories),tagDefaultsVersion:tags.defaultsVersion,sunburstDepth:2,donutCategory:'Nature'};}
 test('anciennes configurations : ordre existant ; sélection vide explicite respectée',()=>{
  const m=make();assert.deepEqual(v.hierarchyDimensions(m),m.tagCategories.map(c=>c.name));
  m.hierarchyDimensions=[];assert.deepEqual(v.hierarchyDimensions(m),[]);

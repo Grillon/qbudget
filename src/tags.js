@@ -5,10 +5,10 @@
  root.QBudgetTags=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.20.3',defaultsVersion=3;
+ const version='0.20.4',defaultsVersion=3;
  // Dictionnaire d’exploration ; le schéma reste en version 1.
  const defaultData=[
-  {name:'Entité',tags:['Micro','SASU','Perso','exploration','personnel'],source:'tags'},
+  {name:'Entité',tags:['Micro','SASU','Perso','exploration'],source:'tags'},
   {name:'Projet',tags:['qbudget','microbudget','levelup'],source:'tags'},
   {name:'Poste',tags:['alimentation','courses','repas','restaurant','cantine','essence','peage','transport','transports','telecom','streaming','logement','copro','energie','eau','assurance','sante','loisirs','sport','vetements','cadeaux','impots','urssaf','pret','frais_bancaires','IK','noteDeFrais'],source:'tags'},
   {name:'Contexte',tags:['mission','deplacement','contexte_loisirs','essentiel_quotidien','projets','Pro','quotidien','travail'],source:'tags'},
@@ -28,6 +28,45 @@
   return {...model,tagCategories:categories,tagDefaultsVersion:defaultsVersion,
    donutCategory:names.has(donut)?donut:'Poste',
    ...(Array.isArray(model.hierarchyDimensions)?{hierarchyDimensions:[...new Set(model.hierarchyDimensions.map(rename).filter(name=>names.has(name)))]}:{})};
+ }
+ // Fusion explicite de l’ancien tag personnel vers Perso, sans changer les écritures.
+ function normalizePersonalTag(model){
+  const fold=value=>String(value).trim().toLocaleLowerCase('fr');
+  const isOld=value=>fold(value)==='personnel';
+  const tags=values=>{
+   if(!Array.isArray(values)||!values.some(isOld))return values;
+   const seen=new Set();return values.map(value=>isOld(value)?'Perso':value).filter(value=>{const key=fold(value);if(seen.has(key))return false;seen.add(key);return true});
+  };
+  let next=model;
+  const update=(key,value)=>{if(value!==model[key])next={...next,[key]:value}};
+  if((model.tagCategories||[]).some(c=>c.tags.some(isOld))){
+   const hasPerso=model.tagCategories.some(c=>c.tags.some(t=>fold(t)==='perso'));
+   update('tagCategories',model.tagCategories.map(c=>{
+    const values=hasPerso?c.tags.filter(t=>!isOld(t)):tags(c.tags);
+    return values===c.tags||JSON.stringify(values)===JSON.stringify(c.tags)?c:{...c,tags:values};
+   }));
+  }
+  let notes=model.notes;
+  for(const [id,note] of Object.entries(model.notes||{})){
+   if(!note||typeof note!=='object')continue;
+   const values=tags(note.tags),legacy=typeof note.tag==='string'&&note.tag.split(',').some(isOld)?tags(note.tag.split(',').map(t=>t.trim())).join(', '):note.tag;
+   if(values!==note.tags||legacy!==note.tag){
+    if(notes===model.notes)notes={...notes};
+    notes[id]={...note,...(values!==note.tags?{tags:values}:{}),...(legacy!==note.tag?{tag:legacy}:{})};
+   }
+  }
+  update('notes',notes);
+  if((model.rows||[]).some(row=>Array.isArray(row.tags)&&row.tags.some(isOld)))update('rows',model.rows.map(row=>{const values=tags(row.tags);return values===row.tags?row:{...row,tags:values}}));
+  if((model.labelAssociations||[]).some(a=>isOld(a.tag))){
+   const associations=new Map();
+   for(const association of model.labelAssociations){
+    const tag=isOld(association.tag)?'Perso':association.tag,key=fold(tag),old=associations.get(key);
+    const patterns=old?[...old.patterns,...association.patterns]:[...association.patterns],seen=new Set();
+    associations.set(key,{...association,tag:old?.tag||tag,patterns:patterns.filter(pattern=>{const k=fold(pattern.normalize('NFC').replace(/\s+/gu,' '));if(seen.has(k))return false;seen.add(k);return true})});
+   }
+   update('labelAssociations',[...associations.values()]);
+  }
+  return next;
  }
  // Filtrage générique, seulement pour une visualisation (jamais une mutation).
  // Accepte les tags des écritures enregistrées comme ceux des prévisions.
@@ -157,5 +196,5 @@
   if(changes.length){const notes={...model.notes};for(const {id,note} of changes){if(note===null)delete notes[id];else notes[id]=note}model.notes=notes}
   return result;
  }
- return Object.freeze({version,defaultsVersion,defaults,upgradeCategories,validate,exportJson,parseJson,retagOperation,moveCategory,parseTagList,addTag,addTags,removeTag,removeTagPreview,withoutTag});
+ return Object.freeze({version,defaultsVersion,defaults,upgradeCategories,normalizePersonalTag,validate,exportJson,parseJson,retagOperation,moveCategory,parseTagList,addTag,addTags,removeTag,removeTagPreview,withoutTag});
 });

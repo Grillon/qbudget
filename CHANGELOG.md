@@ -1,3 +1,13 @@
+# qbudget V0.20.4 — Mobile et fusion du tag personnel
+
+- Interface mobile : actions de fichiers repliables, onglets accessibles pendant le défilement, champs et boutons agrandis, formulaires et catégories sur une colonne.
+- Fiches d’opérations lisibles sur téléphone avec sélection, compte, montant et tags ; tri par champ et sens du tri disponibles sans les en-têtes du tableau. Tableaux détaillés conservés dans des zones défilables.
+- Retagage et détail en plein écran, commandes accessibles pendant le défilement et blocage du fond de page. Réorganisation des dimensions par boutons tactiles ; flèches de déplacement des cartes conservées.
+- Fusion explicite de personnel vers Perso dans les tags, anciennes annotations, dictionnaires et associations. Déduplication des tags et conservation de tous les motifs d’association. Les catégories personnalisées, champs libres, liens et calculs financiers sont préservés.
+- Parcours Firefox à 320, 390, 768 et 844 pixels, retour au bureau et régressions sur la normalisation des tags.
+
+---
+
 # qbudget V0.20.3 — Retagage opération par opération
 
 - Parcours depuis les résultats filtrés ou la sélection de l’éditeur, dans l’ordre du tableau et au-delà de la pagination. Compteur, Précédent, Passer et Enregistrer et suivant ; liste stable malgré les changements de tags.

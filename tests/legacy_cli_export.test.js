@@ -12,7 +12,7 @@ test('ancien export CLI rows : manuelles et flottantes restaurées dans le CLI e
  const browser=annotations.importInto({rows:engine.readCsv(csv),notes:{},references:{}},old,tags);
  for(const restored of [cli,browser]){
   assert.equal(restored.rows.length,99);assert.equal(restored.rows.filter(r=>r.manual).length,7);assert.equal(restored.rows.filter(r=>r.manual&&engine.isFloating(r)).length,4);
-  assert.deepEqual(restored.rows.filter(r=>r.manual),old.rows.filter(r=>r.manual));assert.deepEqual(restored.notes,old.notes);
+  assert.deepEqual(restored.rows.filter(r=>r.manual),old.rows.filter(r=>r.manual));assert.deepEqual(restored.notes,restored===browser?tags.normalizePersonalTag(old).notes:old.notes);
  }
  assert.equal(JSON.stringify(old),snapshot);
  const canonical=annotations.exportObject(browser);assert.equal(canonical.manualRows.length,7);assert.ok(!Object.hasOwn(canonical,'rows'));

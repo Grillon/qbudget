@@ -1,12 +1,12 @@
 # Catégories d’exploration
 
-Depuis la version 0.20.2, le nouveau dictionnaire remplace les anciennes catégories au chargement du navigateur et à l’import d’anciennes annotations. Aucune fusion avec les anciennes catégories n’est effectuée. **Les tags des opérations, les annotations et les liens de récurrence sont conservés à l’identique.** Un tag absent du dictionnaire reste libre : il demeure visible et utilisable dans les recherches et filtres.
+Depuis la version 0.20.2, le nouveau dictionnaire remplace les anciennes catégories au chargement du navigateur et à l’import d’anciennes annotations. Aucune fusion avec les anciennes catégories n’est effectuée. **Les annotations et les liens de récurrence sont conservés. Les tags restent inchangés, à l’exception de la fusion explicite personnel → Perso depuis 0.20.4.** Un tag absent du dictionnaire reste libre : il demeure visible et utilisable dans les recherches et filtres.
 
 Le [JSON des catégories](../examples/categories-exploration.json) utilise toujours `qbudget-tag-categories`, `schemaVersion: 1`. Il est aussi fourni comme [catalogue par défaut](../examples/categories-par-defaut.json).
 
 | Dimension | Valeurs et rôle |
 |---|---|
-| Entité | Micro, SASU, Perso, exploration ; personnel reste reconnu pour les opérations historiques. Cette dimension est analytique, indépendante du compte payeur. |
+| Entité | Micro, SASU, Perso, exploration. Depuis 0.20.4, personnel est remplacé par Perso dans les annotations et associations existantes, sans doublons. Cette dimension est analytique, indépendante du compte payeur. |
 | Projet | qbudget, microbudget, levelup ; autres projets ajoutables librement. |
 | Poste | Tags de consommation existants, avec cantine, transports, urssaf, pret et frais_bancaires. Les variantes transport/transports sont distinctes, sans conversion des annotations. |
 | Contexte | mission, deplacement, contexte_loisirs, essentiel_quotidien, projets, Pro ; quotidien et travail restent reconnus. |
@@ -29,7 +29,7 @@ Ces nouveaux noms ne sont pas des alias : aucune annotation n’est réécrite n
 
 `IK` et `noteDeFrais` restent provisoirement dans Poste ; leur déplacement vers Traitement / État reste une décision séparée. Le tag technique `transfert_intercomptes` reste reconnu par la détection et l’exclusion graphique existantes. Il ne prouve pas à lui seul qu’un mouvement est interne au périmètre patrimonial analysé.
 
-Le tag `revenu`, auparavant classé dans Nature, devient libre, comme les autres tags absents du nouveau dictionnaire. Aucun tag n’est supprimé des opérations. Les dimensions **Flux calculé**, **Compte / Support** et la périodicité détaillée seront implémentées séparément ; elles ne sont pas simulées par de nouveaux tags. Les graphiques actuels restent des répartitions de dépenses.
+Le tag `revenu`, auparavant classé dans Nature, devient libre, comme les autres tags absents du nouveau dictionnaire. Aucun tag libre n’est supprimé des opérations ; seul le renommage explicite personnel → Perso est appliqué. Les dimensions **Flux calculé**, **Compte / Support** et la périodicité détaillée seront implémentées séparément ; elles ne sont pas simulées par de nouveaux tags. Les graphiques actuels restent des répartitions de dépenses.
 
 ## Créer ses propres catégories
 

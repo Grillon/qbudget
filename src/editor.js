@@ -5,7 +5,7 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.20.3';
+ const version='0.20.4';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
@@ -325,17 +325,17 @@
   byId('editorRetag').onclick=()=>{
    const ids=visibleItems.filter(i=>(i.kind==='bank'||i.kind==='manual')&&(!selectedKeys.size||selectedKeys.has(i.key))).map(i=>i.id);
    if(!ids.length||byId('editorSearchError').textContent)return;
-   detailOpener=doc.activeElement;
+   detailOpener=doc.activeElement;byId('editorDetailTitle').textContent='Retaguer les opérations';
    retagSession={ids,index:0,drafts:new Map(),saved:new Set(),feedback:''};selectedKey='row:'+ids[0];
-   renderRetag();byId('editorDetailBackdrop').hidden=false;byId('editorDetail').parentElement.scrollTop=0;byId('editorRetagSave').focus();
+   renderRetag();doc.body.classList.add('editor-dialog-open');byId('editorDetailBackdrop').hidden=false;byId('editorDetail').parentElement.scrollTop=0;byId('editorRetagSave').focus();
   };
   function detailOpen(){return !byId('editorDetailBackdrop').hidden}
-  function closeDetail(){byId('editorDetailBackdrop').hidden=true;retagSession=null;detailOpener?.focus()}
+  function closeDetail(){doc.body.classList.remove('editor-dialog-open');byId('editorDetailBackdrop').hidden=true;retagSession=null;detailOpener?.focus()}
   function openDetail(key){
-   retagSession=null;detailOpener=doc.activeElement;
+   retagSession=null;detailOpener=doc.activeElement;byId('editorDetailTitle').textContent='Modifier l’élément';
    selectedKey=key;
    renderDetail(itemList(getModel()));
-   byId('editorDetailBackdrop').hidden=false;
+   doc.body.classList.add('editor-dialog-open');byId('editorDetailBackdrop').hidden=false;
    byId('editorClose').focus();
   }
   byId('editorClose').onclick=closeDetail;
@@ -420,6 +420,9 @@
    matchingEditableIds=editable.map(i=>i.id);
    matchingEditableKeys=editable.map(i=>i.key);
    byId('editorCount').textContent=`${visible.length} / ${all.length} élément(s)`+(selectedTag?' · tag '+selectedTag:'')+(bounds.active?' · filtre montant/période':'')+(tagFilters.withoutTags?' · sans tags':'')+(tagFilters.partialTags?' · libellés partiellement tagués':'')+(visible.length>visibleLimit?` · ${visibleLimit} affichés`:'')+` · ${matchingEditableIds.length} opération(s) taguables`;
+   byId('editorMobileSort').value=sorting.column;
+   byId('editorMobileSortDirection').textContent=sorting.direction==='asc'?'Croissant ↑':'Décroissant ↓';
+   byId('editorMobileSortDirection').disabled=!sorting.column;
    renderCategoryOverview(model);
    const host=byId('editorItems');host.replaceChildren();
    const fragment=doc.createDocumentFragment();
@@ -467,6 +470,8 @@
    const column=button.dataset.editorSort;
    sorting={column,direction:sorting.column===column&&sorting.direction==='asc'?'desc':'asc'};render();
   };
+  byId('editorMobileSort').onchange=()=>{sorting={column:byId('editorMobileSort').value,direction:'asc'};render()};
+  byId('editorMobileSortDirection').onclick=()=>{sorting.direction=sorting.direction==='asc'?'desc':'asc';render()};
   byId('editorPageSize').onchange=()=>{
    const requested=Number(byId('editorPageSize').value);
    pageSize=[120,250,500,1000].includes(requested)?requested:120;
