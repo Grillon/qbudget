@@ -1,6 +1,12 @@
 # qbudget — Notes de version
 
-Ce document récapitule les évolutions récentes et leur état dans **0.20.7**. Le [README](README.md) décrit l’utilisation actuelle ; le [CHANGELOG](CHANGELOG.md) conserve le détail historique.
+Ce document récapitule les évolutions récentes et leur état dans **0.20.8**. Le [README](README.md) décrit l’utilisation actuelle ; le [CHANGELOG](CHANGELOG.md) conserve le détail historique.
+
+## 0.20.8 — Sauvegarde complète en un fichier
+
+**Exporter sauvegarde complète** réunit les opérations bancaires chargées, les saisies manuelles et toutes les annotations dans `qbudget-sauvegarde.json`. **Restaurer sauvegarde complète** permet de retrouver ce budget sans CSV complémentaire, après validation du fichier et confirmation du remplacement si des données sont déjà présentes.
+
+Les saisies manuelles réalisées, prévues et flottantes sont incluses. Elles restent aussi dans l’export séparé des annotations, conservé pour les échanges et le CLI. Les échéances calculées sont recalculées depuis les règles et ne sont pas dupliquées comme opérations. [Guide des sauvegardes](docs/sauvegardes.md).
 
 ## 0.20.7 — Retrait du rapprochement automatique des récurrences
 
@@ -12,7 +18,7 @@ Les propositions et décisions des versions précédentes sont conservées dans 
 
 ## Récapitulatif des versions 0.20
 
-| Version | Évolution | État dans 0.20.7 |
+| Version | Évolution | État dans 0.20.8 |
 |---|---|---|
 | 0.20.0 | Fiabilité des annotations et réimports, exports CLI complets, erreurs de stockage visibles, calendrier partagé, contrôles des devises et outils Node unifiés. | Conservé |
 | 0.20.1 | Perspectives guidées du Sunburst / Treemap, choix des dimensions, ordre libre, profondeur de 1 à 8 et sauvegarde des préférences. | Conservé |
@@ -21,7 +27,8 @@ Les propositions et décisions des versions précédentes sont conservées dans 
 | 0.20.4 | Interface mobile, fiches d’opérations, tri et retagage tactiles ; fusion de personnel vers Perso. | Conservé |
 | 0.20.5 | Expérimentation de rapprochements par libellé et montant, six périodicités et validation dans un backlog. | Retiré |
 | 0.20.6 | Expérimentation de priorité aux rythmes courts, contexte sur deux ans et propositions ponctuelles. | Retiré |
-| 0.20.7 | Abandon du rapprochement automatique, compatibilité des anciennes données et documentation actualisée. | Version courante |
+| 0.20.7 | Abandon du rapprochement automatique, compatibilité des anciennes données et documentation actualisée. | Conservé |
+| 0.20.8 | Sauvegarde complète restaurable sans CSV, avec toutes les saisies manuelles et annotations. | Version courante |
 
 ## Évolutions précédentes de la série 0.19
 
@@ -39,6 +46,6 @@ Les propositions et décisions des versions précédentes sont conservées dans 
 
 ## Données et fonctionnement
 
-qbudget reste local, sans base de données ni serveur applicatif obligatoire. Les opérations bancaires restent dans les CSV ; les annotations, tags, catégories et règles restent dans le JSON natif. Les données sont propres au navigateur et à l’appareil ; leur transfert passe par l’export et l’import des fichiers.
+qbudget reste local, sans base de données ni serveur applicatif obligatoire. Les CSV et le JSON natif d’annotations restent utilisables séparément. La sauvegarde complète réunit les opérations bancaires chargées, les manuelles et les annotations pour une restauration en un seul fichier. Les données sont propres au navigateur et à l’appareil ; leur transfert passe par l’export et l’import des fichiers.
 
 Les graphiques conservent une seule contribution par opération à chaque niveau, même si une opération porte plusieurs tags d’une catégorie. Les flottantes restent hors calcul financier. Les nouvelles dimensions automatiques Compte / Support et Flux ne sont pas ajoutées par ce retour arrière.

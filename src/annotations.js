@@ -1,12 +1,12 @@
-// Format natif des annotations qbudget, partage par le tableau de bord et l'editeur.
-// Ne cree aucun format supplementaire et ne modifie jamais les lignes bancaires.
+// Annotations natives et sauvegarde complète, partagées par les deux vues.
+// Le JSON d'annotations reste indépendant des opérations bancaires.
 (function(root,factory){
  const api=factory(root);
  if(typeof module==='object'&&module.exports)module.exports=api;
  root.QBudgetAnnotations=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.20.4';
+ const version='0.20.8';
  const fields=['transferBacklog','recurrenceBacklog','labelAssociations','bankIdentities','version','notes','references','rules','accounts','excludedAccounts','tagCategories','donutCategory','sunburstDepth','hierarchyView','hierarchyDimensions','excludeTransfersFromCharts','tagDefaultsVersion','manualRows'];
  const plain=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
  function exportObject(model){
@@ -15,6 +15,7 @@
   return JSON.parse(JSON.stringify(obj));
  }
  function validateInput(input){
+  if(input?.format==='qbudget-backup')throw Error('Ce fichier est une sauvegarde complète. Utilise « Restaurer sauvegarde complète ».');
   if(!plain(input)||!plain(input.notes)||!plain(input.references))throw Error('Annotations qbudget incompatibles : notes et references attendus');
   if(input.rules!==undefined&&!plain(input.rules))throw Error('Règles invalides');
   if(input.accounts!==undefined&&!Array.isArray(input.accounts))throw Error('Liste de comptes invalide');
@@ -47,5 +48,49 @@
   return engine.reimportBankRows(tagsApi.normalizePersonalTag(tagsApi.upgradeCategories(imported)),imported.rows,resolve);
  }
  function exportJson(model){return JSON.stringify(exportObject(model),null,2)}
- return Object.freeze({version,exportObject,exportJson,importInto,validateInput});
+ // Le même export natif porte les annotations et les manuelles, sans duplication.
+ function exportBackupObject(model,view={}){
+  const engine=root.QBudgetEngine||(typeof require==='function'?require('./engine.js'):null);
+  if(!plain(view))throw Error('Dates de consultation invalides');
+  const dates={};
+  for(const key of ['asof','horizon'])if(view[key]){
+   if(!engine.validDate(view[key]))throw Error('Date de consultation invalide : '+key);
+   dates[key]=view[key];
+  }
+  const annotations=exportObject(model);
+  annotations.manualRows=annotations.manualRows.filter(row=>!row.forecast);
+  const backup={format:'qbudget-backup',schemaVersion:1,bankRows:(model.rows||[]).filter(row=>!row.manual&&!row.forecast),annotations,view:dates};
+  return JSON.parse(JSON.stringify(backup));
+ }
+ function exportBackupJson(model,view={}){return JSON.stringify(exportBackupObject(model,view),null,2)}
+ function importBackup(input,tagsApi=root.QBudgetTags,resolve){
+  if(!plain(input)||input.format!=='qbudget-backup')throw Error('Sauvegarde complète incompatible. Pour un fichier d’annotations, utilise « Importer mes annotations ».');
+  if(input.schemaVersion!==1)throw Error('Version de sauvegarde complète non prise en charge');
+  if(!Array.isArray(input.bankRows))throw Error('Opérations bancaires absentes de la sauvegarde');
+  const engine=root.QBudgetEngine||(typeof require==='function'?require('./engine.js'):null);
+  const ids=new Set();
+  for(const row of input.bankRows){
+   if(!plain(row)||typeof row.id!=='string'||!row.id||ids.has(row.id)||row.manual||row.forecast||typeof row.bank!=='string'||typeof row.desc!=='string'||!engine.validDate(row.date)||typeof row.amount!=='number'||!Number.isFinite(row.amount)||row.identityAmount!==undefined&&Number(row.identityAmount)!==row.amount)throw Error('Opération bancaire invalide ou dupliquée dans la sauvegarde');
+   ids.add(row.id);
+  }
+  const a=validateInput(input.annotations);
+  if(a.version!==3)throw Error('Version des annotations de la sauvegarde non prise en charge');
+  if(!plain(a.rules)||['accounts','excludedAccounts','tagCategories','bankIdentities','labelAssociations','transferBacklog','recurrenceBacklog'].some(key=>!Array.isArray(a[key])))throw Error('Sauvegarde incomplète : comptes, règles ou annotations manquants');
+  for(const reference of Object.values(a.references))if(!plain(reference)||!engine.validDate(reference.date)||typeof reference.balance!=='number'||!Number.isFinite(reference.balance))throw Error('Solde de référence invalide dans la sauvegarde');
+  for(const rule of Object.values(a.rules)){
+   if(!plain(rule)||typeof rule.amount!=='number'||!Number.isFinite(rule.amount)||typeof rule.account!=='string'||rule.frequency&&!['quotidien','hebdomadaire','mensuel','trimestriel','semestriel','annuel'].includes(rule.frequency)||['start','anchor','end'].some(key=>rule[key]&&!engine.validDate(rule[key])))throw Error('Règle de récurrence invalide dans la sauvegarde');
+  }
+  // Une sauvegarde complète récente contient toujours les manuelles explicitement.
+  if(!Array.isArray(a.manualRows))throw Error('Opérations manuelles absentes de la sauvegarde');
+  for(const row of a.manualRows){
+   if(!plain(row)||row.manual!==true||row.forecast||typeof row.amount!=='number'||!Number.isFinite(row.amount)||typeof row.bank!=='string'||typeof row.desc!=='string'||row.date!==null&&row.date!==undefined&&row.date!==''&&!engine.validDate(row.date))throw Error('Opération manuelle invalide dans la sauvegarde');
+  }
+  const view=input.view===undefined?{}:input.view;
+  if(!plain(view)||['asof','horizon'].some(key=>view[key]!==undefined&&!engine.validDate(view[key])))throw Error('Dates de consultation invalides dans la sauvegarde');
+  // Détacher le fichier de l'état restauré ; ne jamais mélanger avec le budget courant.
+  const copy=JSON.parse(JSON.stringify(input));
+  const restored=importInto({rows:copy.bankRows},copy.annotations,tagsApi,resolve);
+  return {model:restored,view:{...(view.asof?{asof:view.asof}:{}),...(view.horizon?{horizon:view.horizon}:{})}};
+ }
+ return Object.freeze({version,exportObject,exportJson,importInto,validateInput,exportBackupObject,exportBackupJson,importBackup});
 });

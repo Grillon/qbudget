@@ -1,3 +1,13 @@
+# qbudget V0.20.8 — Sauvegarde complète et restauration sans CSV
+
+- Exporter sauvegarde complète produit un fichier réunissant les opérations bancaires chargées et les annotations natives, dont toutes les opérations manuelles réalisées, prévues et flottantes.
+- Restaurer sauvegarde complète valide le fichier puis remplace le budget local après confirmation si nécessaire. Les identifiants, comptes, règles, tags, archives et préférences des graphiques sont conservés ; les dates de consultation sont restaurées. Aucun CSV complémentaire et aucun ajout en double lors d’une restauration répétée.
+- Les échéances calculées ne sont pas figées comme écritures, le forecast est recalculé depuis les règles. Les fichiers invalides et les annulations ne changent pas les données ; les échecs de stockage restent signalés.
+- L’export séparé des annotations reste inchangé et conserve déjà les saisies manuelles. Le bouton CLI est renommé Exporter annotations pour le CLI pour clarifier son contenu.
+- Tests de restauration à l’identique, précision et devises, rapprochements en attente, archives, fichiers incomplets, annulation, persistance et parcours mobile après ajout de trois saisies manuelles.
+
+---
+
 # qbudget V0.20.7 — Abandon du rapprochement automatique des récurrences
 
 - Retrait de la détection, des actions de validation automatique de périodicité et du backlog de récurrences dans l’interface. Les expériences 0.20.5 et 0.20.6 sont abandonnées ; aucun nouveau rapprochement de récurrences n’est produit.

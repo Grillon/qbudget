@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.20.7';
+const UI_VERSION='0.20.8';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('headerActionsToggle').onclick=()=>{const button=$('headerActionsToggle');button.setAttribute('aria-expanded',String(button.getAttribute('aria-expanded')!=='true'))};
@@ -766,6 +766,27 @@ function exportAuditCsv(){
 }
 $('downloadAudit').onclick=exportAuditCsv;
 $('exportAudit').onclick=exportAuditCsv;
+$('exportBackup').onclick=()=>{
+ try{download(QBudgetAnnotations.exportBackupJson(model,{asof:$('asof').value,horizon:$('horizon').value}),'qbudget-sauvegarde.json','application/json')}
+ catch(error){alert('Sauvegarde impossible : '+error.message)}
+};
+$('importBackup').onclick=()=>$('backupFile').click();
+$('backupFile').onchange=async event=>{
+ const file=event.target.files[0];if(!file)return;
+ try{
+  const restored=QBudgetAnnotations.importBackup(JSON.parse(await file.text()),QBudgetTags,resolveBankIdentity);
+  const bankCount=restored.model.rows.filter(row=>!row.manual).length,manualCount=restored.model.rows.filter(row=>row.manual).length;
+  if((model.rows.length||Object.keys(model.notes).length||Object.keys(model.rules).length||accounts().length)&&!confirm(`Restaurer cette sauvegarde complète : ${bankCount} opérations bancaires et ${manualCount} opérations manuelles ?\nLe budget local actuel sera remplacé, y compris ses annotations et règles. Exporte une sauvegarde avant de continuer si nécessaire.`))return;
+  model=restored.model;initModel();selected='';clearChartSelection();clearBulkSelection();resetLabelAssociationEditor();
+  $('asof').value=restored.view.asof||today;$('horizon').value=restored.view.horizon||addMonths($('asof').value,1);
+  $('auditAt').value=$('asof').value;$('auditUntil').value=$('horizon').value;$('sunburstDepth').value=model.sunburstDepth;
+  for(const id of ['search','operationTags'])$(id).value='';$('typeFilter').value='';$('searchMode').value='text';$('operationTagMode').value='all';
+  clearNormalization('Sauvegarde restaurée. Tu peux importer de nouveaux relevés si nécessaire.');
+  const persisted=save();showView('dashboard');showOrphanAnnotations();
+  $('importStatus').textContent=`Sauvegarde restaurée : ${bankCount} opérations bancaires et ${manualCount} manuelles, dont ${model.rows.filter(row=>row.manual&&QBudgetEngine.isFloating(row)).length} flottantes.`+(persisted?'':' Modifications en mémoire : exporte une sauvegarde avant de fermer la page.');
+ }catch(error){alert('Restauration non effectuée : '+error.message)}
+ finally{event.target.value=''}
+};
 $('exportSettings').onclick=()=>download(QBudgetAnnotations.exportJson(model),'qbudget-annotations.json','application/json');
 function download(data,name,type){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
 $('importSettings').onclick=()=>$('annotationsFile').click();

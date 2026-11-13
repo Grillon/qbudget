@@ -1,8 +1,8 @@
-# qbudget V0.20.7 — Pilotage financier local
+# qbudget V0.20.8 — Pilotage financier local
 
 qbudget aide à explorer ses finances par les tags, suivre ses soldes, anticiper sa trésorerie et comparer des scénarios. Les opérations flottantes, prévisions et classifications restent souples. Les données sont locales ; aucun service ne reçoit les relevés.
 
-**0.20.7 :** retrait du rapprochement automatique des récurrences. Les récurrences manuelles, le forecast, les transferts, les perspectives, le retagage et l’interface mobile sont conservés. Les anciennes propositions et annotations restent importables et exportables.
+**0.20.8 :** sauvegarde complète réimportable en un fichier, avec les opérations bancaires, les saisies manuelles (réalisées, prévues et flottantes) et toutes les annotations. L’export séparé des annotations reste disponible ; le rapprochement automatique des récurrences reste retiré.
 
 [Notes de version et récapitulatif des évolutions](RELEASE_NOTES.md) · [Historique détaillé](CHANGELOG.md).
 
@@ -24,9 +24,13 @@ Le navigateur accepte les CSV bruts BoursoBank, BPS et Revolut, ou un CSV qbudge
 
 Un import CSV remplace les opérations bancaires affichées. Il conserve les opérations manuelles, les annotations et les décisions utiles des lignes absentes. Aucune opération distincte n’est fusionnée automatiquement.
 
-**Exporter mes annotations** sauvegarde les notes, tags, règles, soldes de référence, catégories, associations, opérations manuelles et flottantes, ainsi que les backlogs et décisions. **Exporter les données CLI** utilise ce même format natif afin de conserver aussi les manuelles. Les opérations bancaires restent dans le CSV : garder les deux fichiers.
+**Exporter sauvegarde complète** produit `qbudget-sauvegarde.json`, qui contient toutes les opérations bancaires chargées, les opérations manuelles et les annotations. **Restaurer sauvegarde complète** réimporte cet ensemble sans CSV, après validation du fichier et confirmation du remplacement du budget local. Réimporter le même fichier ne crée pas de doublons. [Guide des sauvegardes](docs/sauvegardes.md).
 
-Le JSON conserve le schéma natif `version:3`. Les anciens fichiers sont acceptés, y compris les anciens exports CLI qui plaçaient les manuelles dans `rows` ; seuls les champs manuels y sont repris, sans remplacer le CSV bancaire. Les champs supplémentaires sont reconnus ou conservés. Un import d’annotations remplace les annotations et manuelles locales après confirmation ; le fichier original sur disque n’est pas réécrit.
+Les opérations ajoutées manuellement — réalisées, prévues ou flottantes — sont également conservées dans l’export séparé des annotations.
+
+**Exporter mes annotations** sauvegarde les notes, tags, règles, soldes de référence, catégories, associations, opérations manuelles et flottantes, ainsi que les backlogs et décisions. **Exporter annotations pour le CLI** utilise ce même format natif afin de conserver aussi les manuelles. Avec cet export séparé, garder le CSV bancaire et le JSON. La sauvegarde complète contient déjà les opérations bancaires et les annotations.
+
+Le JSON d’annotations conserve le schéma natif `version:3`. La sauvegarde complète l’englobe avec les opérations bancaires dans le format `qbudget-backup`, version 1. Les anciens fichiers sont acceptés, y compris les anciens exports CLI qui plaçaient les manuelles dans `rows` ; seuls les champs manuels y sont repris, sans remplacer le CSV bancaire. Les champs supplémentaires sont reconnus ou conservés. Un import d’annotations remplace les annotations et manuelles locales après confirmation ; le fichier original sur disque n’est pas réécrit.
 
 Les modifications sont sauvegardées dans le navigateur. Si ce stockage échoue, une alerte persistante l’indique : les modifications restent en mémoire et peuvent être exportées avant de fermer la page. Un message de succès n’est pas affiché pour une sauvegarde échouée.
 
@@ -112,7 +116,7 @@ Le REPL permet `accounts`, `rules`, `forecast`, `balance`, `set`, `set-rule`, `c
 npm run test:browser
 ```
 
-La première commande vérifie la syntaxe, les générateurs, les tests métier, l’importateur, le CLI et les assets. La seconde lance de vrais parcours Firefox sur des données fictives : export/relecture des manuelles, sauvegarde indisponible, noms de comptes, transferts, tri, pagination, retagage, formats mobiles et relecture des anciennes annotations de récurrence. Firefox doit être installé ; `FIREFOX_BIN` permet d’indiquer son chemin. Les profils de test sont indépendants du navigateur personnel et supprimés après exécution.
+La première commande vérifie la syntaxe, les générateurs, les tests métier, l’importateur, le CLI et les assets. La seconde lance de vrais parcours Firefox sur des données fictives : export/relecture des manuelles, sauvegarde indisponible, noms de comptes, transferts, tri, pagination, retagage, formats mobiles, relecture des anciennes annotations de récurrence et sauvegarde/restauration complète après saisie manuelle. Firefox doit être installé ; `FIREFOX_BIN` permet d’indiquer son chemin. Les profils de test sont indépendants du navigateur personnel et supprimés après exécution.
 
 Les deux workflows GitHub exécutent les contrôles avant publication. Pages assemble `main` à la racine et `dev` dans `/dev/` sans publier les relevés, annotations ou autres données personnelles.
 
@@ -131,7 +135,7 @@ Leur option `--check` détecte un décalage sans écrire de fichier. `banques.js
 | `src/engine.js` | Dates, soldes, prévisions, audit et lecture des tags |
 | `src/identity.js` | Identités stables, rapprochements et migration des notes |
 | `src/normalize.js` | Normalisation unique des CSV bruts, navigateur et CLI |
-| `src/annotations.js`, `src/tags.js` | Format natif, catégories et actions de tags |
+| `src/annotations.js`, `src/tags.js` | Annotations natives, sauvegarde complète, catégories et actions de tags |
 | `src/recurrences.js` | Validation des anciennes archives de récurrences, sans détection active |
 | `src/transfers.js` | Détection des transferts et backlog de propositions |
 | `src/ui.js`, `src/editor.js` | Vues sur le même modèle, sans format de données séparé |
