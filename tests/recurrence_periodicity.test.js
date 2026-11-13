@@ -12,7 +12,7 @@ function make(dates=['2026-01-31','2026-07-31']){
 }
 test('deux occurrences suffisent pour les six fréquences ; différences de montant ou dates irrégulières exclues',()=>{
  const m=engine.mergeAnnotations(engine.readCsv(fs.readFileSync('examples/recurrences-periodicites.csv','utf8')),{});
- const before=JSON.stringify(m),found=recurrences.detect(m);
+ const before=JSON.stringify(m),found=recurrences.detect(m).filter(c=>c.frequency!=='ponctuel');
  assert.deepEqual(found.map(c=>c.frequency).sort(),['quotidien','hebdomadaire','mensuel','trimestriel','semestriel','annuel'].sort());
  assert.ok(found.every(c=>c.evidence.length===2));assert.equal(JSON.stringify(m),before);
 });

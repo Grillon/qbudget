@@ -103,6 +103,7 @@ function tagsByCategory(model,row,category,context){
  if(category.source==='type'){
   const type=operationType(model,row),note=model.notes?.[row.id]||{},rule=model.rules?.[row.ruleId||note.ruleId];
   const frequency=rule?.frequency||note.recurrenceFrequency;
+  if(type==='ponctuel'&&note.recurrenceFrequency==='ponctuel')return ['Ponctuel'];
   if((type==='recurrent'||!type&&rule)&&['quotidien','hebdomadaire','mensuel','trimestriel','semestriel','annuel'].includes(frequency))return [frequency==='hebdomadaire'?'hebdo':frequency];
   if(tagged.length)return tagged;
   if(type==='recurrent')return ['Récurrent'];
@@ -390,5 +391,5 @@ function check(model){const errors=[],warnings=[];
  if(orphanCount)warnings.push(orphanCount+' annotation(s) sans opération chargée : conservées, rattachement possible dans l’éditeur');
  return {ok:errors.length===0,errors,warnings};
 }
-return {version:'0.20.5',validDate,addMonths,createReadContext,currencyDiagnostics,compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,pendingBankMatches,resolveBankMatch,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,validateLabelAssociations,automaticTagsFor,manualTagsFor,labelAssociationPreview,knownTags,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
+return {version:'0.20.6',validDate,addMonths,createReadContext,currencyDiagnostics,compileSearch,readCsv,mergeAnnotations,reimportBankRows,reassignAnnotation,pendingBankMatches,resolveBankMatch,tagCategories,tagsByCategory,organizedTags,expenseBreakdown,expenseCategoryTotals,validateTagCategories,validateLabelAssociations,automaticTagsFor,manualTagsFor,labelAssociationPreview,knownTags,isFloating,accountNames,cashAccountNames,includedAccountNames,excludedAccountNames,tagsFor,operationMatchesFilter,hasOperationFilter,filteredImpact,pendingOperations,balanceAt,totalBalance,shiftDate,recurrenceEvents,forecast,check,auditOperations,auditCsv,recurrencePreview};
 });

@@ -1,8 +1,8 @@
-# qbudget V0.20.5 — Pilotage financier local
+# qbudget V0.20.6 — Pilotage financier local
 
 qbudget aide à explorer ses finances par les tags, suivre ses soldes, anticiper sa trésorerie et comparer des scénarios. Les opérations flottantes, prévisions et classifications restent souples. Les données sont locales ; aucun service ne reçoit les relevés.
 
-**0.20.5 :** rapprochement des mouvements de même libellé et même montant dès deux occurrences, avec quotidien, hebdo, mensuel, trimestriel, semestriel et annuel. Validation de la périodicité dans un backlog, sans modifier le forecast ; création d’une règle proposée séparément.
+**0.20.6 :** détection prioritaire du quotidien vers l’annuel, avec contexte du même libellé pour éviter les faux annuels sur deux ans d’historique. Ponctuel proposé pour une occurrence unique avec au moins un an de recul ; toutes les classifications restent soumises à validation.
 
 ## Démarrer
 

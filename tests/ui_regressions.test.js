@@ -65,7 +65,8 @@ test('backlog récurrences : une vue cachée ne reconstruit pas son contenu',()=
 });
 test('backlog récurrences : brouillons et détails ouverts survivent au rendu',()=>{
  const row={id:'r1',bank:'BPS',date:'2026-10-01',desc:'Courses',amount:-5};
- const m={rows:[row],notes:{},references:{},rules:{},recurrenceBacklog:[{id:'c1',status:'pending',desc:'Courses',account:'BPS',frequency:'mensuel',amount:-5,anchor:'2026-10-01',evidence:[row]}]};
+ const second={...row,id:'r2',date:'2026-11-01'};
+ const m={rows:[row,second],notes:{},references:{},rules:{},recurrenceBacklog:[{id:'c1',status:'pending',desc:'Courses',account:'BPS',frequency:'mensuel',amount:-5,anchor:'2026-11-01',evidence:[row,second]}]};
  const {context,get}=environment(m);get('recurrenceBacklogDetails').open=true;
  vm.runInContext(section(ui,'function renderRecurrenceBacklog(){',"$('openRecurrenceBacklog').onclick="),context);context.renderRecurrenceBacklog();
  let card=get('recurrenceBacklogList').children[0];card.open=true;card.querySelectorAll('details')[0].open=true;card.querySelectorAll('[data-field]').find(n=>n.dataset.field==='desc').value='Mon brouillon';

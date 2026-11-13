@@ -1,3 +1,13 @@
+# qbudget V0.20.6 — Priorité aux rythmes courts et propositions ponctuelles
+
+- Ordre de recherche quotidien, hebdomadaire, mensuel, trimestriel, semestriel, annuel. Le contexte de dates du même libellé sert à privilégier le rythme court observé, même si un montant précis ne revient qu’une fois par an.
+- Les montants restent séparés pour la validation ; les preuves de rythme sont affichées et revérifiées sans classer silencieusement les opérations de contexte. Les propositions et anciens brouillons annuels sont actualisés au nouveau scan.
+- Ponctuel proposé uniquement pour une occurrence unique sur une plage bancaire d’au moins un an, sur le même compte source. Pas de règle prévisionnelle depuis une opération isolée. Une seconde occurrence peut faire revenir le groupe à valider.
+- Annuel fondé sur un intervalle calendaire d’un an, jamais sur le seul changement de millésime. Classification et forecast restent séparés ; les règles existantes ne sont pas réécrites.
+- Tests sur 24 mois à montants alternés, trous d’historique, vraies séries annuelles, plages insuffisantes, validation de ponctuel et actualisation du backlog.
+
+---
+
 # qbudget V0.20.5 — Rapprochement et validation des périodicités
 
 - Détection stricte dès deux occurrences : libellé normalisé, montant signé exact, compte et devise identiques. Montants variables et regroupements par association ne sont plus utilisés pour proposer un groupe.
