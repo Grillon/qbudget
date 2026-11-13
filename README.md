@@ -1,8 +1,10 @@
-# qbudget V0.20.6 — Pilotage financier local
+# qbudget V0.20.7 — Pilotage financier local
 
 qbudget aide à explorer ses finances par les tags, suivre ses soldes, anticiper sa trésorerie et comparer des scénarios. Les opérations flottantes, prévisions et classifications restent souples. Les données sont locales ; aucun service ne reçoit les relevés.
 
-**0.20.6 :** détection prioritaire du quotidien vers l’annuel, avec contexte du même libellé pour éviter les faux annuels sur deux ans d’historique. Ponctuel proposé pour une occurrence unique avec au moins un an de recul ; toutes les classifications restent soumises à validation.
+**0.20.7 :** retrait du rapprochement automatique des récurrences. Les récurrences manuelles, le forecast, les transferts, les perspectives, le retagage et l’interface mobile sont conservés. Les anciennes propositions et annotations restent importables et exportables.
+
+[Notes de version et récapitulatif des évolutions](RELEASE_NOTES.md) · [Historique détaillé](CHANGELOG.md).
 
 ## Démarrer
 
@@ -61,7 +63,7 @@ Les recettes et dépenses du graphique mensuel gardent leur périmètre historiq
 
 Une opération manuelle peut être **réalisée**, **prévue** ou sans date (**flottante**). Une prévue ne doit pas être déplacée dans le passé sans passer en réalisé ; une flottante n’a jamais d’effet sur le solde ou les prévisions.
 
-- **Récurrences potentielles** : détection sur au moins deux occurrences de même libellé et même montant, puis validation de la périodicité dans un backlog. Seule la création explicite d’une règle modifie les prévisions. Les brouillons restent présents lors des changements de filtre ou de vue. [Guide](docs/detection-recurrences.md).
+- **Récurrences manuelles** : utiliser **Lier / créer** sur une opération pour définir une règle, puis modifier son montant, sa fréquence ou ses dates dans Récurrences ou l’éditeur. Le rapprochement automatique et son backlog ont été retirés. Les règles déjà validées restent actives, y compris les semestrielles. [Compatibilité des anciennes sauvegardes](docs/detection-recurrences.md).
 - **Transferts potentiels** : même date, devise et montant opposé, entre comptes distincts. Un clic appose `transfert_intercomptes` aux deux lignes ; les tags constituent la validation, même ajoutés depuis le tableau. Doubles débits et ambiguïtés restent manuels. [Guide](docs/detection-transferts.md).
 
 Un solde de référence est un solde de **fin de journée**. Les calculs historiques partent de cette référence dans les deux sens. Les prévisions et exports utilisent le même calendrier ancré, y compris les fins de mois et années bissextiles. Une règle ancienne ne cesse plus après 600 occurrences.
@@ -110,7 +112,7 @@ Le REPL permet `accounts`, `rules`, `forecast`, `balance`, `set`, `set-rule`, `c
 npm run test:browser
 ```
 
-La première commande vérifie la syntaxe, les générateurs, les tests métier, l’importateur, le CLI et les assets. La seconde lance de vrais parcours Firefox sur des données fictives : export/relecture des manuelles, sauvegarde indisponible, noms de comptes, brouillons de récurrence, transferts, tri, pagination et taggage groupé. Firefox doit être installé ; `FIREFOX_BIN` permet d’indiquer son chemin. Les profils de test sont indépendants du navigateur personnel et supprimés après exécution.
+La première commande vérifie la syntaxe, les générateurs, les tests métier, l’importateur, le CLI et les assets. La seconde lance de vrais parcours Firefox sur des données fictives : export/relecture des manuelles, sauvegarde indisponible, noms de comptes, transferts, tri, pagination, retagage, formats mobiles et relecture des anciennes annotations de récurrence. Firefox doit être installé ; `FIREFOX_BIN` permet d’indiquer son chemin. Les profils de test sont indépendants du navigateur personnel et supprimés après exécution.
 
 Les deux workflows GitHub exécutent les contrôles avant publication. Pages assemble `main` à la racine et `dev` dans `/dev/` sans publier les relevés, annotations ou autres données personnelles.
 
@@ -130,7 +132,8 @@ Leur option `--check` détecte un décalage sans écrire de fichier. `banques.js
 | `src/identity.js` | Identités stables, rapprochements et migration des notes |
 | `src/normalize.js` | Normalisation unique des CSV bruts, navigateur et CLI |
 | `src/annotations.js`, `src/tags.js` | Format natif, catégories et actions de tags |
-| `src/recurrences.js`, `src/transfers.js` | Détection et backlogs de propositions |
+| `src/recurrences.js` | Validation des anciennes archives de récurrences, sans détection active |
+| `src/transfers.js` | Détection des transferts et backlog de propositions |
 | `src/ui.js`, `src/editor.js` | Vues sur le même modèle, sans format de données séparé |
 | `src/cli.js`, `src/repl.js` | Commandes et scénarios locaux |
 | `scripts/` | Génération, publication, serveur local et tests navigateur |

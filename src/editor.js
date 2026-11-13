@@ -5,11 +5,10 @@
  root.QBudgetEditor=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  'use strict';
- const version='0.20.5';
+ const version='0.20.7';
  const lower=x=>String(x??'').toLocaleLowerCase('fr');
  const commaTags=text=>[...new Map(String(text||'').split(',').map(t=>t.trim()).filter(Boolean).map(t=>[lower(t),t])).values()];
  const matchesTag=(model,row,tag)=>{const category=(model.tagCategories||[]).find(c=>(c.tags||[]).some(t=>lower(t)===lower(tag)));return (category?root.QBudgetEngine.tagsByCategory(model,row,category):root.QBudgetEngine.tagsFor(model,row)).some(t=>lower(t)===lower(tag))};
- const displayTags=(model,row)=>[...new Map([...root.QBudgetEngine.tagsFor(model,row),...(model.tagCategories||[]).filter(c=>c.source==='type').flatMap(c=>root.QBudgetEngine.tagsByCategory(model,row,c))].map(t=>[lower(t),t])).values()];
  const validDate=s=>(root.QBudgetEngine||(typeof require==='function'?require('./engine.js'):null)).validDate(s);
  // Sélection tabulaire standard, indépendante des filtres et des calculs financiers.
  // ordered contient seulement les objets taguables dans l'ordre des lignes filtrées.
@@ -90,7 +89,7 @@
  // Valeurs visibles communes à l'affichage et au tri, sans modifier le modèle.
  function tableValues(model,item,row){
   const rule=item.kind==='rule'?model.rules?.[item.id]:null;
-  const tags=row?displayTags(model,row):item.kind==='orphan'?root.QBudgetEngine.manualTagsFor(model,{id:item.id}):[];
+  const tags=row?root.QBudgetEngine.tagsFor(model,row):item.kind==='orphan'?root.QBudgetEngine.manualTagsFor(model,{id:item.id}):[];
   return {date:row?.date||'',account:row?.bank||rule?.account||'',label:item.label,
    amount:row?Number(row.amount):rule?Number(rule.amount):null,tags:tags.join(' · ')};
  }
@@ -118,7 +117,7 @@
   const rowIds=new Set();
   for(const r of model.rows||[]){
    rowIds.add(r.id);
-   list.push({key:'row:'+r.id,kind:r.manual?'manual':'bank',id:r.id,label:r.desc||'Sans libellé',detail:`${r.bank||'Sans compte'} · ${r.date||'En attente'} · ${Number(r.amount).toFixed(2)} €`,search:[r.desc,r.bank,r.date,r.amount,...displayTags(model,r)].join(' ')});
+   list.push({key:'row:'+r.id,kind:r.manual?'manual':'bank',id:r.id,label:r.desc||'Sans libellé',detail:`${r.bank||'Sans compte'} · ${r.date||'En attente'} · ${Number(r.amount).toFixed(2)} €`,search:[r.desc,r.bank,r.date,r.amount,...root.QBudgetEngine.tagsFor(model,r)].join(' ')});
   }
   for(const id of Object.keys(model.notes||{})){
    if(rowIds.has(id))continue;

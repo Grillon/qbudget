@@ -1,6 +1,6 @@
 // Interface navigateur, comportement et disposition.
 'use strict';
-const UI_VERSION='0.20.6';
+const UI_VERSION='0.20.7';
 globalThis.QBudgetUI=Object.freeze({version:UI_VERSION});
 const $=id=>document.getElementById(id),KEY='qbudget-mvp-1',LAYOUT_KEY='qbudget-layout-v1';
 $('headerActionsToggle').onclick=()=>{const button=$('headerActionsToggle');button.setAttribute('aria-expanded',String(button.getAttribute('aria-expanded')!=='true'))};
@@ -37,7 +37,7 @@ function migrateLegacyAccountNames(){
 }
 
 function load(){try{const s=localStorage.getItem(KEY);if(s)model=JSON.parse(s);initModel();migrateLegacyAccountNames();for(const r of model.rows){r.account=r.bank;r.balance=null}model=QBudgetEngine.reimportBankRows(model,model.rows,resolveBankIdentity);showOrphanAnnotations()}catch(error){$('storageWarning').textContent='Chargement : '+error.message+' Les données en mémoire restent exportables.';$('storageWarning').hidden=false}finally{initModel()}}function accounts(){return QBudgetEngine.accountNames(model)};function key(r){return r.bank}function inAccount(){return model.rows.filter(r=>!selected||key(r)===selected)}function aggregateRows(){const allowed=new Set(selected?[selected]:QBudgetEngine.includedAccountNames(model));return model.rows.filter(r=>allowed.has(key(r)))}function notes(r){return model.notes[r.id]||{}}
-function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Courbes historiques',QBudgetHistoryPlot.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Détection de récurrences',QBudgetRecurrences.version],['Détection de transferts',QBudgetTransfers.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
+function renderModuleVersions(){const entries=[['Interface',QBudgetUI.version],['Courbes historiques',QBudgetHistoryPlot.version],['Moteur',QBudgetEngine.version],['Tags & lots',QBudgetTags.version],['Normalisation',QBudgetNormalize.version],['Sélection graphique',QBudgetVisualSelect.version],['Annotations',QBudgetAnnotations.version],['Archives de récurrences',QBudgetRecurrences.version],['Détection de transferts',QBudgetTransfers.version],['Éditeur',QBudgetEditor.version]];const host=$('modulesVersions');host.replaceChildren();for(const [name,v] of entries){const node=document.createElement('span');node.textContent=name+' · v'+v;host.append(node)}$('modulesVersionSummary').textContent=entries.map(([n,v])=>n+' '+v).join(' · ')}
 function renderAccounts(){const list=accounts();$('account').replaceChildren(new Option('Tous les comptes',''),...list.map(a=>new Option(a,a)));if(selected&&!list.includes(selected))selected='';$('account').value=selected;const ref=model.references[selected];$('refBalance').value=ref?.balance??'';$('refDate').value=ref?.date??'';$('saveRef').disabled=!selected;const ma=$('manualAccount'),previous=ma.value;ma.replaceChildren(new Option('À attribuer (file d’attente)',''),...list.map(a=>new Option(a,a)));ma.value=list.includes(previous)?previous:(selected||list[0]||'');
  const toggles=$('accountToggles');toggles.replaceChildren();const excluded=new Set(model.excludedAccounts);
  for(const name of list){const label=document.createElement('label');label.className='account-toggle'+(excluded.has(name)?' excluded':'');label.title='Activé : inclus dans le cumul global. Désactivé : visible séparément sur le graphique.';
@@ -593,7 +593,7 @@ function renderPending(){
 }
 // Ne jamais recalculer Plotly ni reconstruire les milliers de lignes d'une vue cachée.
 function render(){
- renderBankMatches();renderRecurrenceBacklog();renderTransferBacklog();
+ renderBankMatches();renderTransferBacklog();
  if(!$('editorScreen').hidden){renderTagCategories();editorApi?.render()}
  else{renderAccounts();renderSummary();renderRows();renderPending();renderRules()}
  $('importStatus').textContent=`${model.rows.length} opérations chargées · ${accounts().length} compte(s) · ${$('storageWarning').hidden?'stockage local au navigateur':'modifications en mémoire'}`;
@@ -663,87 +663,6 @@ function renderBankMatches(){
 }
 $('openBankMatches').onclick=$('editorOpenBankMatches').onclick=openBankMatches;
 $('bankMatchesDetails').addEventListener('toggle',()=>{if($('bankMatchesDetails').open)renderBankMatches()});
-function openRecurrenceBacklog(){
- showView('editor');$('recurrenceBacklogDetails').open=true;renderRecurrenceBacklog();
- $('recurrenceBacklogCard').scrollIntoView({behavior:'smooth',block:'start'});
-}
-function detectRecurrences(){
- try{
-  const before=new Set((model.recurrenceBacklog||[]).map(c=>c.id));
-  model=QBudgetRecurrences.scan(model);save();openRecurrenceBacklog();
-  const pending=model.recurrenceBacklog.filter(c=>c.status==='pending');
-  $('recurrenceBacklogStatus').textContent=`Détection terminée : ${pending.length} proposition(s) à examiner, dont ${pending.filter(c=>!before.has(c.id)).length} nouvelle(s). Aucune périodicité validée ni règle créée. Les décisions antérieures sont conservées.`;
- }catch(error){$('recurrenceBacklogStatus').textContent=error.message}
-}
-function renderRecurrenceBacklog(){
- const backlog=model.recurrenceBacklog||[],pending=backlog.filter(c=>c.status==='pending'),reviewed=backlog.filter(c=>c.status!=='pending');
- $('recurrencePendingCount').textContent=$('recurrenceBacklogCount').textContent=pending.length;
- $('editorOpenRecurrences').textContent=`Récurrences potentielles · ${pending.length}`;
- $('recurrenceReviewedCount').textContent=reviewed.length;
- if(!$('recurrenceBacklogDetails').open||$('editorScreen').hidden)return;
- const host=$('recurrenceBacklogList'),drafts=new Map([...host.querySelectorAll('[data-candidate]')].map(card=>[card.dataset.candidate,{open:card.open,frequency:card.dataset.frequency,details:[...card.querySelectorAll('details')].map(d=>d.open),fields:Object.fromEntries([...card.querySelectorAll('[data-field]')].map(input=>[input.dataset.field,input.value]))}]));host.replaceChildren();
- if(!pending.length)host.textContent='Aucune proposition en attente. Lance la détection après un import pour rechercher de nouvelles récurrences.';
- const context=QBudgetEngine.createReadContext(model),rowIds=context.rowsById;
- const node=(tag,text,cls='')=>{const n=document.createElement(tag);n.textContent=text;n.className=cls;return n};
- const act=fn=>{try{model=fn();clearChartSelection();clearBulkSelection();const saved=save();renderRecurrenceBacklog();editorApi?.render();if(!saved)$('recurrenceBacklogStatus').textContent='Décision conservée en mémoire. Exporte tes annotations pour la sauvegarder dans un fichier.';return saved}catch(error){$('recurrenceBacklogStatus').textContent=error.message;return false}};
- for(const c of pending){
-  const card=node('details','','bank-match-item recurrence-candidate');card.dataset.candidate=c.id;card.dataset.frequency=c.frequency;const previous=drafts.get(c.id),draft=previous?.frequency===c.frequency?previous:undefined;card.open=previous?.open||false;
-  card.append(node('summary',`${c.desc} · ${c.account}${c.sourceAccount?' / '+c.sourceAccount:''} · ${c.frequency} · ${amount(c.amount)} · ${c.evidence.length} ${c.evidence.length===1?'occurrence':'occurrences'}`));
-  const proofIds=new Set([...c.evidence,...(c.cadenceEvidence||[]),...(c.coverageEvidence||[])].map(e=>e.id));
-  const missing=[...proofIds].filter(id=>!rowIds.has(id)).length;
-  const amountText=new Set(c.evidence.map(e=>e.amount)).size===1?amount(c.amount)+' par occurrence':'ancienne hypothèse à montants variables';
-  card.append(node('p',`Observations du ${c.evidence[0].date} au ${c.anchor} · ${amountText}. Vérifie les dates ci-dessous avant de valider.`,'mutednote'));
-  if(missing)card.append(node('p',`${missing} opération(s) absente(s) de l’import actuel. Réimporte cet historique puis relance la détection avant de valider.`,'filter-error'));
-  else if(c.stale)card.append(node('p','Cette proposition n’est plus détectée dans les données actuelles. Réimporte l’historique utile ou ignore cette proposition.','filter-error'));
-  const evidence=node('details','');evidence.open=draft?.details[0]||false;evidence.append(node('summary','Voir les opérations observées'));
-  const wrap=node('div','','table-wrap');wrap.style.maxHeight='300px';wrap.style.overflow='auto';
-  const table=document.createElement('table'),head=document.createElement('thead'),tr=document.createElement('tr');
-  for(const text of ['Date','Compte','Libellé bancaire original','Montant','Tags actuels'])tr.append(node('th',text));head.append(tr);table.append(head);
-  const body=document.createElement('tbody');
-  for(const e of c.evidence){const row=document.createElement('tr');for(const value of [e.date,e.bank+(e.sourceAccount?' / '+e.sourceAccount:''),e.desc,amount(e.amount),QBudgetEngine.tagsFor(model,context.rowsById.get(e.id)||e,context).join(', ')])row.append(node('td',value));body.append(row)}
-  table.append(body);wrap.append(table);evidence.append(wrap);card.append(evidence);
-  if(c.coverageEvidence)card.append(node('p',`Une seule occurrence sur le compte observé du ${c.coverageEvidence[0].date} au ${c.coverageEvidence[1].date}, soit au moins un an. Proposition : ponctuel.`,'mutednote'));
-  if(c.cadenceEvidence){
-   card.append(node('p',`Priorité au rythme ${c.frequency}, observé sur ${c.cadenceEvidence.length} opérations du même libellé, même si le montant varie. Seules les ${c.evidence.length} opérations de même montant ci-dessus seront classées.`,'mutednote'));
-   const context=node('details','');context.open=draft?.details[1]||false;context.append(node('summary','Voir les dates qui établissent le rythme prioritaire'));
-   for(const e of c.cadenceEvidence)context.append(node('p',`${e.date} · ${e.desc} · ${amount(e.amount)}`,'mutednote'));
-   card.append(context);
-  }
-  const classification=node('div','','toolbar');card.append(classification);
-  const optionalRule=node('details','');optionalRule.open=draft?.details[c.cadenceEvidence?2:1]||false;optionalRule.append(node('summary','Prévoir les prochaines échéances (facultatif)'));
-  const form=node('div','','toolbar');form.style.alignItems='end';optionalRule.append(form);
-  const field=(label,name,value,type='text',parent=form)=>{const l=node('label',label,'field'),input=document.createElement(type==='select'?'select':'input');input.dataset.field=name;
-   if(type==='select')for(const f of c.evidence.length===1?['ponctuel']:['ponctuel','quotidien','hebdomadaire','mensuel','trimestriel','semestriel','annuel'])input.add(new Option(f,f));
-   else{input.type=type;if(type==='number')input.step='0.01'}input.value=draft?.fields[name]??value;l.append(input);parent.append(l);return input};
-  const frequency=field('Périodicité','frequency',c.frequency,'select',classification);
-  const validate=node('button','Valider la périodicité');validate.type='button';validate.dataset.action='classify';validate.disabled=!!missing||!!c.stale;
-  validate.onclick=()=>{if(act(()=>QBudgetRecurrences.classify(model,c.id,{frequency:frequency.value})))$('recurrenceBacklogStatus').textContent='Périodicité validée sur les opérations observées. Leurs tags sont conservés ; aucune règle ni échéance de forecast n’a été créée.'};
-  classification.append(validate);
-  card.append(node('p','La périodicité validée apparaît dans le tableau et les graphiques. Elle ne modifie pas le forecast.','mutednote'));
-  const desc=field('Libellé de la règle','desc',c.desc),value=field('Montant signé (€)','amount',c.amount,'number'),anchor=field('Dernière échéance de référence','anchor',c.anchor,'date');
-  const next=node('p','','mutednote');
-  const preview=()=>{if(frequency.value==='ponctuel'){next.textContent='Aucune échéance prévisionnelle pour une opération ponctuelle.';return}try{next.textContent='Première échéance calculée : '+shiftDate(anchor.value,frequency.value,1)+'. La création sera revérifiée sur les opérations actuelles.'}catch{next.textContent='Choisis une date de référence valide.'}};
-  anchor.oninput=frequency.onchange=preview;preview();
-  const accept=node('button','Créer une règle de prévision'),ignore=node('button','Ignorer','secondary');accept.type=ignore.type='button';accept.dataset.action='rule';ignore.dataset.action='ignore';accept.disabled=!!missing||!!c.stale||frequency.value==='ponctuel';
-  frequency.addEventListener('change',()=>{accept.disabled=!!missing||!!c.stale||frequency.value==='ponctuel'});
-  accept.onclick=()=>{
-   const val=numeric(value.value);if(val===null||!val){$('recurrenceBacklogStatus').textContent='Montant de récurrence invalide';return}
-   let nextDate;try{nextDate=shiftDate(anchor.value,frequency.value,1)}catch{$('recurrenceBacklogStatus').textContent='Date de référence invalide';return}
-   if(!confirm(`Créer la récurrence « ${desc.value.trim()} » sur ${c.account} : ${amount(val)}, ${frequency.value}, première échéance ${nextDate} ?\nElle modifiera les prévisions. Les opérations prévues existantes restent comptées séparément.\nLes ${c.evidence.length} opérations observées seront liées à cette règle ; leurs tags seront conservés.`))return;
-   if(act(()=>QBudgetRecurrences.accept(model,c.id,{id:uid(),desc:desc.value,amount:val,frequency:frequency.value,anchor:anchor.value})))$('recurrenceBacklogStatus').textContent='Récurrence créée et sauvegardée. Les prévisions incluent désormais ses échéances ; elle reste modifiable dans l’éditeur.';
-  };
-  ignore.onclick=()=>{if(act(()=>QBudgetRecurrences.ignore(model,c.id)))$('recurrenceBacklogStatus').textContent='Proposition ignorée. Elle ne sera pas reproposée à chaque détection ; elle reste consultable dans les décisions déjà prises.'};
-  form.append(accept);optionalRule.append(next);classification.append(ignore);if(c.evidence.length>1)card.append(optionalRule);host.append(card);
- }
- const history=$('recurrenceReviewedList');history.replaceChildren();
- for(const c of reviewed){
-  const card=node('div','','bank-match-item');card.append(node('span',`${c.desc} · ${c.account} · ${c.status==='ignored'?'Ignorée':c.classificationOnly?'Périodicité validée : '+c.frequency:model.rules[c.ruleId]?'Règle créée':'Règle créée puis supprimée'}`));
-  if(c.status==='ignored'||c.classificationOnly){const reopen=node('button','Réexaminer','secondary');reopen.type='button';reopen.onclick=()=>act(()=>QBudgetRecurrences.reopen(model,c.id));card.append(reopen)}history.append(card);
- }
-}
-$('openRecurrenceBacklog').onclick=$('editorOpenRecurrences').onclick=openRecurrenceBacklog;
-$('detectRecurrences').onclick=$('editorDetectRecurrences').onclick=detectRecurrences;
-$('recurrenceBacklogDetails').addEventListener('toggle',()=>{if($('recurrenceBacklogDetails').open)renderRecurrenceBacklog()});
 function openTransferBacklog(){
  showView('editor');$('transferBacklogDetails').open=true;renderTransferBacklog();$('transferBacklogCard').scrollIntoView({behavior:'smooth',block:'start'});
 }

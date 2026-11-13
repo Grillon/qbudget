@@ -57,22 +57,6 @@ test('export CLI : les sept manuelles de la démo dont quatre flottantes sont da
  assert.equal(exported.manualRows.length,7);assert.equal(exported.manualRows.filter(engine.isFloating).length,4);
  assert.equal(annotations.importInto({rows:[]},exported,tags).rows.filter(r=>r.manual).length,7);
 });
-test('backlog récurrences : une vue cachée ne reconstruit pas son contenu',()=>{
- const {context,get}=environment();get('recurrenceBacklogDetails').open=true;get('editorScreen').hidden=true;
- const old=node();get('recurrenceBacklogList').append(old);
- vm.runInContext(section(ui,'function renderRecurrenceBacklog(){',"$('openRecurrenceBacklog').onclick="),context);context.renderRecurrenceBacklog();
- assert.strictEqual(get('recurrenceBacklogList').children[0],old);
-});
-test('backlog récurrences : brouillons et détails ouverts survivent au rendu',()=>{
- const row={id:'r1',bank:'BPS',date:'2026-10-01',desc:'Courses',amount:-5};
- const second={...row,id:'r2',date:'2026-11-01'};
- const m={rows:[row,second],notes:{},references:{},rules:{},recurrenceBacklog:[{id:'c1',status:'pending',desc:'Courses',account:'BPS',frequency:'mensuel',amount:-5,anchor:'2026-11-01',evidence:[row,second]}]};
- const {context,get}=environment(m);get('recurrenceBacklogDetails').open=true;
- vm.runInContext(section(ui,'function renderRecurrenceBacklog(){',"$('openRecurrenceBacklog').onclick="),context);context.renderRecurrenceBacklog();
- let card=get('recurrenceBacklogList').children[0];card.open=true;card.querySelectorAll('details')[0].open=true;card.querySelectorAll('[data-field]').find(n=>n.dataset.field==='desc').value='Mon brouillon';
- context.renderRecurrenceBacklog();card=get('recurrenceBacklogList').children[0];
- assert.equal(card.open,true);assert.equal(card.querySelectorAll('details')[0].open,true);assert.equal(card.querySelectorAll('[data-field]').find(n=>n.dataset.field==='desc').value,'Mon brouillon');
-});
 test('résumé : prévision et points de courbe viennent du moteur avec ses arrondis',()=>{
  const m={rows:[1,2,3].map((v,i)=>({id:String(v),bank:'BPS',date:'2026-11-0'+v,desc:'prévue',amount:0.1,nature:'planned'})),references:{BPS:{date:'2026-10-25',balance:0}},rules:{},accounts:[],excludedAccounts:[]};
  const {context,get}=environment(m);get('asof').value='2026-10-25';get('horizon').value='2026-11-30';let projected;

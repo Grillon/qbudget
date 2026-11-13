@@ -1,3 +1,13 @@
+# qbudget V0.20.7 — Abandon du rapprochement automatique des récurrences
+
+- Retrait de la détection, des actions de validation automatique de périodicité et du backlog de récurrences dans l’interface. Les expériences 0.20.5 et 0.20.6 sont abandonnées ; aucun nouveau rapprochement de récurrences n’est produit.
+- Récurrences manuelles, forecast, transferts, perspectives, catégories, retagage et interface mobile conservés.
+- Anciennes propositions maintenues comme archives passives dans les annotations et leurs exports, sans action de détection. Les tags, annotations, liens et règles déjà validés ne sont pas effacés.
+- Calendrier semestriel conservé pour que les règles déjà enregistrées restent calculables et éditables. Périodicité analytique revenue au fonctionnement Récurrent / Ponctuel.
+- README actualisé et récapitulatif des évolutions ajouté dans RELEASE_NOTES.md. Tests de non-régression sur l’import, le rechargement, l’audit et les règles existantes.
+
+---
+
 # qbudget V0.20.6 — Priorité aux rythmes courts et propositions ponctuelles
 
 - Ordre de recherche quotidien, hebdomadaire, mensuel, trimestriel, semestriel, annuel. Le contexte de dates du même libellé sert à privilégier le rythme court observé, même si un montant précis ne revient qu’une fois par an.

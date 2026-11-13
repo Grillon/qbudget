@@ -1,0 +1,615 @@
+{
+  "csv": "Date;Banque;Compte;Libellé;Montant;Devise\n2026-10-01;BPS;Courant;PASS QUOTIDIEN;-3,50;EUR\n2026-10-02;BPS;Courant;PASS QUOTIDIEN;-3,50;EUR\n2026-09-01;BPS;Courant;ACTIVITE HEBDO;-8,00;EUR\n2026-09-08;BPS;Courant;ACTIVITE HEBDO;-8,00;EUR\n2026-08-31;BPS;Courant;ABONNEMENT MENSUEL;-15,99;EUR\n2026-09-30;BPS;Courant;ABONNEMENT MENSUEL;-15,99;EUR\n2026-04-30;BPS;Courant;CHARGES TRIMESTRIELLES;-90,00;EUR\n2026-07-31;BPS;Courant;CHARGES TRIMESTRIELLES;-90,00;EUR\n2026-01-31;BPS;Courant;ASSURANCE SEMESTRIELLE;-300,00;EUR\n2026-07-31;BPS;Courant;ASSURANCE SEMESTRIELLE;-300,00;EUR\n2025-10-31;BPS;Courant;COTISATION ANNUELLE;-120,00;EUR\n2026-10-31;BPS;Courant;COTISATION ANNUELLE;-120,00;EUR\n2026-08-01;BPS;Courant;MONTANTS DIFFERENTS;-10,00;EUR\n2026-09-01;BPS;Courant;MONTANTS DIFFERENTS;-11,00;EUR\n2026-10-01;BPS;Courant;OPERATIONS IRREGULIERES;-20,00;EUR\n2026-10-15;BPS;Courant;OPERATIONS IRREGULIERES;-20,00;EUR\n",
+  "annotations": {
+    "version": 3,
+    "transferBacklog": [],
+    "recurrenceBacklog": [
+      {
+        "id": "[\"BPS\",\"Courant\",\"EUR\",\"abonnement mensuel\",\"-15.99\"]",
+        "status": "accepted",
+        "account": "BPS",
+        "sourceAccount": "Courant",
+        "currency": "EUR",
+        "desc": "ABONNEMENT MENSUEL",
+        "frequency": "mensuel",
+        "amount": -15.99,
+        "anchor": "2026-09-30",
+        "evidence": [
+          {
+            "id": "2a14a6111617ae47a1ce74c2ac45e84c7e3825430cc94682b0afaa444e0fad70-0000",
+            "date": "2026-08-31",
+            "desc": "ABONNEMENT MENSUEL",
+            "amount": -15.99,
+            "identityAmount": "-15.99",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          },
+          {
+            "id": "0e406f2948735e122759be65cfb82bfc7b202e72dd95b3f7c9aea0d675ca6510-0000",
+            "date": "2026-09-30",
+            "desc": "ABONNEMENT MENSUEL",
+            "amount": -15.99,
+            "identityAmount": "-15.99",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ],
+        "detectedFrequency": "mensuel",
+        "classificationOnly": true
+      },
+      {
+        "id": "[\"BPS\",\"Courant\",\"EUR\",\"activite hebdo\",\"-8\"]",
+        "status": "pending",
+        "account": "BPS",
+        "sourceAccount": "Courant",
+        "currency": "EUR",
+        "desc": "ACTIVITE HEBDO",
+        "frequency": "hebdomadaire",
+        "amount": -8,
+        "anchor": "2026-09-08",
+        "evidence": [
+          {
+            "id": "928de27de05f2f959d99d30899422e689a6182e00236fbe780302e4f490487ce-0000",
+            "date": "2026-09-01",
+            "desc": "ACTIVITE HEBDO",
+            "amount": -8,
+            "identityAmount": "-8",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          },
+          {
+            "id": "a2b6b8ac3301e68b53024e4cc25da1d19f1ac536e8792382ac1f43714762c0ca-0000",
+            "date": "2026-09-08",
+            "desc": "ACTIVITE HEBDO",
+            "amount": -8,
+            "identityAmount": "-8",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ]
+      },
+      {
+        "id": "[\"BPS\",\"Courant\",\"EUR\",\"assurance semestrielle\",\"-300\"]",
+        "status": "accepted",
+        "account": "BPS",
+        "sourceAccount": "Courant",
+        "currency": "EUR",
+        "desc": "ASSURANCE SEMESTRIELLE",
+        "frequency": "semestriel",
+        "amount": -300,
+        "anchor": "2026-07-31",
+        "evidence": [
+          {
+            "id": "3028dd138e389f89aadc6ca209ee9f3dd6b7796588d2b54eae3749452e7db1d0-0000",
+            "date": "2026-01-31",
+            "desc": "ASSURANCE SEMESTRIELLE",
+            "amount": -300,
+            "identityAmount": "-300",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          },
+          {
+            "id": "73e2e62bc2daaa9e74874e4bf487862939ee677116b977d318524f37ff7db933-0000",
+            "date": "2026-07-31",
+            "desc": "ASSURANCE SEMESTRIELLE",
+            "amount": -300,
+            "identityAmount": "-300",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ],
+        "ruleId": "regle-semestrielle-conservee"
+      },
+      {
+        "id": "[\"BPS\",\"Courant\",\"EUR\",\"charges trimestrielles\",\"-90\"]",
+        "status": "pending",
+        "account": "BPS",
+        "sourceAccount": "Courant",
+        "currency": "EUR",
+        "desc": "CHARGES TRIMESTRIELLES",
+        "frequency": "trimestriel",
+        "amount": -90,
+        "anchor": "2026-07-31",
+        "evidence": [
+          {
+            "id": "5c7f76d3c0b2a048ea6588ee55acf054d7055f72d4051bf3a72614affdbb83fe-0000",
+            "date": "2026-04-30",
+            "desc": "CHARGES TRIMESTRIELLES",
+            "amount": -90,
+            "identityAmount": "-90",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          },
+          {
+            "id": "530b3ef6e511f84f7dae82cfddbd5179f885515a7150e0bca13faf0371da5402-0000",
+            "date": "2026-07-31",
+            "desc": "CHARGES TRIMESTRIELLES",
+            "amount": -90,
+            "identityAmount": "-90",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ]
+      },
+      {
+        "id": "[\"BPS\",\"Courant\",\"EUR\",\"cotisation annuelle\",\"-120\"]",
+        "status": "ignored",
+        "account": "BPS",
+        "sourceAccount": "Courant",
+        "currency": "EUR",
+        "desc": "COTISATION ANNUELLE",
+        "frequency": "annuel",
+        "amount": -120,
+        "anchor": "2026-10-31",
+        "evidence": [
+          {
+            "id": "a9ceddafcca2e7342de795f971a048205169d71918ee0e7eb116d40fe1ceafdd-0000",
+            "date": "2025-10-31",
+            "desc": "COTISATION ANNUELLE",
+            "amount": -120,
+            "identityAmount": "-120",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          },
+          {
+            "id": "71c9def3dc06c376a24a233f10e40760ced4a8efee2f28434fbf54b104d5fbfc-0000",
+            "date": "2026-10-31",
+            "desc": "COTISATION ANNUELLE",
+            "amount": -120,
+            "identityAmount": "-120",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ]
+      },
+      {
+        "id": "[\"BPS\",\"Courant\",\"EUR\",\"montants differents\",\"-10\"]",
+        "status": "accepted",
+        "account": "BPS",
+        "sourceAccount": "Courant",
+        "currency": "EUR",
+        "desc": "MONTANTS DIFFERENTS",
+        "frequency": "ponctuel",
+        "amount": -10,
+        "anchor": "2026-08-01",
+        "evidence": [
+          {
+            "id": "c08f88c411707d43c2bf491c4ea3af6b63156505e008316da461289d44a1b1c8-0000",
+            "date": "2026-08-01",
+            "desc": "MONTANTS DIFFERENTS",
+            "amount": -10,
+            "identityAmount": "-10",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ],
+        "coverageEvidence": [
+          {
+            "id": "a9ceddafcca2e7342de795f971a048205169d71918ee0e7eb116d40fe1ceafdd-0000",
+            "date": "2025-10-31",
+            "desc": "COTISATION ANNUELLE",
+            "amount": -120,
+            "identityAmount": "-120",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          },
+          {
+            "id": "71c9def3dc06c376a24a233f10e40760ced4a8efee2f28434fbf54b104d5fbfc-0000",
+            "date": "2026-10-31",
+            "desc": "COTISATION ANNUELLE",
+            "amount": -120,
+            "identityAmount": "-120",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ],
+        "detectedFrequency": "ponctuel",
+        "classificationOnly": true
+      },
+      {
+        "id": "[\"BPS\",\"Courant\",\"EUR\",\"montants differents\",\"-11\"]",
+        "status": "pending",
+        "account": "BPS",
+        "sourceAccount": "Courant",
+        "currency": "EUR",
+        "desc": "MONTANTS DIFFERENTS",
+        "frequency": "ponctuel",
+        "amount": -11,
+        "anchor": "2026-09-01",
+        "evidence": [
+          {
+            "id": "2dafb5eaa94d1553f78c2b4639e4ceb53c25bca022adc58581221222334f1f71-0000",
+            "date": "2026-09-01",
+            "desc": "MONTANTS DIFFERENTS",
+            "amount": -11,
+            "identityAmount": "-11",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ],
+        "coverageEvidence": [
+          {
+            "id": "a9ceddafcca2e7342de795f971a048205169d71918ee0e7eb116d40fe1ceafdd-0000",
+            "date": "2025-10-31",
+            "desc": "COTISATION ANNUELLE",
+            "amount": -120,
+            "identityAmount": "-120",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          },
+          {
+            "id": "71c9def3dc06c376a24a233f10e40760ced4a8efee2f28434fbf54b104d5fbfc-0000",
+            "date": "2026-10-31",
+            "desc": "COTISATION ANNUELLE",
+            "amount": -120,
+            "identityAmount": "-120",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ]
+      },
+      {
+        "id": "[\"BPS\",\"Courant\",\"EUR\",\"pass quotidien\",\"-3.5\"]",
+        "status": "pending",
+        "account": "BPS",
+        "sourceAccount": "Courant",
+        "currency": "EUR",
+        "desc": "PASS QUOTIDIEN",
+        "frequency": "quotidien",
+        "amount": -3.5,
+        "anchor": "2026-10-02",
+        "evidence": [
+          {
+            "id": "48ff043fbf90dd973cc31d627f00e3a4a9572925fc8502adabbe5943b411b08a-0000",
+            "date": "2026-10-01",
+            "desc": "PASS QUOTIDIEN",
+            "amount": -3.5,
+            "identityAmount": "-3.5",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          },
+          {
+            "id": "9d778dc41962335317532e5630bcad4c281799b64282ab0b97c3b41a516be684-0000",
+            "date": "2026-10-02",
+            "desc": "PASS QUOTIDIEN",
+            "amount": -3.5,
+            "identityAmount": "-3.5",
+            "bank": "BPS",
+            "sourceAccount": "Courant",
+            "currency": "EUR"
+          }
+        ]
+      }
+    ],
+    "labelAssociations": [],
+    "bankIdentities": [
+      {
+        "id": "48ff043fbf90dd973cc31d627f00e3a4a9572925fc8502adabbe5943b411b08a-0000",
+        "key": "[\"BPS\",\"Courant\",\"pass quotidien\",\"2026-10-01\",\"-3.5\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "9d778dc41962335317532e5630bcad4c281799b64282ab0b97c3b41a516be684-0000",
+        "key": "[\"BPS\",\"Courant\",\"pass quotidien\",\"2026-10-02\",\"-3.5\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "928de27de05f2f959d99d30899422e689a6182e00236fbe780302e4f490487ce-0000",
+        "key": "[\"BPS\",\"Courant\",\"activite hebdo\",\"2026-09-01\",\"-8\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "a2b6b8ac3301e68b53024e4cc25da1d19f1ac536e8792382ac1f43714762c0ca-0000",
+        "key": "[\"BPS\",\"Courant\",\"activite hebdo\",\"2026-09-08\",\"-8\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "2a14a6111617ae47a1ce74c2ac45e84c7e3825430cc94682b0afaa444e0fad70-0000",
+        "key": "[\"BPS\",\"Courant\",\"abonnement mensuel\",\"2026-08-31\",\"-15.99\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "0e406f2948735e122759be65cfb82bfc7b202e72dd95b3f7c9aea0d675ca6510-0000",
+        "key": "[\"BPS\",\"Courant\",\"abonnement mensuel\",\"2026-09-30\",\"-15.99\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "5c7f76d3c0b2a048ea6588ee55acf054d7055f72d4051bf3a72614affdbb83fe-0000",
+        "key": "[\"BPS\",\"Courant\",\"charges trimestrielles\",\"2026-04-30\",\"-90\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "530b3ef6e511f84f7dae82cfddbd5179f885515a7150e0bca13faf0371da5402-0000",
+        "key": "[\"BPS\",\"Courant\",\"charges trimestrielles\",\"2026-07-31\",\"-90\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "3028dd138e389f89aadc6ca209ee9f3dd6b7796588d2b54eae3749452e7db1d0-0000",
+        "key": "[\"BPS\",\"Courant\",\"assurance semestrielle\",\"2026-01-31\",\"-300\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "73e2e62bc2daaa9e74874e4bf487862939ee677116b977d318524f37ff7db933-0000",
+        "key": "[\"BPS\",\"Courant\",\"assurance semestrielle\",\"2026-07-31\",\"-300\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "a9ceddafcca2e7342de795f971a048205169d71918ee0e7eb116d40fe1ceafdd-0000",
+        "key": "[\"BPS\",\"Courant\",\"cotisation annuelle\",\"2025-10-31\",\"-120\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "71c9def3dc06c376a24a233f10e40760ced4a8efee2f28434fbf54b104d5fbfc-0000",
+        "key": "[\"BPS\",\"Courant\",\"cotisation annuelle\",\"2026-10-31\",\"-120\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "c08f88c411707d43c2bf491c4ea3af6b63156505e008316da461289d44a1b1c8-0000",
+        "key": "[\"BPS\",\"Courant\",\"montants differents\",\"2026-08-01\",\"-10\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "2dafb5eaa94d1553f78c2b4639e4ceb53c25bca022adc58581221222334f1f71-0000",
+        "key": "[\"BPS\",\"Courant\",\"montants differents\",\"2026-09-01\",\"-11\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "70f58d09c0fa62281dccdc59d50f1f2dd12092425b7dfeec6b570ed086cbccf9-0000",
+        "key": "[\"BPS\",\"Courant\",\"operations irregulieres\",\"2026-10-01\",\"-20\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      },
+      {
+        "id": "6b226a2f72a91217317373fd39db55a78cf3395d34cb9cdd67047ecf5ef4b5f0-0000",
+        "key": "[\"BPS\",\"Courant\",\"operations irregulieres\",\"2026-10-15\",\"-20\",\"EUR\"]",
+        "reference": "",
+        "aliases": [],
+        "ambiguous": false,
+        "accountUnknown": false
+      }
+    ],
+    "notes": {
+      "2a14a6111617ae47a1ce74c2ac45e84c7e3825430cc94682b0afaa444e0fad70-0000": {
+        "type": "recurrent",
+        "recurrenceFrequency": "mensuel"
+      },
+      "0e406f2948735e122759be65cfb82bfc7b202e72dd95b3f7c9aea0d675ca6510-0000": {
+        "type": "recurrent",
+        "recurrenceFrequency": "mensuel"
+      },
+      "c08f88c411707d43c2bf491c4ea3af6b63156505e008316da461289d44a1b1c8-0000": {
+        "type": "ponctuel",
+        "recurrenceFrequency": "ponctuel"
+      },
+      "3028dd138e389f89aadc6ca209ee9f3dd6b7796588d2b54eae3749452e7db1d0-0000": {
+        "type": "recurrent",
+        "ruleId": "regle-semestrielle-conservee"
+      },
+      "73e2e62bc2daaa9e74874e4bf487862939ee677116b977d318524f37ff7db933-0000": {
+        "type": "recurrent",
+        "ruleId": "regle-semestrielle-conservee"
+      }
+    },
+    "references": {
+      "BPS": {
+        "date": "2026-11-01",
+        "balance": 1000
+      }
+    },
+    "rules": {
+      "regle-semestrielle-conservee": {
+        "id": "regle-semestrielle-conservee",
+        "account": "BPS",
+        "sourceAccount": "Courant",
+        "desc": "ASSURANCE SEMESTRIELLE",
+        "amount": -300,
+        "frequency": "semestriel",
+        "start": "2026-07-31",
+        "anchor": "2026-07-31",
+        "end": "",
+        "recurrenceKey": "[\"BPS\",\"Courant\",\"EUR\",\"assurance semestrielle\",\"-300\"]"
+      }
+    },
+    "accounts": [],
+    "excludedAccounts": [],
+    "tagCategories": [
+      {
+        "name": "Entité",
+        "tags": [
+          "Micro",
+          "SASU",
+          "Perso",
+          "exploration"
+        ],
+        "source": "tags"
+      },
+      {
+        "name": "Projet",
+        "tags": [
+          "qbudget",
+          "microbudget",
+          "levelup"
+        ],
+        "source": "tags"
+      },
+      {
+        "name": "Poste",
+        "tags": [
+          "alimentation",
+          "courses",
+          "repas",
+          "restaurant",
+          "cantine",
+          "essence",
+          "peage",
+          "transport",
+          "transports",
+          "telecom",
+          "streaming",
+          "logement",
+          "copro",
+          "energie",
+          "eau",
+          "assurance",
+          "sante",
+          "loisirs",
+          "sport",
+          "vetements",
+          "cadeaux",
+          "impots",
+          "urssaf",
+          "pret",
+          "frais_bancaires",
+          "IK",
+          "noteDeFrais"
+        ],
+        "source": "tags"
+      },
+      {
+        "name": "Contexte",
+        "tags": [
+          "mission",
+          "deplacement",
+          "contexte_loisirs",
+          "essentiel_quotidien",
+          "projets",
+          "Pro",
+          "quotidien",
+          "travail"
+        ],
+        "source": "tags"
+      },
+      {
+        "name": "Finalité",
+        "tags": [
+          "finalite_quotidien",
+          "finalite_loisirs",
+          "épargne",
+          "investissement",
+          "activité professionnelle"
+        ],
+        "source": "tags"
+      },
+      {
+        "name": "Périodicité",
+        "tags": [
+          "Récurrent",
+          "Ponctuel"
+        ],
+        "source": "type"
+      },
+      {
+        "name": "Traitement / État",
+        "tags": [
+          "remboursement",
+          "payéPerso",
+          "enCoursDeCreation",
+          "transfert_intercomptes"
+        ],
+        "source": "tags"
+      },
+      {
+        "name": "Variabilité",
+        "tags": [
+          "fixe",
+          "variable"
+        ],
+        "source": "tags"
+      }
+    ],
+    "donutCategory": "",
+    "sunburstDepth": 2,
+    "hierarchyView": "sunburst",
+    "excludeTransfersFromCharts": true,
+    "tagDefaultsVersion": 3,
+    "manualRows": []
+  },
+  "forecast": {
+    "account": "all",
+    "at": "2026-11-01",
+    "until": "2027-12-31",
+    "opening": 1000,
+    "closing": 400,
+    "minimum": 400,
+    "events": [
+      {
+        "date": "2027-01-31",
+        "amount": -300,
+        "desc": "ASSURANCE SEMESTRIELLE",
+        "ruleId": "regle-semestrielle-conservee",
+        "account": "BPS",
+        "balance": 700
+      },
+      {
+        "date": "2027-07-31",
+        "amount": -300,
+        "desc": "ASSURANCE SEMESTRIELLE",
+        "ruleId": "regle-semestrielle-conservee",
+        "account": "BPS",
+        "balance": 400
+      }
+    ]
+  },
+  "audit": "date;compte;libelle;montant;devise;origine;identifiant;recurrence_id\n2025-10-31;BPS;COTISATION ANNUELLE;-120,00;EUR;reel;a9ceddafcca2e7342de795f971a048205169d71918ee0e7eb116d40fe1ceafdd-0000;\n2026-01-31;BPS;ASSURANCE SEMESTRIELLE;-300,00;EUR;reel;3028dd138e389f89aadc6ca209ee9f3dd6b7796588d2b54eae3749452e7db1d0-0000;regle-semestrielle-conservee\n2026-04-30;BPS;CHARGES TRIMESTRIELLES;-90,00;EUR;reel;5c7f76d3c0b2a048ea6588ee55acf054d7055f72d4051bf3a72614affdbb83fe-0000;\n2026-07-31;BPS;CHARGES TRIMESTRIELLES;-90,00;EUR;reel;530b3ef6e511f84f7dae82cfddbd5179f885515a7150e0bca13faf0371da5402-0000;\n2026-07-31;BPS;ASSURANCE SEMESTRIELLE;-300,00;EUR;reel;73e2e62bc2daaa9e74874e4bf487862939ee677116b977d318524f37ff7db933-0000;regle-semestrielle-conservee\n2026-08-01;BPS;MONTANTS DIFFERENTS;-10,00;EUR;reel;c08f88c411707d43c2bf491c4ea3af6b63156505e008316da461289d44a1b1c8-0000;\n2026-08-31;BPS;ABONNEMENT MENSUEL;-15,99;EUR;reel;2a14a6111617ae47a1ce74c2ac45e84c7e3825430cc94682b0afaa444e0fad70-0000;\n2026-09-01;BPS;MONTANTS DIFFERENTS;-11,00;EUR;reel;2dafb5eaa94d1553f78c2b4639e4ceb53c25bca022adc58581221222334f1f71-0000;\n2026-09-01;BPS;ACTIVITE HEBDO;-8,00;EUR;reel;928de27de05f2f959d99d30899422e689a6182e00236fbe780302e4f490487ce-0000;\n2026-09-08;BPS;ACTIVITE HEBDO;-8,00;EUR;reel;a2b6b8ac3301e68b53024e4cc25da1d19f1ac536e8792382ac1f43714762c0ca-0000;\n2026-09-30;BPS;ABONNEMENT MENSUEL;-15,99;EUR;reel;0e406f2948735e122759be65cfb82bfc7b202e72dd95b3f7c9aea0d675ca6510-0000;\n2026-10-01;BPS;PASS QUOTIDIEN;-3,50;EUR;reel;48ff043fbf90dd973cc31d627f00e3a4a9572925fc8502adabbe5943b411b08a-0000;\n2026-10-01;BPS;OPERATIONS IRREGULIERES;-20,00;EUR;reel;70f58d09c0fa62281dccdc59d50f1f2dd12092425b7dfeec6b570ed086cbccf9-0000;\n2026-10-02;BPS;PASS QUOTIDIEN;-3,50;EUR;reel;9d778dc41962335317532e5630bcad4c281799b64282ab0b97c3b41a516be684-0000;\n2026-10-15;BPS;OPERATIONS IRREGULIERES;-20,00;EUR;reel;6b226a2f72a91217317373fd39db55a78cf3395d34cb9cdd67047ecf5ef4b5f0-0000;\n2026-10-31;BPS;COTISATION ANNUELLE;-120,00;EUR;reel;71c9def3dc06c376a24a233f10e40760ced4a8efee2f28434fbf54b104d5fbfc-0000;\n2027-01-31;BPS;ASSURANCE SEMESTRIELLE;-300,00;EUR;recurrence;rec:regle-semestrielle-conservee:2027-01-31;regle-semestrielle-conservee\n2027-07-31;BPS;ASSURANCE SEMESTRIELLE;-300,00;EUR;recurrence;rec:regle-semestrielle-conservee:2027-07-31;regle-semestrielle-conservee\n"
+}
